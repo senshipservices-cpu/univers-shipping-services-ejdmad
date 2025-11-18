@@ -144,6 +144,18 @@ export default function ClientDashboardScreen() {
     );
   }, [signOut, router]);
 
+  const handleDigitalPortalAccess = useCallback(() => {
+    console.log('Digital Portal Access - hasDigitalPortalAccess:', subscriptionAccess.hasDigitalPortalAccess);
+    
+    if (subscriptionAccess.hasDigitalPortalAccess) {
+      // User has active subscription with digital portal access
+      router.push('/(tabs)/digital-portal');
+    } else {
+      // User doesn't have access, redirect to pricing with highlight
+      router.push('/(tabs)/pricing?highlight=digital_portal');
+    }
+  }, [subscriptionAccess.hasDigitalPortalAccess, router]);
+
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'delivered':
@@ -174,6 +186,7 @@ export default function ClientDashboardScreen() {
       'premium_tracking': 'Premium Tracking',
       'enterprise_logistics': 'Enterprise Logistics',
       'agent_listing': 'Agent Listing',
+      'digital_portal': 'Digital Portal',
     };
     return planNames[planType] || planType;
   }, []);
@@ -384,6 +397,39 @@ export default function ClientDashboardScreen() {
             <Text style={[styles.updateProfileText, { color: colors.primary }]}>
               Mettre à jour mon profil
             </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Digital Portal Access Button */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.digitalPortalButton, { backgroundColor: colors.primary }]}
+            onPress={handleDigitalPortalAccess}
+          >
+            <View style={styles.digitalPortalContent}>
+              <IconSymbol
+                ios_icon_name="globe.badge.chevron.backward"
+                android_material_icon_name="language"
+                size={32}
+                color="#FFFFFF"
+              />
+              <View style={styles.digitalPortalText}>
+                <Text style={styles.digitalPortalTitle}>
+                  Accéder au Portail Digital
+                </Text>
+                <Text style={styles.digitalPortalSubtitle}>
+                  {subscriptionAccess.hasDigitalPortalAccess 
+                    ? 'Tracking avancé, reporting, documentation et API'
+                    : 'Découvrez nos solutions digitales complètes'}
+                </Text>
+              </View>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={24}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
         </View>
 
@@ -826,6 +872,35 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  digitalPortalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  digitalPortalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  digitalPortalText: {
+    flex: 1,
+    gap: 4,
+  },
+  digitalPortalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  digitalPortalSubtitle: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    lineHeight: 18,
   },
   emptyCard: {
     padding: 32,
