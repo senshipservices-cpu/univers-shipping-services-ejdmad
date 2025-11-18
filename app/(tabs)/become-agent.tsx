@@ -8,17 +8,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 
-interface Benefit {
-  title: string;
-  description: string;
-  icon: string;
-}
-
 interface Port {
   id: string;
   name: string;
   city: string | null;
   country: string | null;
+  region: string | null;
 }
 
 interface ActivityOption {
@@ -37,11 +32,10 @@ export default function BecomeAgentScreen() {
   const [showPortPicker, setShowPortPicker] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [portSearchQuery, setPortSearchQuery] = useState("");
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // Form fields
   const [formData, setFormData] = useState({
     companyName: "",
-    contactName: "",
     email: "",
     phone: "",
     whatsapp: "",
@@ -50,52 +44,18 @@ export default function BecomeAgentScreen() {
     selectedActivities: [] as string[],
     yearsExperience: "",
     certifications: "",
-    message: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const activityOptions: ActivityOption[] = [
-    { value: "consignation", label: "Ship Agency / Consignation" },
-    { value: "customs", label: "Customs Clearance" },
+    { value: "consignation", label: "Consignation" },
+    { value: "customs", label: "Customs" },
     { value: "freight_forwarding", label: "Freight Forwarding" },
     { value: "ship_supply", label: "Ship Supply" },
     { value: "warehousing", label: "Warehousing" },
-    { value: "trucking", label: "Trucking / Transport" },
+    { value: "trucking", label: "Trucking" },
     { value: "consulting", label: "Consulting" },
-  ];
-
-  const benefits: Benefit[] = [
-    {
-      title: "Global Network",
-      description: "Access to our worldwide network of partners and clients",
-      icon: "public",
-    },
-    {
-      title: "Competitive Commission",
-      description: "Attractive commission structure and incentive programs",
-      icon: "payments",
-    },
-    {
-      title: "Training & Support",
-      description: "Comprehensive training and ongoing support",
-      icon: "school",
-    },
-    {
-      title: "Marketing Tools",
-      description: "Professional marketing materials and digital resources",
-      icon: "campaign",
-    },
-    {
-      title: "Technology Platform",
-      description: "Access to our advanced booking and tracking systems",
-      icon: "computer",
-    },
-    {
-      title: "Brand Recognition",
-      description: "Leverage our established brand and reputation",
-      icon: "verified",
-    },
   ];
 
   useEffect(() => {
@@ -106,8 +66,9 @@ export default function BecomeAgentScreen() {
     try {
       const { data, error } = await supabase
         .from("ports")
-        .select("id, name, city, country")
+        .select("id, name, city, country, region")
         .eq("status", "actif")
+        .order("region")
         .order("name");
 
       if (error) {
@@ -127,25 +88,16 @@ export default function BecomeAgentScreen() {
     if (!formData.companyName.trim()) {
       newErrors.companyName = t.becomeAgent.requiredField;
     }
-    if (!formData.contactName.trim()) {
-      newErrors.contactName = t.becomeAgent.requiredField;
-    }
     if (!formData.email.trim()) {
       newErrors.email = t.becomeAgent.requiredField;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = t.becomeAgent.invalidEmail;
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = t.becomeAgent.requiredField;
     }
     if (!formData.selectedPort) {
       newErrors.port = t.becomeAgent.requiredField;
     }
     if (formData.selectedActivities.length === 0) {
       newErrors.activities = t.becomeAgent.selectAtLeastOne;
-    }
-    if (!formData.yearsExperience.trim() || isNaN(Number(formData.yearsExperience))) {
-      newErrors.yearsExperience = t.becomeAgent.requiredField;
     }
 
     setErrors(newErrors);
@@ -161,61 +113,43 @@ export default function BecomeAgentScreen() {
     setLoading(true);
 
     try {
-      const { data: projectData } = await supabase.auth.getSession();
-      const supabaseUrl = supabase.supabaseUrl;
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/submit-agent-application`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${projectData.session?.access_token || ""}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase
+        .from("global_agents")
+        .insert({
           company_name: formData.companyName,
-          port_id: formData.selectedPort?.id,
+          port: formData.selectedPort?.id,
           activities: formData.selectedActivities,
-          years_experience: Number(formData.yearsExperience),
-          contact_name: formData.contactName,
+          years_experience: formData.yearsExperience ? Number(formData.yearsExperience) : null,
           email: formData.email,
-          phone: formData.phone,
-          whatsapp: formData.whatsapp || formData.phone,
-          website: formData.website,
-          certifications: formData.certifications,
-          message: formData.message,
-        }),
-      });
+          whatsapp: formData.whatsapp || null,
+          website: formData.website || null,
+          certifications: formData.certifications || null,
+          status: "pending",
+          is_premium_listing: false,
+          notes_internal: "",
+        })
+        .select()
+        .single();
 
-      const result = await response.json();
-
-      if (result.success) {
-        Alert.alert(
-          t.becomeAgent.successTitle,
-          t.becomeAgent.successMessage,
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setShowForm(false);
-                setFormData({
-                  companyName: "",
-                  contactName: "",
-                  email: "",
-                  phone: "",
-                  whatsapp: "",
-                  website: "",
-                  selectedPort: null,
-                  selectedActivities: [],
-                  yearsExperience: "",
-                  certifications: "",
-                  message: "",
-                });
-              },
-            },
-          ]
-        );
-      } else {
-        throw new Error(result.error || "Submission failed");
+      if (error) {
+        throw error;
       }
+
+      console.log("Application submitted successfully:", data);
+      
+      setShowSuccessMessage(true);
+      setFormData({
+        companyName: "",
+        email: "",
+        phone: "",
+        whatsapp: "",
+        website: "",
+        selectedPort: null,
+        selectedActivities: [],
+        yearsExperience: "",
+        certifications: "",
+      });
+      setShowForm(false);
     } catch (error) {
       console.error("Error submitting application:", error);
       Alert.alert(t.becomeAgent.errorTitle, t.becomeAgent.errorMessage);
@@ -238,6 +172,57 @@ export default function BecomeAgentScreen() {
       .toLowerCase()
       .includes(portSearchQuery.toLowerCase())
   );
+
+  if (showSuccessMessage) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+          <View style={{ width: 28 }} />
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            {t.becomeAgent.title}
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <View style={styles.successContainer}>
+          <View style={[styles.successIconContainer, { backgroundColor: colors.accent }]}>
+            <IconSymbol
+              ios_icon_name="checkmark"
+              android_material_icon_name="check"
+              size={60}
+              color="#ffffff"
+            />
+          </View>
+          
+          <Text style={[styles.successTitle, { color: theme.colors.text }]}>
+            {t.becomeAgent.successTitle}
+          </Text>
+          
+          <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+            {t.becomeAgent.successMessage}
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.backToHomeButton, { backgroundColor: colors.accent }]}
+            onPress={() => {
+              setShowSuccessMessage(false);
+              router.push("/(tabs)/(home)");
+            }}
+          >
+            <Text style={styles.backToHomeButtonText}>
+              {t.becomeAgent.backToHome}
+            </Text>
+            <IconSymbol
+              ios_icon_name="house.fill"
+              android_material_icon_name="home"
+              size={20}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (showForm) {
     return (
@@ -266,10 +251,6 @@ export default function BecomeAgentScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formSection}>
-            <Text style={[styles.formSectionTitle, { color: theme.colors.text }]}>
-              {t.becomeAgent.companyInfo}
-            </Text>
-
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>
                 {t.becomeAgent.companyName} *
@@ -283,86 +264,6 @@ export default function BecomeAgentScreen() {
               />
               {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.contactName} *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.contactName ? "#ff4444" : colors.border }]}
-                placeholder={t.becomeAgent.contactNamePlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.contactName}
-                onChangeText={(text) => setFormData({ ...formData, contactName: text })}
-              />
-              {errors.contactName && <Text style={styles.errorText}>{errors.contactName}</Text>}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.email} *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.email ? "#ff4444" : colors.border }]}
-                placeholder={t.becomeAgent.emailPlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.phone} *
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.phone ? "#ff4444" : colors.border }]}
-                placeholder={t.becomeAgent.phonePlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.phone}
-                onChangeText={(text) => setFormData({ ...formData, phone: text })}
-                keyboardType="phone-pad"
-              />
-              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.whatsapp}
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
-                placeholder={t.becomeAgent.whatsappPlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.whatsapp}
-                onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.website}
-              </Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
-                placeholder={t.becomeAgent.websitePlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.website}
-                onChangeText={(text) => setFormData({ ...formData, website: text })}
-                keyboardType="url"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.formSection}>
-            <Text style={[styles.formSectionTitle, { color: theme.colors.text }]}>
-              {t.becomeAgent.portSelection}
-            </Text>
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>
@@ -412,17 +313,61 @@ export default function BecomeAgentScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.yearsExperience} *
+                {t.becomeAgent.yearsExperience}
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.yearsExperience ? "#ff4444" : colors.border }]}
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
                 placeholder="5"
                 placeholderTextColor={colors.textSecondary}
                 value={formData.yearsExperience}
                 onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
                 keyboardType="number-pad"
               />
-              {errors.yearsExperience && <Text style={styles.errorText}>{errors.yearsExperience}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.whatsapp}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.whatsappPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.whatsapp}
+                onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.email} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.email ? "#ff4444" : colors.border }]}
+                placeholder={t.becomeAgent.emailPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.email}
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.website}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.websitePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.website}
+                onChangeText={(text) => setFormData({ ...formData, website: text })}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
             </View>
 
             <View style={styles.inputGroup}>
@@ -430,26 +375,13 @@ export default function BecomeAgentScreen() {
                 {t.becomeAgent.certifications}
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                style={[styles.textArea, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
                 placeholder={t.becomeAgent.certificationsPlaceholder}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.certifications}
                 onChangeText={(text) => setFormData({ ...formData, certifications: text })}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>
-                {t.becomeAgent.message}
-              </Text>
-              <TextInput
-                style={[styles.textArea, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
-                placeholder={t.becomeAgent.messagePlaceholder}
-                placeholderTextColor={colors.textSecondary}
-                value={formData.message}
-                onChangeText={(text) => setFormData({ ...formData, message: text })}
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
                 textAlignVertical="top"
               />
             </View>
@@ -465,7 +397,7 @@ export default function BecomeAgentScreen() {
             ) : (
               <React.Fragment>
                 <Text style={styles.submitButtonText}>
-                  {loading ? t.becomeAgent.submitting : t.becomeAgent.submitApplication}
+                  {t.becomeAgent.submitApplication}
                 </Text>
                 <IconSymbol
                   ios_icon_name="paperplane.fill"
@@ -478,7 +410,6 @@ export default function BecomeAgentScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Port Picker Modal */}
         <Modal
           visible={showPortPicker}
           animationType="slide"
@@ -529,7 +460,6 @@ export default function BecomeAgentScreen() {
           </View>
         </Modal>
 
-        {/* Activity Picker Modal */}
         <Modal
           visible={showActivityPicker}
           animationType="slide"
@@ -629,86 +559,88 @@ export default function BecomeAgentScreen() {
           <Text style={[styles.subtitle, { color: theme.colors.text }]}>
             {t.becomeAgent.subtitle}
           </Text>
-          <Text style={styles.description}>
-            Partner with 3S Global and expand your business opportunities in the maritime and logistics industry
+          <Text style={[styles.introduction, { color: colors.textSecondary }]}>
+            {t.becomeAgent.introduction}
           </Text>
         </View>
 
-        <View style={styles.benefitsSection}>
+        <View style={styles.conditionsSection}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.becomeAgent.benefits}
+            {t.becomeAgent.conditionsTitle}
           </Text>
-          <View style={styles.benefitsContainer}>
-            {benefits.map((benefit, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.benefitCard, { backgroundColor: theme.colors.card }]}>
-                  <View style={[styles.benefitIconContainer, { backgroundColor: colors.accent }]}>
-                    <IconSymbol
-                      ios_icon_name={benefit.icon}
-                      android_material_icon_name={benefit.icon as any}
-                      size={28}
-                      color="#ffffff"
-                    />
-                  </View>
-                  <View style={styles.benefitContent}>
-                    <Text style={[styles.benefitTitle, { color: theme.colors.text }]}>
-                      {benefit.title}
-                    </Text>
-                    <Text style={styles.benefitDescription}>{benefit.description}</Text>
-                  </View>
-                </View>
-              </React.Fragment>
-            ))}
+          <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.conditionItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.accent}
+              />
+              <Text style={[styles.conditionText, { color: theme.colors.text }]}>
+                {t.becomeAgent.condition1}
+              </Text>
+            </View>
+            <View style={styles.conditionItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.accent}
+              />
+              <Text style={[styles.conditionText, { color: theme.colors.text }]}>
+                {t.becomeAgent.condition2}
+              </Text>
+            </View>
+            <View style={styles.conditionItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.accent}
+              />
+              <Text style={[styles.conditionText, { color: theme.colors.text }]}>
+                {t.becomeAgent.condition3}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.requirementsSection}>
+        <View style={styles.advantagesSection}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Requirements
+            {t.becomeAgent.advantagesTitle}
           </Text>
-          <View style={[styles.requirementsCard, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.requirementItem}>
+          <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.advantageItem}>
               <IconSymbol
-                ios_icon_name="checkmark.circle.fill"
-                android_material_icon_name="check_circle"
+                ios_icon_name="star.fill"
+                android_material_icon_name="star"
                 size={24}
                 color={colors.accent}
               />
-              <Text style={[styles.requirementText, { color: theme.colors.text }]}>
-                Established business in logistics or maritime industry
+              <Text style={[styles.advantageText, { color: theme.colors.text }]}>
+                {t.becomeAgent.advantage1}
               </Text>
             </View>
-            <View style={styles.requirementItem}>
+            <View style={styles.advantageItem}>
               <IconSymbol
-                ios_icon_name="checkmark.circle.fill"
-                android_material_icon_name="check_circle"
+                ios_icon_name="star.fill"
+                android_material_icon_name="star"
                 size={24}
                 color={colors.accent}
               />
-              <Text style={[styles.requirementText, { color: theme.colors.text }]}>
-                Strong local market knowledge and network
+              <Text style={[styles.advantageText, { color: theme.colors.text }]}>
+                {t.becomeAgent.advantage2}
               </Text>
             </View>
-            <View style={styles.requirementItem}>
+            <View style={styles.advantageItem}>
               <IconSymbol
-                ios_icon_name="checkmark.circle.fill"
-                android_material_icon_name="check_circle"
+                ios_icon_name="star.fill"
+                android_material_icon_name="star"
                 size={24}
                 color={colors.accent}
               />
-              <Text style={[styles.requirementText, { color: theme.colors.text }]}>
-                Commitment to quality service and customer satisfaction
-              </Text>
-            </View>
-            <View style={styles.requirementItem}>
-              <IconSymbol
-                ios_icon_name="checkmark.circle.fill"
-                android_material_icon_name="check_circle"
-                size={24}
-                color={colors.accent}
-              />
-              <Text style={[styles.requirementText, { color: theme.colors.text }]}>
-                Financial stability and professional credentials
+              <Text style={[styles.advantageText, { color: theme.colors.text }]}>
+                {t.becomeAgent.advantage3}
               </Text>
             </View>
           </View>
@@ -772,15 +704,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginTop: 20,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  description: {
+  introduction: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
-  benefitsSection: {
+  conditionsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  advantagesSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
   },
@@ -789,44 +724,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 16,
   },
-  benefitsContainer: {
-    gap: 12,
-  },
-  benefitCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-  },
-  benefitIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  benefitContent: {
-    flex: 1,
-  },
-  benefitTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  benefitDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  requirementsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  requirementsCard: {
+  card: {
     padding: 20,
     borderRadius: 12,
     boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
@@ -835,12 +733,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 16,
   },
-  requirementItem: {
+  conditionItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
   },
-  requirementText: {
+  conditionText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  advantageItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  advantageText: {
     flex: 1,
     fontSize: 15,
     lineHeight: 22,
@@ -867,11 +775,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 20,
   },
-  formSectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
   inputGroup: {
     marginBottom: 20,
   },
@@ -893,7 +796,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    minHeight: 100,
+    minHeight: 80,
   },
   pickerButton: {
     flexDirection: 'row',
@@ -992,5 +895,45 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 16,
     flex: 1,
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  successIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  successMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  backToHomeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 8,
+  },
+  backToHomeButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });
