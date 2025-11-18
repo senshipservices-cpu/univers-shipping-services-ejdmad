@@ -20,6 +20,8 @@ export interface Translations {
     heroDescription: string;
     discoverServices: string;
     requestQuote: string;
+    requestGlobalQuote: string;
+    talkToExpert: string;
     servicesTitle: string;
     servicesSubtitle: string;
     maritimeShipping: string;
@@ -234,9 +236,11 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'UNIVERSAL SHIPPING SERVICES',
       heroTitle: 'Global Maritime & Logistics Solutions',
       heroSubtitle: 'Connecting Ships, Ports & Businesses Worldwide',
-      heroDescription: 'UNIVERSAL SHIPPING SERVICES accompagne armateurs, chargeurs et entreprises dans leurs opérations maritimes, portuaires et logistiques à l\'échelle mondiale : affrètement, consignation, douane, logistique intégrée et consulting.',
+      heroDescription: 'Des solutions maritimes et logistiques complètes pour connecter vos opérations à travers le monde.',
       discoverServices: 'Découvrir nos services',
       requestQuote: 'Demander un devis',
+      requestGlobalQuote: 'Demander un devis global',
+      talkToExpert: 'Parler à un expert',
       servicesTitle: 'Nos principaux domaines de services',
       servicesSubtitle: 'Des solutions intégrées pour le shipping, la logistique et le consulting.',
       maritimeShipping: 'Maritime & Shipping',
@@ -449,9 +453,11 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'UNIVERSAL SHIPPING SERVICES',
       heroTitle: 'Global Maritime & Logistics Solutions',
       heroSubtitle: 'Connecting Ships, Ports & Businesses Worldwide',
-      heroDescription: 'UNIVERSAL SHIPPING SERVICES supports shipowners, shippers and businesses in their maritime, port and logistics operations worldwide: chartering, ship agency, customs, integrated logistics and consulting.',
+      heroDescription: 'Comprehensive maritime and logistics solutions to connect your operations worldwide.',
       discoverServices: 'Discover our services',
       requestQuote: 'Request a quote',
+      requestGlobalQuote: 'Request a global quote',
+      talkToExpert: 'Talk to an expert',
       servicesTitle: 'Our main service areas',
       servicesSubtitle: 'Integrated solutions for shipping, logistics and consulting.',
       maritimeShipping: 'Maritime & Shipping',
@@ -664,9 +670,11 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'UNIVERSAL SHIPPING SERVICES',
       heroTitle: 'Global Maritime & Logistics Solutions',
       heroSubtitle: 'Connecting Ships, Ports & Businesses Worldwide',
-      heroDescription: 'UNIVERSAL SHIPPING SERVICES apoya a armadores, cargadores y empresas en sus operaciones marítimas, portuarias y logísticas en todo el mundo: fletamento, consignación, aduanas, logística integrada y consultoría.',
+      heroDescription: 'Soluciones marítimas y logísticas integrales para conectar sus operaciones en todo el mundo.',
       discoverServices: 'Descubrir nuestros servicios',
       requestQuote: 'Solicitar cotización',
+      requestGlobalQuote: 'Solicitar cotización global',
+      talkToExpert: 'Hablar con un experto',
       servicesTitle: 'Nuestras principales áreas de servicio',
       servicesSubtitle: 'Soluciones integradas para el transporte marítimo, la logística y la consultoría.',
       maritimeShipping: 'Maritime & Shipping',
@@ -879,9 +887,11 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'خدمات الشحن العالمية',
       heroTitle: 'Global Maritime & Logistics Solutions',
       heroSubtitle: 'Connecting Ships, Ports & Businesses Worldwide',
-      heroDescription: 'تدعم خدمات الشحن العالمية أصحاب السفن والشاحنين والشركات في عملياتهم البحرية والميناء واللوجستية في جميع أنحاء العالم: التأجير والوكالة البحرية والجمارك واللوجستيات المتكاملة والاستشارات.',
+      heroDescription: 'حلول بحرية ولوجستية شاملة لربط عملياتك في جميع أنحاء العالم.',
       discoverServices: 'اكتشف خدماتنا',
       requestQuote: 'طلب عرض أسعار',
+      requestGlobalQuote: 'طلب عرض أسعار عالمي',
+      talkToExpert: 'تحدث إلى خبير',
       servicesTitle: 'مجالات خدماتنا الرئيسية',
       servicesSubtitle: 'حلول متكاملة للشحن واللوجستيات والاستشارات.',
       maritimeShipping: 'Maritime & Shipping',

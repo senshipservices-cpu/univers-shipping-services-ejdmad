@@ -111,7 +111,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section */}
+        {/* Hero Section - Updated */}
         <LinearGradient
           colors={[colors.primary, colors.secondary]}
           start={{ x: 0, y: 0 }}
@@ -127,15 +127,14 @@ export default function HomeScreen() {
             />
             <Text style={styles.heroTitle}>{t.home.heroTitle}</Text>
             <Text style={styles.heroSubtitle}>{t.home.heroSubtitle}</Text>
-            <Text style={styles.heroDescription}>{t.home.heroDescription}</Text>
             
             <View style={styles.heroButtons}>
               <TouchableOpacity
                 style={[styles.heroButton, styles.heroButtonPrimary]}
-                onPress={() => router.push("/(tabs)/global-services")}
+                onPress={() => router.push("/(tabs)/freight-quote")}
                 activeOpacity={0.8}
               >
-                <Text style={styles.heroButtonTextPrimary}>{t.home.discoverServices}</Text>
+                <Text style={styles.heroButtonTextPrimary}>{t.home.requestGlobalQuote}</Text>
                 <IconSymbol
                   ios_icon_name="arrow.right"
                   android_material_icon_name="arrow_forward"
@@ -146,13 +145,16 @@ export default function HomeScreen() {
               
               <TouchableOpacity
                 style={[styles.heroButton, styles.heroButtonSecondary]}
-                onPress={() => router.push("/(tabs)/global-services")}
+                onPress={() => router.push({
+                  pathname: "/(tabs)/contact",
+                  params: { subject: "Demande d'assistance générale" }
+                })}
                 activeOpacity={0.8}
               >
-                <Text style={styles.heroButtonTextSecondary}>{t.home.requestQuote}</Text>
+                <Text style={styles.heroButtonTextSecondary}>{t.home.talkToExpert}</Text>
                 <IconSymbol
-                  ios_icon_name="doc.text"
-                  android_material_icon_name="description"
+                  ios_icon_name="person.fill"
+                  android_material_icon_name="person"
                   size={20}
                   color="#ffffff"
                 />
@@ -323,7 +325,10 @@ export default function HomeScreen() {
             <Text style={styles.ctaText}>{t.home.ctaText}</Text>
             <TouchableOpacity
               style={styles.ctaButton}
-              onPress={() => router.push("/(tabs)/global-services")}
+              onPress={() => router.push({
+                pathname: "/(tabs)/contact",
+                params: { subject: "Demande d'assistance générale" }
+              })}
             >
               <Text style={styles.ctaButtonText}>{t.home.ctaButton}</Text>
               <IconSymbol
@@ -383,15 +388,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
     opacity: 0.95,
-  },
-  heroDescription: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: '#ffffff',
-    marginTop: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-    opacity: 0.9,
   },
   heroButtons: {
     flexDirection: 'row',
