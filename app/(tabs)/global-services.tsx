@@ -78,7 +78,7 @@ export default function GlobalServicesScreen() {
 
   useEffect(() => {
     filterServices();
-  }, [selectedCategory, services]);
+  }, [filterServices]);
 
   const getCategoryLabel = (category: ServiceCategory): string => {
     const categoryMap: Record<ServiceCategory, string> = {

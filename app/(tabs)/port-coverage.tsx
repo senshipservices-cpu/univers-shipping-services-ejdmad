@@ -61,7 +61,7 @@ export default function PortCoverageScreen() {
 
   useEffect(() => {
     fetchPorts();
-  }, [selectedRegion]);
+  }, [fetchPorts]);
 
   const fetchPortAgents = async (portId: string) => {
     try {

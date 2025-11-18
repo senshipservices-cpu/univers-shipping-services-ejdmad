@@ -634,7 +634,7 @@ export const translations: Record<Language, Translations> = {
       enterpriseButton: 'Hablar con un experto',
       agentTitle: 'Agent Global Listing',
       agentPrice: '€99 / año',
-      agentDesc: 'Sea visible como agente oficial dePerfect! Now I understand the structure. I need to:
+      agentDesc: 'Sea visible como agente oficial de 3S en su puerto.',Perfect! Now I understand the structure. I need to:
 
 1. Create a language selection screen that appears on first launch
 2. Store the language preference in AsyncStorage
@@ -1279,7 +1279,7 @@ export const translations: Record<Language, Translations> = {
       enterpriseButton: 'Hablar con un experto',
       agentTitle: 'Agent Global Listing',
       agentPrice: '€99 / año',
-      agentDesc: 'Sea visible como agente oficial de 3S en su puerto.',
+      agentDesc: 'Sea visible como agente oficial de 3S en su puerto.', 3S en su puerto.',
       agentFeature1: 'Perfil de agente validado y público',
       agentFeature2: 'Destacado en la página de Cobertura Portuaria',
       agentFeature3: 'Insignia de "Agente Premium"',
