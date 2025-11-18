@@ -15,15 +15,17 @@ interface Port {
   country: string;
   region: string;
   is_hub: boolean;
-  services: string[];
+  services_available: string[];
+  description_fr: string | null;
+  description_en: string | null;
 }
 
-type RegionFilter = 'all' | 'Africa' | 'Europe' | 'Asia' | 'Americas' | 'Middle East' | 'Oceania';
+type RegionFilter = 'all' | 'Afrique' | 'Europe' | 'Asie' | 'Amériques' | 'Moyen-Orient' | 'Océanie';
 
 export default function PortCoverageScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [ports, setPorts] = useState<Port[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,7 +41,7 @@ export default function PortCoverageScreen() {
       const { data, error } = await supabase
         .from('ports')
         .select('*')
-        .eq('is_active', true)
+        .eq('status', 'actif')
         .order('name', { ascending: true });
 
       if (error) {
@@ -65,13 +67,18 @@ export default function PortCoverageScreen() {
 
   const regions: { id: RegionFilter; label: string }[] = [
     { id: 'all', label: t.portCoverage.allRegions },
-    { id: 'Africa', label: t.regions.africa },
+    { id: 'Afrique', label: t.regions.africa },
     { id: 'Europe', label: t.regions.europe },
-    { id: 'Asia', label: t.regions.asia },
-    { id: 'Americas', label: t.regions.americas },
-    { id: 'Middle East', label: t.regions.middleEast },
-    { id: 'Oceania', label: t.regions.oceania },
+    { id: 'Asie', label: t.regions.asia },
+    { id: 'Amériques', label: t.regions.americas },
+    { id: 'Moyen-Orient', label: t.regions.middleEast },
+    { id: 'Océanie', label: t.regions.oceania },
   ];
+
+  // Get port description based on language
+  const getPortDescription = (port: Port) => {
+    return language === 'en' && port.description_en ? port.description_en : port.description_fr;
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -196,22 +203,22 @@ export default function PortCoverageScreen() {
                     </Text>
                   </View>
 
-                  {port.services && port.services.length > 0 && (
+                  {port.services_available && port.services_available.length > 0 && (
                     <View style={styles.servicesContainer}>
                       <Text style={[styles.servicesLabel, { color: theme.colors.text }]}>
                         {t.portCoverage.services}:
                       </Text>
                       <View style={styles.servicesList}>
-                        {port.services.slice(0, 3).map((service, serviceIndex) => (
+                        {port.services_available.slice(0, 3).map((service, serviceIndex) => (
                           <View key={serviceIndex} style={[styles.serviceTag, { backgroundColor: colors.highlight }]}>
                             <Text style={[styles.serviceTagText, { color: colors.primary }]}>
                               {service}
                             </Text>
                           </View>
                         ))}
-                        {port.services.length > 3 && (
+                        {port.services_available.length > 3 && (
                           <Text style={[styles.moreServices, { color: colors.textSecondary }]}>
-                            +{port.services.length - 3}
+                            +{port.services_available.length - 3}
                           </Text>
                         )}
                       </View>

@@ -21,9 +21,12 @@ export type Database = {
           short_desc_en: string | null
           full_desc_fr: string | null
           full_desc_en: string | null
+          menu_group: string | null
+          menu_group_en: string | null
           is_premium: boolean
           is_active: boolean
           display_order: number | null
+          cta_type: string | null
           created_at: string
           updated_at: string
         }
@@ -37,9 +40,12 @@ export type Database = {
           short_desc_en?: string | null
           full_desc_fr?: string | null
           full_desc_en?: string | null
+          menu_group?: string | null
+          menu_group_en?: string | null
           is_premium?: boolean
           is_active?: boolean
           display_order?: number | null
+          cta_type?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -53,9 +59,12 @@ export type Database = {
           short_desc_en?: string | null
           full_desc_fr?: string | null
           full_desc_en?: string | null
+          menu_group?: string | null
+          menu_group_en?: string | null
           is_premium?: boolean
           is_active?: boolean
           display_order?: number | null
+          cta_type?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -101,6 +110,101 @@ export type Database = {
           description_en?: string | null
           is_hub?: boolean
           status?: Database["public"]["Enums"]["port_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          id: string
+          user_id: string
+          company_name: string
+          contact_name: string | null
+          phone: string | null
+          email: string | null
+          country: string | null
+          city: string | null
+          sector: string | null
+          preferred_language: string | null
+          is_verified: boolean
+          is_super_admin: boolean
+          admin_option: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_name: string
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          country?: string | null
+          city?: string | null
+          sector?: string | null
+          preferred_language?: string | null
+          is_verified?: boolean
+          is_super_admin?: boolean
+          admin_option?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_name?: string
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          country?: string | null
+          city?: string | null
+          sector?: string | null
+          preferred_language?: string | null
+          is_verified?: boolean
+          is_super_admin?: boolean
+          admin_option?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      translations: {
+        Row: {
+          id: string
+          key: string
+          fr: string | null
+          en: string | null
+          es: string | null
+          ar: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          fr?: string | null
+          en?: string | null
+          es?: string | null
+          ar?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          fr?: string | null
+          en?: string | null
+          es?: string | null
+          ar?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -164,65 +268,6 @@ export type Database = {
             columns: ["port"]
             isOneToOne: false
             referencedRelation: "ports"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      clients: {
-        Row: {
-          id: string
-          user_id: string
-          company_name: string
-          contact_name: string | null
-          phone: string | null
-          email: string | null
-          country: string | null
-          city: string | null
-          sector: string | null
-          is_verified: boolean
-          is_super_admin: boolean
-          admin_option: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          company_name: string
-          contact_name?: string | null
-          phone?: string | null
-          email?: string | null
-          country?: string | null
-          city?: string | null
-          sector?: string | null
-          is_verified?: boolean
-          is_super_admin?: boolean
-          admin_option?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          company_name?: string
-          contact_name?: string | null
-          phone?: string | null
-          email?: string | null
-          country?: string | null
-          city?: string | null
-          sector?: string | null
-          is_verified?: boolean
-          is_super_admin?: boolean
-          admin_option?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clients_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
             referencedColumns: ["id"]
           }
         ]

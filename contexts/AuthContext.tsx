@@ -4,6 +4,8 @@ import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Tables } from '@/app/integrations/supabase/types';
 import { logLogin, logLogout } from '@/utils/eventLogger';
+import { useLanguage } from '@/contexts/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Client = Tables<'clients'>;
 
@@ -20,11 +22,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+function AuthProviderInner({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const { setLanguage } = useLanguage();
 
   // Fetch client record for the current user
   const fetchClient = async (userId: string) => {
@@ -44,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Client record fetched:', data);
       setClient(data);
+      
+      // Load user's preferred language if available
+      if (data.preferred_language) {
+        console.log('Loading user preferred language:', data.preferred_language);
+        await setLanguage(data.preferred_language as 'fr' | 'en');
+        await AsyncStorage.setItem('lang', data.preferred_language);
+      }
     } catch (error) {
       console.error('Exception fetching client:', error);
       setClient(null);
@@ -189,6 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  return <AuthProviderInner>{children}</AuthProviderInner>;
 }
 
 export function useAuth() {

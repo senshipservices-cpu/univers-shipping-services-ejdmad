@@ -24,6 +24,7 @@ interface Service {
   is_premium: boolean;
   is_active: boolean;
   menu_group: string | null;
+  menu_group_en: string | null;
   cta_type: string | null;
 }
 
@@ -32,7 +33,7 @@ type CategoryFilter = 'all' | 'Maritime & Shipping Services' | 'Logistics & Port
 export default function GlobalServicesScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const subscriptionAccess = useSubscriptionAccess();
   const params = useLocalSearchParams();
@@ -102,7 +103,8 @@ export default function GlobalServicesScreen() {
 
       case 'expert':
         // Redirect to contact page with pre-filled subject
-        router.push(`/contact?subject=Consulting – ${service.name_fr}`);
+        const serviceName = language === 'en' && service.name_en ? service.name_en : service.name_fr;
+        router.push(`/contact?subject=Consulting – ${serviceName}`);
         break;
 
       case 'portal':
@@ -116,15 +118,17 @@ export default function GlobalServicesScreen() {
         if (!user) {
           console.log('User not authenticated - redirecting to client-space');
           Alert.alert(
-            'Connexion requise',
-            'Vous devez être connecté pour accéder au portail digital.',
+            language === 'en' ? 'Login Required' : 'Connexion requise',
+            language === 'en' 
+              ? 'You must be logged in to access the digital portal.' 
+              : 'Vous devez être connecté pour accéder au portail digital.',
             [
               {
-                text: 'Se connecter',
+                text: language === 'en' ? 'Login' : 'Se connecter',
                 onPress: () => router.push('/client-space'),
               },
               {
-                text: 'Annuler',
+                text: language === 'en' ? 'Cancel' : 'Annuler',
                 style: 'cancel',
               },
             ]
@@ -147,7 +151,10 @@ export default function GlobalServicesScreen() {
 
       default:
         console.log('Unknown CTA type:', service.cta_type);
-        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible.');
+        Alert.alert(
+          language === 'en' ? 'Information' : 'Information', 
+          language === 'en' ? 'This feature will be available soon.' : 'Cette fonctionnalité sera bientôt disponible.'
+        );
     }
   };
 
@@ -186,6 +193,21 @@ export default function GlobalServicesScreen() {
     
     const lines = fullDesc.split('\n').filter(line => line.trim());
     return lines.slice(0, 4);
+  };
+
+  // Get service name based on language
+  const getServiceName = (service: Service) => {
+    return language === 'en' && service.name_en ? service.name_en : service.name_fr;
+  };
+
+  // Get service short description based on language
+  const getServiceShortDesc = (service: Service) => {
+    return language === 'en' && service.short_desc_en ? service.short_desc_en : service.short_desc_fr;
+  };
+
+  // Get service full description based on language
+  const getServiceFullDesc = (service: Service) => {
+    return language === 'en' && service.full_desc_en ? service.full_desc_en : service.full_desc_fr;
   };
 
   const filteredServices = selectedCategory === 'all' 
@@ -276,7 +298,7 @@ export default function GlobalServicesScreen() {
         ) : (
           <View style={styles.servicesContainer}>
             {filteredServices.map((service, index) => {
-              const bulletPoints = extractBulletPoints(service.full_desc_fr);
+              const bulletPoints = extractBulletPoints(getServiceFullDesc(service));
               const buttonIcon = getButtonIcon(service.cta_type);
               
               return (
@@ -300,11 +322,11 @@ export default function GlobalServicesScreen() {
                     )}
 
                     <Text style={[styles.serviceName, { color: theme.colors.text }]}>
-                      {service.name_fr}
+                      {getServiceName(service)}
                     </Text>
 
                     <Text style={[styles.serviceShortDesc, { color: colors.textSecondary }]}>
-                      {service.short_desc_fr}
+                      {getServiceShortDesc(service)}
                     </Text>
 
                     {bulletPoints.length > 0 && (

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from "
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
@@ -149,7 +150,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Top Header with Admin Dashboard Button */}
+      {/* Top Header with Language Switcher and Admin Dashboard Button */}
       <View style={[styles.topHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
         <View style={styles.headerLeft}>
           <IconSymbol
@@ -162,6 +163,8 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.headerRight}>
+          <LanguageSwitcher />
+          
           {isAdmin && (
             <TouchableOpacity
               style={[styles.adminButton, { backgroundColor: colors.primary }]}
@@ -174,7 +177,7 @@ export default function HomeScreen() {
                 size={20}
                 color="#ffffff"
               />
-              <Text style={styles.adminButtonText}>Admin Dashboard</Text>
+              <Text style={styles.adminButtonText}>Admin</Text>
             </TouchableOpacity>
           )}
           
