@@ -24,7 +24,7 @@ interface ClientProfile {
 export default function ClientProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,7 +80,10 @@ export default function ClientProfileScreen() {
 
   const handleSave = async () => {
     if (!formData.company_name) {
-      Alert.alert('Error', 'Company name is required');
+      Alert.alert(
+        language === 'fr' ? 'Erreur' : language === 'es' ? 'Error' : language === 'ar' ? 'خطأ' : 'Error',
+        language === 'fr' ? 'Le nom de l\'entreprise est requis' : language === 'es' ? 'El nombre de la empresa es obligatorio' : language === 'ar' ? 'اسم الشركة مطلوب' : 'Company name is required'
+      );
       return;
     }
 
@@ -103,17 +106,30 @@ export default function ClientProfileScreen() {
 
       if (error) {
         console.error('Error updating profile:', error);
-        Alert.alert('Error', 'Failed to update profile. Please try again.');
+        Alert.alert(
+          language === 'fr' ? 'Erreur' : language === 'es' ? 'Error' : language === 'ar' ? 'خطأ' : 'Error',
+          language === 'fr' ? 'Échec de la mise à jour du profil. Veuillez réessayer.' : language === 'es' ? 'Error al actualizar el perfil. Por favor, inténtelo de nuevo.' : language === 'ar' ? 'فشل تحديث الملف الشخصي. يرجى المحاولة مرة أخرى.' : 'Failed to update profile. Please try again.'
+        );
       } else {
-        Alert.alert('Success', 'Profile updated successfully');
+        Alert.alert(
+          language === 'fr' ? 'Succès' : language === 'es' ? 'Éxito' : language === 'ar' ? 'نجاح' : 'Success',
+          language === 'fr' ? 'Profil mis à jour avec succès' : language === 'es' ? 'Perfil actualizado con éxito' : language === 'ar' ? 'تم تحديث الملف الشخصي بنجاح' : 'Profile updated successfully'
+        );
         loadProfile();
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      Alert.alert(
+        language === 'fr' ? 'Erreur' : language === 'es' ? 'Error' : language === 'ar' ? 'خطأ' : 'Error',
+        language === 'fr' ? 'Une erreur inattendue s\'est produite. Veuillez réessayer.' : language === 'es' ? 'Se produjo un error inesperado. Por favor, inténtelo de nuevo.' : language === 'ar' ? 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.' : 'An unexpected error occurred. Please try again.'
+      );
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleBackToDashboard = () => {
+    router.push('/(tabs)/client-dashboard');
   };
 
   if (loading) {
@@ -128,12 +144,16 @@ export default function ClientProfileScreen() {
               color={theme.colors.text}
             />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>My Profile</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            {t.clientSpace.myProfile}
+          </Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Loading profile...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+            {t.common.loading}
+          </Text>
         </View>
       </View>
     );
@@ -150,7 +170,9 @@ export default function ClientProfileScreen() {
             color={theme.colors.text}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>My Profile</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          {t.clientSpace.myProfile}
+        </Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -173,6 +195,8 @@ export default function ClientProfileScreen() {
             {formData.contact_name || formData.company_name}
           </Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
+          
+          {/* Account Status Badge */}
           {profile?.is_verified ? (
             <View style={styles.verifiedBadge}>
               <IconSymbol
@@ -181,7 +205,9 @@ export default function ClientProfileScreen() {
                 size={16}
                 color="#10b981"
               />
-              <Text style={styles.verifiedText}>Verified Account</Text>
+              <Text style={styles.verifiedText}>
+                {language === 'fr' ? 'Compte vérifié' : language === 'es' ? 'Cuenta verificada' : language === 'ar' ? 'حساب موثق' : 'Verified Account'}
+              </Text>
             </View>
           ) : (
             <View style={styles.unverifiedBadge}>
@@ -191,17 +217,23 @@ export default function ClientProfileScreen() {
                 size={16}
                 color="#f59e0b"
               />
-              <Text style={styles.unverifiedText}>Pending Verification</Text>
+              <Text style={styles.unverifiedText}>
+                {language === 'fr' ? 'En attente de vérification par nos équipes' : language === 'es' ? 'Pendiente de verificación por nuestros equipos' : language === 'ar' ? 'في انتظار التحقق من قبل فرقنا' : 'Pending verification by our teams'}
+              </Text>
             </View>
           )}
         </View>
 
-        {/* Form */}
+        {/* Company Information Form */}
         <View style={[styles.formSection, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Company Information</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {language === 'fr' ? 'Informations de l\'entreprise' : language === 'es' ? 'Información de la empresa' : language === 'ar' ? 'معلومات الشركة' : 'Company Information'}
+          </Text>
           
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Company Name *</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Nom de l\'entreprise *' : language === 'es' ? 'Nombre de la empresa *' : language === 'ar' ? 'اسم الشركة *' : 'Company Name *'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="building.2"
@@ -211,7 +243,7 @@ export default function ClientProfileScreen() {
               />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Your Company Name"
+                placeholder={language === 'fr' ? 'Nom de votre entreprise' : language === 'es' ? 'Nombre de su empresa' : language === 'ar' ? 'اسم شركتك' : 'Your Company Name'}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.company_name}
                 onChangeText={(text) => setFormData({ ...formData, company_name: text })}
@@ -220,7 +252,9 @@ export default function ClientProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Contact Name</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Nom du contact' : language === 'es' ? 'Nombre del contacto' : language === 'ar' ? 'اسم جهة الاتصال' : 'Contact Name'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="person"
@@ -230,7 +264,7 @@ export default function ClientProfileScreen() {
               />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Contact Person Name"
+                placeholder={language === 'fr' ? 'Nom de la personne de contact' : language === 'es' ? 'Nombre de la persona de contacto' : language === 'ar' ? 'اسم الشخص المسؤول' : 'Contact Person Name'}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.contact_name}
                 onChangeText={(text) => setFormData({ ...formData, contact_name: text })}
@@ -239,7 +273,9 @@ export default function ClientProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Email' : language === 'es' ? 'Correo electrónico' : language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="envelope"
@@ -260,7 +296,9 @@ export default function ClientProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Phone</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Téléphone' : language === 'es' ? 'Teléfono' : language === 'ar' ? 'الهاتف' : 'Phone'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="phone"
@@ -280,7 +318,9 @@ export default function ClientProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Sector</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Secteur' : language === 'es' ? 'Sector' : language === 'ar' ? 'القطاع' : 'Sector'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="briefcase"
@@ -290,7 +330,7 @@ export default function ClientProfileScreen() {
               />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="e.g., Import/Export, Manufacturing"
+                placeholder={language === 'fr' ? 'ex: Import/Export, Fabrication' : language === 'es' ? 'ej: Importación/Exportación, Fabricación' : language === 'ar' ? 'مثال: استيراد/تصدير، تصنيع' : 'e.g., Import/Export, Manufacturing'}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.sector}
                 onChangeText={(text) => setFormData({ ...formData, sector: text })}
@@ -299,11 +339,16 @@ export default function ClientProfileScreen() {
           </View>
         </View>
 
+        {/* Location Information Form */}
         <View style={[styles.formSection, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Location</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {language === 'fr' ? 'Localisation' : language === 'es' ? 'Ubicación' : language === 'ar' ? 'الموقع' : 'Location'}
+          </Text>
           
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Country</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Pays' : language === 'es' ? 'País' : language === 'ar' ? 'البلد' : 'Country'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="globe"
@@ -313,7 +358,7 @@ export default function ClientProfileScreen() {
               />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Country"
+                placeholder={language === 'fr' ? 'Pays' : language === 'es' ? 'País' : language === 'ar' ? 'البلد' : 'Country'}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.country}
                 onChangeText={(text) => setFormData({ ...formData, country: text })}
@@ -322,7 +367,9 @@ export default function ClientProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>City</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+              {language === 'fr' ? 'Ville' : language === 'es' ? 'Ciudad' : language === 'ar' ? 'المدينة' : 'City'}
+            </Text>
             <View style={styles.inputContainer}>
               <IconSymbol
                 ios_icon_name="location"
@@ -332,7 +379,7 @@ export default function ClientProfileScreen() {
               />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="City"
+                placeholder={language === 'fr' ? 'Ville' : language === 'es' ? 'Ciudad' : language === 'ar' ? 'المدينة' : 'City'}
                 placeholderTextColor={colors.textSecondary}
                 value={formData.city}
                 onChangeText={(text) => setFormData({ ...formData, city: text })}
@@ -341,15 +388,34 @@ export default function ClientProfileScreen() {
           </View>
         </View>
 
-        {/* Save Button */}
+        {/* Action Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.saveButton, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}
             onPress={handleSave}
             disabled={saving}
           >
-            <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                {language === 'fr' ? 'Enregistrer' : language === 'es' ? 'Guardar' : language === 'ar' ? 'حفظ' : 'Save'}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryButton, { borderColor: colors.primary }]}
+            onPress={handleBackToDashboard}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.left"
+              android_material_icon_name="arrow_back"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              {language === 'fr' ? 'Retour au tableau de bord' : language === 'es' ? 'Volver al panel' : language === 'ar' ? 'العودة إلى لوحة التحكم' : 'Back to Dashboard'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -438,11 +504,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    maxWidth: '90%',
   },
   unverifiedText: {
     fontSize: 13,
     color: '#92400e',
     fontWeight: '600',
+    textAlign: 'center',
   },
   formSection: {
     marginHorizontal: 20,
@@ -485,15 +553,33 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
+    gap: 12,
   },
   saveButton: {
     paddingVertical: 16,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 2,
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  secondaryButton: {
+    paddingVertical: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
