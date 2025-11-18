@@ -107,6 +107,43 @@ export interface Translations {
     title: string;
     subtitle: string;
     getQuote: string;
+    basicTitle: string;
+    basicPrice: string;
+    basicDesc: string;
+    basicFeature1: string;
+    basicFeature2: string;
+    basicFeature3: string;
+    basicButton: string;
+    premiumTitle: string;
+    premiumPrice: string;
+    premiumDesc: string;
+    premiumFeature1: string;
+    premiumFeature2: string;
+    premiumFeature3: string;
+    premiumButton: string;
+    enterpriseTitle: string;
+    enterprisePrice: string;
+    enterpriseDesc: string;
+    enterpriseFeature1: string;
+    enterpriseFeature2: string;
+    enterpriseFeature3: string;
+    enterpriseButton: string;
+    agentTitle: string;
+    agentPrice: string;
+    agentDesc: string;
+    agentFeature1: string;
+    agentFeature2: string;
+    agentFeature3: string;
+    agentButton: string;
+    faqTitle: string;
+    faqQuestion1: string;
+    faqAnswer1: string;
+    faqQuestion2: string;
+    faqAnswer2: string;
+    faqQuestion3: string;
+    faqAnswer3: string;
+    faqQuestion4: string;
+    faqAnswer4: string;
   };
   common: {
     back: string;
@@ -223,9 +260,46 @@ export const translations: Record<Language, Translations> = {
       documents: 'Documents',
     },
     pricing: {
-      title: 'Tarification',
-      subtitle: 'Obtenez un devis',
+      title: 'Plans & Abonnements',
+      subtitle: 'Choisissez le niveau de service adapté à votre activité.',
       getQuote: 'Demander un devis',
+      basicTitle: 'Basic Global Access',
+      basicPrice: 'Gratuit',
+      basicDesc: 'Accès aux informations de base, demande de devis et contact avec nos équipes.',
+      basicFeature1: 'Accès au catalogue de services',
+      basicFeature2: 'Demande de devis en ligne',
+      basicFeature3: 'Contact email standard',
+      basicButton: 'Commencer',
+      premiumTitle: 'Premium Tracking',
+      premiumPrice: '49 € / mois',
+      premiumDesc: 'Suivi avancé de vos expéditions et support prioritaire.',
+      premiumFeature1: 'Accès complet au tracking des shipments',
+      premiumFeature2: 'Notifications email sur les changements de statut',
+      premiumFeature3: 'Support prioritaire',
+      premiumButton: 'Souscrire',
+      enterpriseTitle: 'Enterprise Logistics',
+      enterprisePrice: '99 € / mois',
+      enterpriseDesc: 'Solution logistique globale pour les entreprises avec volumes récurrents.',
+      enterpriseFeature1: 'Tout Premium Tracking',
+      enterpriseFeature2: 'Reporting avancé',
+      enterpriseFeature3: 'Gestion multi-sites (future option)',
+      enterpriseButton: 'Parler à un expert',
+      agentTitle: 'Agent Global Listing',
+      agentPrice: '99 € / an',
+      agentDesc: 'Soyez visible comme agent officiel 3S dans votre port.',
+      agentFeature1: 'Profil agent validé et public',
+      agentFeature2: 'Mise en avant sur la page Port Coverage',
+      agentFeature3: 'Badge "Premium Agent"',
+      agentButton: 'Devenir agent',
+      faqTitle: 'Questions Fréquentes',
+      faqQuestion1: 'Comment fonctionne la facturation ?',
+      faqAnswer1: 'La facturation est mensuelle ou annuelle selon le plan choisi. Vous recevrez une facture détaillée par email et pourrez gérer vos paiements depuis votre espace client.',
+      faqQuestion2: 'Puis-je changer de plan ?',
+      faqAnswer2: 'Oui, vous pouvez changer de plan à tout moment. Le changement prendra effet immédiatement et sera proratisé selon votre période de facturation.',
+      faqQuestion3: 'Proposez-vous des solutions sur mesure ?',
+      faqAnswer3: 'Absolument ! Pour les entreprises avec des besoins spécifiques, nous proposons des solutions personnalisées. Contactez notre équipe commerciale pour discuter de vos besoins.',
+      faqQuestion4: 'Y a-t-il un engagement de durée ?',
+      faqAnswer4: 'Non, tous nos plans sont sans engagement. Vous pouvez annuler à tout moment depuis votre espace client.',
     },
     common: {
       back: 'Retour',
@@ -340,9 +414,46 @@ export const translations: Record<Language, Translations> = {
       documents: 'Documents',
     },
     pricing: {
-      title: 'Pricing',
-      subtitle: 'Get a quote',
+      title: 'Plans & Subscriptions',
+      subtitle: 'Choose the service level that fits your business.',
       getQuote: 'Request a quote',
+      basicTitle: 'Basic Global Access',
+      basicPrice: 'Free',
+      basicDesc: 'Access to basic information, quote requests and contact with our teams.',
+      basicFeature1: 'Access to service catalog',
+      basicFeature2: 'Online quote request',
+      basicFeature3: 'Standard email contact',
+      basicButton: 'Get Started',
+      premiumTitle: 'Premium Tracking',
+      premiumPrice: '€49 / month',
+      premiumDesc: 'Advanced tracking of your shipments and priority support.',
+      premiumFeature1: 'Full access to shipment tracking',
+      premiumFeature2: 'Email notifications on status changes',
+      premiumFeature3: 'Priority support',
+      premiumButton: 'Subscribe',
+      enterpriseTitle: 'Enterprise Logistics',
+      enterprisePrice: '€99 / month',
+      enterpriseDesc: 'Global logistics solution for businesses with recurring volumes.',
+      enterpriseFeature1: 'All Premium Tracking features',
+      enterpriseFeature2: 'Advanced reporting',
+      enterpriseFeature3: 'Multi-site management (future option)',
+      enterpriseButton: 'Talk to an expert',
+      agentTitle: 'Agent Global Listing',
+      agentPrice: '€99 / year',
+      agentDesc: 'Be visible as an official 3S agent in your port.',
+      agentFeature1: 'Validated and public agent profile',
+      agentFeature2: 'Featured on Port Coverage page',
+      agentFeature3: '"Premium Agent" badge',
+      agentButton: 'Become an agent',
+      faqTitle: 'Frequently Asked Questions',
+      faqQuestion1: 'How does billing work?',
+      faqAnswer1: 'Billing is monthly or annual depending on the plan chosen. You will receive a detailed invoice by email and can manage your payments from your client space.',
+      faqQuestion2: 'Can I change plans?',
+      faqAnswer2: 'Yes, you can change plans at any time. The change will take effect immediately and will be prorated according to your billing period.',
+      faqQuestion3: 'Do you offer custom solutions?',
+      faqAnswer3: 'Absolutely! For businesses with specific needs, we offer customized solutions. Contact our sales team to discuss your requirements.',
+      faqQuestion4: 'Is there a commitment period?',
+      faqAnswer4: 'No, all our plans are commitment-free. You can cancel at any time from your client space.',
     },
     common: {
       back: 'Back',
@@ -457,9 +568,46 @@ export const translations: Record<Language, Translations> = {
       documents: 'Documentos',
     },
     pricing: {
-      title: 'Precios',
-      subtitle: 'Obtén una cotización',
+      title: 'Planes y Suscripciones',
+      subtitle: 'Elija el nivel de servicio que se adapte a su negocio.',
       getQuote: 'Solicitar cotización',
+      basicTitle: 'Basic Global Access',
+      basicPrice: 'Gratis',
+      basicDesc: 'Acceso a información básica, solicitudes de cotización y contacto con nuestros equipos.',
+      basicFeature1: 'Acceso al catálogo de servicios',
+      basicFeature2: 'Solicitud de cotización en línea',
+      basicFeature3: 'Contacto por correo electrónico estándar',
+      basicButton: 'Comenzar',
+      premiumTitle: 'Premium Tracking',
+      premiumPrice: '€49 / mes',
+      premiumDesc: 'Seguimiento avanzado de sus envíos y soporte prioritario.',
+      premiumFeature1: 'Acceso completo al seguimiento de envíos',
+      premiumFeature2: 'Notificaciones por correo electrónico sobre cambios de estado',
+      premiumFeature3: 'Soporte prioritario',
+      premiumButton: 'Suscribirse',
+      enterpriseTitle: 'Enterprise Logistics',
+      enterprisePrice: '€99 / mes',
+      enterpriseDesc: 'Solución logística global para empresas con volúmenes recurrentes.',
+      enterpriseFeature1: 'Todas las funciones de Premium Tracking',
+      enterpriseFeature2: 'Informes avanzados',
+      enterpriseFeature3: 'Gestión multisitio (opción futura)',
+      enterpriseButton: 'Hablar con un experto',
+      agentTitle: 'Agent Global Listing',
+      agentPrice: '€99 / año',
+      agentDesc: 'Sea visible como agente oficial de 3S en su puerto.',
+      agentFeature1: 'Perfil de agente validado y público',
+      agentFeature2: 'Destacado en la página de Cobertura Portuaria',
+      agentFeature3: 'Insignia de "Agente Premium"',
+      agentButton: 'Convertirse en agente',
+      faqTitle: 'Preguntas Frecuentes',
+      faqQuestion1: '¿Cómo funciona la facturación?',
+      faqAnswer1: 'La facturación es mensual o anual según el plan elegido. Recibirá una factura detallada por correo electrónico y podrá gestionar sus pagos desde su espacio de cliente.',
+      faqQuestion2: '¿Puedo cambiar de plan?',
+      faqAnswer2: 'Sí, puede cambiar de plan en cualquier momento. El cambio tendrá efecto inmediato y se prorrateará según su período de facturación.',
+      faqQuestion3: '¿Ofrecen soluciones personalizadas?',
+      faqAnswer3: '¡Absolutamente! Para empresas con necesidades específicas, ofrecemos soluciones personalizadas. Póngase en contacto con nuestro equipo de ventas para discutir sus requisitos.',
+      faqQuestion4: '¿Hay un período de compromiso?',
+      faqAnswer4: 'No, todos nuestros planes son sin compromiso. Puede cancelar en cualquier momento desde su espacio de cliente.',
     },
     common: {
       back: 'Atrás',
@@ -574,9 +722,46 @@ export const translations: Record<Language, Translations> = {
       documents: 'المستندات',
     },
     pricing: {
-      title: 'التسعير',
-      subtitle: 'احصل على عرض أسعار',
+      title: 'الخطط والاشتراكات',
+      subtitle: 'اختر مستوى الخدمة الذي يناسب عملك.',
       getQuote: 'طلب عرض أسعار',
+      basicTitle: 'Basic Global Access',
+      basicPrice: 'مجاني',
+      basicDesc: 'الوصول إلى المعلومات الأساسية وطلبات الأسعار والاتصال بفرقنا.',
+      basicFeature1: 'الوصول إلى كتالوج الخدمات',
+      basicFeature2: 'طلب عرض أسعار عبر الإنترنت',
+      basicFeature3: 'اتصال بريد إلكتروني قياسي',
+      basicButton: 'ابدأ',
+      premiumTitle: 'Premium Tracking',
+      premiumPrice: '€49 / شهر',
+      premiumDesc: 'تتبع متقدم لشحناتك ودعم ذو أولوية.',
+      premiumFeature1: 'وصول كامل لتتبع الشحنات',
+      premiumFeature2: 'إشعارات البريد الإلكتروني عند تغيير الحالة',
+      premiumFeature3: 'دعم ذو أولوية',
+      premiumButton: 'اشترك',
+      enterpriseTitle: 'Enterprise Logistics',
+      enterprisePrice: '€99 / شهر',
+      enterpriseDesc: 'حل لوجستي عالمي للشركات ذات الأحجام المتكررة.',
+      enterpriseFeature1: 'جميع ميزات Premium Tracking',
+      enterpriseFeature2: 'تقارير متقدمة',
+      enterpriseFeature3: 'إدارة متعددة المواقع (خيار مستقبلي)',
+      enterpriseButton: 'تحدث إلى خبير',
+      agentTitle: 'Agent Global Listing',
+      agentPrice: '€99 / سنة',
+      agentDesc: 'كن مرئيًا كوكيل رسمي لـ 3S في ميناءك.',
+      agentFeature1: 'ملف تعريف وكيل معتمد وعام',
+      agentFeature2: 'مميز في صفحة التغطية الميناء',
+      agentFeature3: 'شارة "وكيل بريميوم"',
+      agentButton: 'كن وكيلاً',
+      faqTitle: 'الأسئلة الشائعة',
+      faqQuestion1: 'كيف تعمل الفوترة؟',
+      faqAnswer1: 'الفوترة شهرية أو سنوية حسب الخطة المختارة. ستتلقى فاتورة مفصلة عبر البريد الإلكتروني ويمكنك إدارة مدفوعاتك من مساحة العميل الخاصة بك.',
+      faqQuestion2: 'هل يمكنني تغيير الخطط؟',
+      faqAnswer2: 'نعم، يمكنك تغيير الخطط في أي وقت. سيدخل التغيير حيز التنفيذ على الفور وسيتم تقسيمه بالتناسب وفقًا لفترة الفوترة الخاصة بك.',
+      faqQuestion3: 'هل تقدمون حلولاً مخصصة؟',
+      faqAnswer3: 'بالتأكيد! للشركات ذات الاحتياجات الخاصة، نقدم حلولاً مخصصة. اتصل بفريق المبيعات لدينا لمناقشة متطلباتك.',
+      faqQuestion4: 'هل هناك فترة التزام؟',
+      faqAnswer4: 'لا، جميع خططنا بدون التزام. يمكنك الإلغاء في أي وقت من مساحة العميل الخاصة بك.',
     },
     common: {
       back: 'رجوع',

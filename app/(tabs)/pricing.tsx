@@ -1,67 +1,166 @@
 
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
+import { supabase } from "@/app/integrations/supabase/client";
 
 interface PricingPlan {
-  name: string;
+  id: string;
+  title: string;
   price: string;
+  description: string;
   features: string[];
+  buttonText: string;
   color: string;
-  popular?: boolean;
+  action: 'basic' | 'premium' | 'enterprise' | 'agent';
+}
+
+interface FAQItem {
+  question: string;
+  answer: string;
 }
 
 export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
+    console.log('Auth status:', !!session);
+  };
 
   const plans: PricingPlan[] = [
     {
-      name: "Basic",
-      price: "Contact Us",
+      id: 'basic',
+      title: t.pricing.basicTitle,
+      price: t.pricing.basicPrice,
+      description: t.pricing.basicDesc,
       features: [
-        "Standard shipping rates",
-        "Basic tracking",
-        "Email support",
-        "Document management",
+        t.pricing.basicFeature1,
+        t.pricing.basicFeature2,
+        t.pricing.basicFeature3,
       ],
+      buttonText: t.pricing.basicButton,
       color: colors.textSecondary,
+      action: 'basic',
     },
     {
-      name: "Professional",
-      price: "Contact Us",
+      id: 'premium',
+      title: t.pricing.premiumTitle,
+      price: t.pricing.premiumPrice,
+      description: t.pricing.premiumDesc,
       features: [
-        "Discounted shipping rates",
-        "Priority tracking",
-        "24/7 phone support",
-        "Advanced document management",
-        "Dedicated account manager",
-        "Custom reporting",
+        t.pricing.premiumFeature1,
+        t.pricing.premiumFeature2,
+        t.pricing.premiumFeature3,
       ],
+      buttonText: t.pricing.premiumButton,
       color: colors.primary,
-      popular: true,
+      action: 'premium',
     },
     {
-      name: "Enterprise",
-      price: "Custom",
+      id: 'enterprise',
+      title: t.pricing.enterpriseTitle,
+      price: t.pricing.enterprisePrice,
+      description: t.pricing.enterpriseDesc,
       features: [
-        "Volume-based pricing",
-        "Real-time tracking API",
-        "Priority support",
-        "Full document automation",
-        "Multiple account managers",
-        "Custom integrations",
-        "SLA guarantees",
+        t.pricing.enterpriseFeature1,
+        t.pricing.enterpriseFeature2,
+        t.pricing.enterpriseFeature3,
       ],
+      buttonText: t.pricing.enterpriseButton,
       color: colors.secondary,
+      action: 'enterprise',
+    },
+    {
+      id: 'agent',
+      title: t.pricing.agentTitle,
+      price: t.pricing.agentPrice,
+      description: t.pricing.agentDesc,
+      features: [
+        t.pricing.agentFeature1,
+        t.pricing.agentFeature2,
+        t.pricing.agentFeature3,
+      ],
+      buttonText: t.pricing.agentButton,
+      color: colors.accent,
+      action: 'agent',
     },
   ];
+
+  const faqItems: FAQItem[] = [
+    {
+      question: t.pricing.faqQuestion1,
+      answer: t.pricing.faqAnswer1,
+    },
+    {
+      question: t.pricing.faqQuestion2,
+      answer: t.pricing.faqAnswer2,
+    },
+    {
+      question: t.pricing.faqQuestion3,
+      answer: t.pricing.faqAnswer3,
+    },
+    {
+      question: t.pricing.faqQuestion4,
+      answer: t.pricing.faqAnswer4,
+    },
+  ];
+
+  const handlePlanAction = (action: string) => {
+    console.log('Plan action:', action, 'Authenticated:', isAuthenticated);
+
+    switch (action) {
+      case 'basic':
+        if (isAuthenticated) {
+          // TODO: Navigate to client dashboard when created
+          console.log('Navigate to client dashboard');
+          router.push('/client-space');
+        } else {
+          router.push('/client-space');
+        }
+        break;
+
+      case 'premium':
+        if (isAuthenticated) {
+          // TODO: Navigate to plan confirmation page when created
+          console.log('Navigate to plan confirmation for Premium');
+          router.push('/client-space');
+        } else {
+          router.push('/client-space');
+        }
+        break;
+
+      case 'enterprise':
+        // Navigate to contact page (or show contact form)
+        console.log('Navigate to contact page');
+        // TODO: Create contact page or show contact modal
+        break;
+
+      case 'agent':
+        router.push('/become-agent');
+        break;
+
+      default:
+        console.log('Unknown action:', action);
+    }
+  };
+
+  const toggleFAQ = (index: number) => {
+    setExpandedFAQ(expandedFAQ === index ? null : index);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -93,13 +192,10 @@ export default function PricingScreen() {
             ios_icon_name="dollarsign.circle.fill"
             android_material_icon_name="payments"
             size={80}
-            color={colors.secondary}
+            color={colors.primary}
           />
           <Text style={[styles.subtitle, { color: theme.colors.text }]}>
             {t.pricing.subtitle}
-          </Text>
-          <Text style={styles.description}>
-            Flexible pricing plans tailored to your business needs
           </Text>
         </View>
 
@@ -110,18 +206,35 @@ export default function PricingScreen() {
                 style={[
                   styles.planCard,
                   { backgroundColor: theme.colors.card },
-                  plan.popular && styles.popularPlan,
+                  plan.id === 'premium' && styles.popularPlan,
                 ]}
               >
-                {plan.popular && (
+                {plan.id === 'premium' && (
                   <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.popularBadgeText}>Most Popular</Text>
+                    <IconSymbol
+                      ios_icon_name="star.fill"
+                      android_material_icon_name="star"
+                      size={14}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.popularBadgeText}>Populaire</Text>
                   </View>
                 )}
-                <Text style={[styles.planName, { color: plan.color }]}>{plan.name}</Text>
+                
+                <Text style={[styles.planName, { color: plan.color }]}>
+                  {plan.title}
+                </Text>
+                
                 <Text style={[styles.planPrice, { color: theme.colors.text }]}>
                   {plan.price}
                 </Text>
+                
+                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
+                  {plan.description}
+                </Text>
+
+                <View style={styles.divider} />
+
                 <View style={styles.featuresContainer}>
                   {plan.features.map((feature, featureIndex) => (
                     <React.Fragment key={featureIndex}>
@@ -139,88 +252,67 @@ export default function PricingScreen() {
                     </React.Fragment>
                   ))}
                 </View>
+
                 <TouchableOpacity
                   style={[
                     styles.selectButton,
-                    { backgroundColor: plan.popular ? colors.primary : colors.textSecondary },
+                    { 
+                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.color,
+                    },
                   ]}
-                  onPress={() => setShowQuoteForm(true)}
+                  onPress={() => handlePlanAction(plan.action)}
                 >
-                  <Text style={styles.selectButtonText}>Select Plan</Text>
+                  <Text style={styles.selectButtonText}>{plan.buttonText}</Text>
+                  <IconSymbol
+                    ios_icon_name="arrow.right"
+                    android_material_icon_name="arrow_forward"
+                    size={18}
+                    color="#ffffff"
+                  />
                 </TouchableOpacity>
               </View>
             </React.Fragment>
           ))}
         </View>
 
-        {showQuoteForm && (
-          <View style={styles.quoteFormSection}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              {t.pricing.getQuote}
-            </Text>
-            <View style={[styles.quoteForm, { backgroundColor: theme.colors.card }]}>
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
-                  Company Name
-                </Text>
-                <TextInput
-                  style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="Your company name"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
-                <TextInput
-                  style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="your.email@example.com"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="email-address"
-                />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
-                  Monthly Shipment Volume
-                </Text>
-                <TextInput
-                  style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="Estimated number of shipments"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="numeric"
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.submitButton, { backgroundColor: colors.primary }]}
-                onPress={() => console.log('Quote requested')}
-              >
-                <Text style={styles.submitButtonText}>Request Quote</Text>
-                <IconSymbol
-                  ios_icon_name="arrow.right"
-                  android_material_icon_name="arrow_forward"
-                  size={20}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.faqSection}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {t.pricing.faqTitle}
+          </Text>
+          
+          <View style={styles.faqContainer}>
+            {faqItems.map((item, index) => (
+              <React.Fragment key={index}>
+                <TouchableOpacity
+                  style={[
+                    styles.faqItem,
+                    { backgroundColor: theme.colors.card },
+                  ]}
+                  onPress={() => toggleFAQ(index)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.faqHeader}>
+                    <Text style={[styles.faqQuestion, { color: theme.colors.text }]}>
+                      {item.question}
+                    </Text>
+                    <IconSymbol
+                      ios_icon_name={expandedFAQ === index ? "chevron.up" : "chevron.down"}
+                      android_material_icon_name={expandedFAQ === index ? "expand_less" : "expand_more"}
+                      size={24}
+                      color={colors.primary}
+                    />
+                  </View>
+                  
+                  {expandedFAQ === index && (
+                    <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
+                      {item.answer}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
           </View>
-        )}
-
-        {!showQuoteForm && (
-          <View style={styles.ctaSection}>
-            <TouchableOpacity
-              style={[styles.quoteButton, { backgroundColor: colors.primary }]}
-              onPress={() => setShowQuoteForm(true)}
-            >
-              <Text style={styles.quoteButtonText}>{t.pricing.getQuote}</Text>
-              <IconSymbol
-                ios_icon_name="arrow.right"
-                android_material_icon_name="arrow_forward"
-                size={20}
-                color="#ffffff"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -258,28 +350,22 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   subtitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
     marginTop: 20,
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 30,
   },
   plansContainer: {
     paddingHorizontal: 20,
-    gap: 16,
-    marginBottom: 32,
+    gap: 20,
+    marginBottom: 40,
   },
   planCard: {
     padding: 24,
     borderRadius: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
-    elevation: 3,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+    elevation: 4,
     borderWidth: 1,
     borderColor: colors.border,
     position: 'relative',
@@ -287,14 +373,19 @@ const styles = StyleSheet.create({
   popularPlan: {
     borderWidth: 2,
     borderColor: colors.primary,
+    boxShadow: '0px 6px 16px rgba(3, 169, 244, 0.2)',
+    elevation: 6,
   },
   popularBadge: {
     position: 'absolute',
     top: -12,
     right: 20,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    gap: 4,
   },
   popularBadgeText: {
     fontSize: 12,
@@ -307,17 +398,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   planPrice: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  planDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: 16,
   },
   featuresContainer: {
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   featureItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
   },
   featureText: {
@@ -326,78 +427,56 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 10,
-    alignItems: 'center',
+    gap: 8,
   },
   selectButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
   },
-  quoteFormSection: {
+  faqSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 16,
-  },
-  quoteForm: {
-    padding: 24,
-    borderRadius: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  inputGroup: {
     marginBottom: 20,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+  faqContainer: {
+    gap: 12,
   },
-  input: {
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+  faqItem: {
+    padding: 20,
+    borderRadius: 12,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  submitButton: {
+  faqHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 10,
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  submitButtonText: {
+  faqQuestion: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    lineHeight: 22,
   },
-  ctaSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  quoteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 8,
-  },
-  quoteButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
+  faqAnswer: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 });
