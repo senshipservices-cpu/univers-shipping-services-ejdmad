@@ -23,6 +23,12 @@ interface RegionBadge {
   icon: string;
 }
 
+interface WhyChooseUsAdvantage {
+  title: string;
+  description: string;
+  icon: string;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -106,6 +112,29 @@ export default function HomeScreen() {
     { text: t.home.whyUs4, icon: "support_agent" },
   ];
 
+  const whyChooseUsAdvantages: WhyChooseUsAdvantage[] = [
+    {
+      title: t.home.whyChooseUsAdvantage1Title,
+      description: t.home.whyChooseUsAdvantage1Desc,
+      icon: "public",
+    },
+    {
+      title: t.home.whyChooseUsAdvantage2Title,
+      description: t.home.whyChooseUsAdvantage2Desc,
+      icon: "support_agent",
+    },
+    {
+      title: t.home.whyChooseUsAdvantage3Title,
+      description: t.home.whyChooseUsAdvantage3Desc,
+      icon: "integration_instructions",
+    },
+    {
+      title: t.home.whyChooseUsAdvantage4Title,
+      description: t.home.whyChooseUsAdvantage4Desc,
+      icon: "verified_user",
+    },
+  ];
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView
@@ -170,6 +199,36 @@ export default function HomeScreen() {
 
         {/* Client Profile Solutions Section - NEW */}
         <ClientProfileSolutions />
+
+        {/* Why Choose Us Section - NEW */}
+        <View style={[styles.section, styles.whyChooseUsSection]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {t.home.whyChooseUsTitle}
+          </Text>
+          
+          <View style={styles.whyChooseUsGrid}>
+            {whyChooseUsAdvantages.map((advantage, index) => (
+              <React.Fragment key={index}>
+                <View style={[styles.whyChooseUsCard, { backgroundColor: theme.colors.card }]}>
+                  <View style={[styles.whyChooseUsIconContainer, { backgroundColor: colors.primary }]}>
+                    <IconSymbol
+                      ios_icon_name={advantage.icon}
+                      android_material_icon_name={advantage.icon as any}
+                      size={32}
+                      color="#ffffff"
+                    />
+                  </View>
+                  <Text style={[styles.whyChooseUsTitle, { color: theme.colors.text }]}>
+                    {advantage.title}
+                  </Text>
+                  <Text style={styles.whyChooseUsDescription}>
+                    {advantage.description}
+                  </Text>
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
 
         {/* Quick Access Section */}
         <View style={styles.section}>
@@ -448,6 +507,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
+  },
+  whyChooseUsSection: {
+    backgroundColor: colors.highlight,
+  },
+  whyChooseUsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  whyChooseUsCard: {
+    width: '48%',
+    padding: 20,
+    borderRadius: 16,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  whyChooseUsIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  whyChooseUsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  whyChooseUsDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   quickAccessGrid: {
     flexDirection: 'row',

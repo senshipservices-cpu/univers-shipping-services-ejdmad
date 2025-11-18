@@ -76,6 +76,15 @@ export interface Translations {
     profileBusinessPoint2: string;
     profileBusinessPoint3: string;
     profileBusinessButton: string;
+    whyChooseUsTitle: string;
+    whyChooseUsAdvantage1Title: string;
+    whyChooseUsAdvantage1Desc: string;
+    whyChooseUsAdvantage2Title: string;
+    whyChooseUsAdvantage2Desc: string;
+    whyChooseUsAdvantage3Title: string;
+    whyChooseUsAdvantage3Desc: string;
+    whyChooseUsAdvantage4Title: string;
+    whyChooseUsAdvantage4Desc: string;
   };
   regions: {
     africa: string;
@@ -318,6 +327,15 @@ export const translations: Record<Language, Translations> = {
       profileBusinessPoint2: 'Sourcing international',
       profileBusinessPoint3: 'Solutions digitales',
       profileBusinessButton: 'Voir solutions B2B',
+      whyChooseUsTitle: 'Pourquoi choisir Univers Shipping Services ?',
+      whyChooseUsAdvantage1Title: 'Couverture internationale',
+      whyChooseUsAdvantage1Desc: 'Ports en Afrique, Europe, Asie, Amériques.',
+      whyChooseUsAdvantage2Title: 'Support 24/7',
+      whyChooseUsAdvantage2Desc: 'Assistance opérationnelle continue.',
+      whyChooseUsAdvantage3Title: 'Solutions intégrées',
+      whyChooseUsAdvantage3Desc: 'Maritime • Logistique • Douane • Digital.',
+      whyChooseUsAdvantage4Title: 'Experts certifiés',
+      whyChooseUsAdvantage4Desc: '25+ ans d\'expérience.',
     },
     regions: {
       africa: 'Afrique',
@@ -558,6 +576,15 @@ export const translations: Record<Language, Translations> = {
       profileBusinessPoint2: 'International sourcing',
       profileBusinessPoint3: 'Digital solutions',
       profileBusinessButton: 'View B2B solutions',
+      whyChooseUsTitle: 'Why choose Univers Shipping Services?',
+      whyChooseUsAdvantage1Title: 'International coverage',
+      whyChooseUsAdvantage1Desc: 'Ports in Africa, Europe, Asia, Americas.',
+      whyChooseUsAdvantage2Title: '24/7 Support',
+      whyChooseUsAdvantage2Desc: 'Continuous operational assistance.',
+      whyChooseUsAdvantage3Title: 'Integrated solutions',
+      whyChooseUsAdvantage3Desc: 'Maritime • Logistics • Customs • Digital.',
+      whyChooseUsAdvantage4Title: 'Certified experts',
+      whyChooseUsAdvantage4Desc: '25+ years of experience.',
     },
     regions: {
       africa: 'Africa',
@@ -798,6 +825,15 @@ export const translations: Record<Language, Translations> = {
       profileBusinessPoint2: 'Sourcing internacional',
       profileBusinessPoint3: 'Soluciones digitales',
       profileBusinessButton: 'Ver soluciones B2B',
+      whyChooseUsTitle: '¿Por qué elegir Univers Shipping Services?',
+      whyChooseUsAdvantage1Title: 'Cobertura internacional',
+      whyChooseUsAdvantage1Desc: 'Puertos en África, Europa, Asia, Américas.',
+      whyChooseUsAdvantage2Title: 'Soporte 24/7',
+      whyChooseUsAdvantage2Desc: 'Asistencia operacional continua.',
+      whyChooseUsAdvantage3Title: 'Soluciones integradas',
+      whyChooseUsAdvantage3Desc: 'Marítimo • Logística • Aduanas • Digital.',
+      whyChooseUsAdvantage4Title: 'Expertos certificados',
+      whyChooseUsAdvantage4Desc: '25+ años de experiencia.',
     },
     regions: {
       africa: 'África',
@@ -1038,6 +1074,15 @@ export const translations: Record<Language, Translations> = {
       profileBusinessPoint2: 'التوريد الدولي',
       profileBusinessPoint3: 'الحلول الرقمية',
       profileBusinessButton: 'عرض حلول B2B',
+      whyChooseUsTitle: 'لماذا تختار Univers Shipping Services؟',
+      whyChooseUsAdvantage1Title: 'تغطية دولية',
+      whyChooseUsAdvantage1Desc: 'موانئ في أفريقيا وأوروبا وآسيا والأمريكتين.',
+      whyChooseUsAdvantage2Title: 'دعم 24/7',
+      whyChooseUsAdvantage2Desc: 'مساعدة تشغيلية مستمرة.',
+      whyChooseUsAdvantage3Title: 'حلول متكاملة',
+      whyChooseUsAdvantage3Desc: 'بحري • لوجستي • جمارك • رقمي.',
+      whyChooseUsAdvantage4Title: 'خبراء معتمدون',
+      whyChooseUsAdvantage4Desc: '25+ سنة من الخبرة.',
     },
     regions: {
       africa: 'أفريقيا',
