@@ -252,3 +252,85 @@ export async function logContactSent(
     details,
   });
 }
+
+/**
+ * Log subscription activation
+ */
+export async function logSubscriptionActivated(
+  clientId: string,
+  userId?: string | null,
+  details?: string
+): Promise<void> {
+  await logEvent({
+    eventType: 'subscription_activated',
+    clientId,
+    userId,
+    details,
+  });
+}
+
+/**
+ * Log subscription expiration
+ */
+export async function logSubscriptionExpired(
+  clientId: string,
+  userId?: string | null,
+  details?: string
+): Promise<void> {
+  await logEvent({
+    eventType: 'subscription_expired',
+    clientId,
+    userId,
+    details,
+  });
+}
+
+/**
+ * Log quote paid event
+ */
+export async function logQuotePaid(
+  quoteId: string,
+  clientId?: string | null,
+  serviceId?: string | null,
+  details?: string
+): Promise<void> {
+  await logEvent({
+    eventType: 'quote_paid',
+    quoteId,
+    clientId,
+    serviceId,
+    details,
+  });
+}
+
+/**
+ * Log quote rejected event
+ */
+export async function logQuoteRejected(
+  quoteId: string,
+  clientId?: string | null,
+  serviceId?: string | null,
+  details?: string
+): Promise<void> {
+  await logEvent({
+    eventType: 'quote_rejected',
+    quoteId,
+    clientId,
+    serviceId,
+    details,
+  });
+}
+
+/**
+ * Log agent validated event
+ */
+export async function logAgentValidated(
+  userId?: string | null,
+  details?: string
+): Promise<void> {
+  await logEvent({
+    eventType: 'agent_validated',
+    userId,
+    details,
+  });
+}
