@@ -73,6 +73,22 @@ export interface Translations {
     title: string;
     subtitle: string;
     searchPlaceholder: string;
+    allRegions: string;
+    hub: string;
+    viewDetails: string;
+    services: string;
+    agents: string;
+    agentsInPort: string;
+    noAgents: string;
+    premium: string;
+    activities: string;
+    experience: string;
+    years: string;
+    contact: string;
+    ctaText: string;
+    ctaButton: string;
+    noPorts: string;
+    loading: string;
   };
   becomeAgent: {
     title: string;
@@ -173,9 +189,25 @@ export const translations: Record<Language, Translations> = {
       loading: 'Chargement des services...',
     },
     portCoverage: {
-      title: 'Couverture Portuaire',
-      subtitle: 'Réseau mondial de ports',
+      title: 'Nos ports partenaires',
+      subtitle: 'Une couverture portuaire mondiale grâce à notre réseau d\'agents locaux.',
       searchPlaceholder: 'Rechercher un port...',
+      allRegions: 'Tous',
+      hub: 'Hub',
+      viewDetails: 'Voir les détails',
+      services: 'Services disponibles',
+      agents: 'Agents',
+      agentsInPort: 'Agents 3S dans ce port',
+      noAgents: 'Aucun agent disponible pour ce port.',
+      premium: 'Premium',
+      activities: 'Activités',
+      experience: 'Expérience',
+      years: 'ans',
+      contact: 'Contact',
+      ctaText: 'Vous représentez un port ou une agence maritime ?',
+      ctaButton: 'Devenir agent partenaire',
+      noPorts: 'Aucun port trouvé pour cette région.',
+      loading: 'Chargement des ports...',
     },
     becomeAgent: {
       title: 'Devenir Agent Global',
@@ -274,9 +306,25 @@ export const translations: Record<Language, Translations> = {
       loading: 'Loading services...',
     },
     portCoverage: {
-      title: 'Port Coverage',
-      subtitle: 'Worldwide port network',
+      title: 'Our Partner Ports',
+      subtitle: 'Global port coverage through our network of local agents.',
       searchPlaceholder: 'Search for a port...',
+      allRegions: 'All',
+      hub: 'Hub',
+      viewDetails: 'View Details',
+      services: 'Available Services',
+      agents: 'Agents',
+      agentsInPort: '3S Agents in this Port',
+      noAgents: 'No agents available for this port.',
+      premium: 'Premium',
+      activities: 'Activities',
+      experience: 'Experience',
+      years: 'years',
+      contact: 'Contact',
+      ctaText: 'Do you represent a port or maritime agency?',
+      ctaButton: 'Become a partner agent',
+      noPorts: 'No ports found for this region.',
+      loading: 'Loading ports...',
     },
     becomeAgent: {
       title: 'Become a Global Agent',
@@ -375,9 +423,25 @@ export const translations: Record<Language, Translations> = {
       loading: 'Cargando servicios...',
     },
     portCoverage: {
-      title: 'Cobertura Portuaria',
-      subtitle: 'Red mundial de puertos',
+      title: 'Nuestros Puertos Asociados',
+      subtitle: 'Cobertura portuaria global a través de nuestra red de agentes locales.',
       searchPlaceholder: 'Buscar un puerto...',
+      allRegions: 'Todos',
+      hub: 'Hub',
+      viewDetails: 'Ver Detalles',
+      services: 'Servicios Disponibles',
+      agents: 'Agentes',
+      agentsInPort: 'Agentes 3S en este Puerto',
+      noAgents: 'No hay agentes disponibles para este puerto.',
+      premium: 'Premium',
+      activities: 'Actividades',
+      experience: 'Experiencia',
+      years: 'años',
+      contact: 'Contacto',
+      ctaText: '¿Representa un puerto o agencia marítima?',
+      ctaButton: 'Conviértete en agente asociado',
+      noPorts: 'No se encontraron puertos para esta región.',
+      loading: 'Cargando puertos...',
     },
     becomeAgent: {
       title: 'Conviértete en Agente Global',
@@ -476,9 +540,25 @@ export const translations: Record<Language, Translations> = {
       loading: 'جار تحميل الخدمات...',
     },
     portCoverage: {
-      title: 'التغطية الميناء',
-      subtitle: 'شبكة الموانئ العالمية',
+      title: 'موانئنا الشريكة',
+      subtitle: 'تغطية ميناء عالمية من خلال شبكة وكلائنا المحليين.',
       searchPlaceholder: 'البحث عن ميناء...',
+      allRegions: 'الكل',
+      hub: 'مركز',
+      viewDetails: 'عرض التفاصيل',
+      services: 'الخدمات المتاحة',
+      agents: 'الوكلاء',
+      agentsInPort: 'وكلاء 3S في هذا الميناء',
+      noAgents: 'لا يوجد وكلاء متاحون لهذا الميناء.',
+      premium: 'بريميوم',
+      activities: 'الأنشطة',
+      experience: 'الخبرة',
+      years: 'سنوات',
+      contact: 'اتصال',
+      ctaText: 'هل تمثل ميناء أو وكالة بحرية؟',
+      ctaButton: 'كن وكيلاً شريكاً',
+      noPorts: 'لم يتم العثور على موانئ لهذه المنطقة.',
+      loading: 'جار تحميل الموانئ...',
     },
     becomeAgent: {
       title: 'كن وكيلاً عالمياً',
