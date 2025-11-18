@@ -6,11 +6,13 @@ import { useTheme } from '@react-navigation/native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/app/integrations/supabase/client';
 import { colors } from '@/styles/commonStyles';
 
 interface Service {
   id: string;
+  slug: string;
   name_fr: string;
   name_en: string | null;
   short_desc_fr: string;
@@ -25,6 +27,7 @@ export function FeaturedServices() {
   const router = useRouter();
   const theme = useTheme();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const { hasDigitalPortalAccess } = useSubscriptionAccess();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +91,7 @@ export function FeaturedServices() {
     const ctaType = service.cta_type || 'quote';
     const serviceName = language === 'fr' ? service.name_fr : (service.name_en || service.name_fr);
 
-    console.log('CTA pressed:', ctaType, 'for service:', serviceName);
+    console.log('CTA pressed:', ctaType, 'for service:', serviceName, 'slug:', service.slug);
 
     switch (ctaType) {
       case 'quote':
@@ -110,11 +113,20 @@ export function FeaturedServices() {
         break;
       
       case 'portal':
-        if (hasDigitalPortalAccess) {
-          // Navigate to digital portal (to be implemented)
-          console.log('Navigate to digital portal');
-          router.push('/(tabs)/client-dashboard');
+        // Special logic for Digital Maritime Solutions portal access
+        console.log('Portal access requested for service:', service.slug);
+        console.log('User authenticated:', !!user);
+        console.log('Has digital portal access:', hasDigitalPortalAccess);
+
+        // Check if user is logged in AND has valid subscription
+        if (user && hasDigitalPortalAccess) {
+          // User has valid subscription - navigate to digital portal
+          console.log('User has digital portal access - navigating to digital-portal');
+          router.push('/(tabs)/digital-portal');
         } else {
+          // User is not logged in OR does not have valid subscription
+          // Redirect to pricing with highlight parameter
+          console.log('User does not have access - redirecting to pricing with highlight');
           router.push({
             pathname: '/(tabs)/pricing',
             params: { highlight: 'digital_portal' }

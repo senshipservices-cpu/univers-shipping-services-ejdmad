@@ -106,8 +106,15 @@ export default function GlobalServicesScreen() {
         break;
 
       case 'portal':
-        // Check if user has digital portal access
+        // Special logic for Digital Maritime Solutions portal access
+        console.log('Portal access requested for service:', service.slug);
+        console.log('User authenticated:', !!user);
+        console.log('Has digital portal access:', subscriptionAccess.hasDigitalPortalAccess);
+        console.log('Subscription plan:', subscriptionAccess.subscription?.plan_type);
+
+        // Check if user is logged in
         if (!user) {
+          console.log('User not authenticated - redirecting to client-space');
           Alert.alert(
             'Connexion requise',
             'Vous devez être connecté pour accéder au portail digital.',
@@ -125,26 +132,17 @@ export default function GlobalServicesScreen() {
           return;
         }
 
-        if (!subscriptionAccess.hasDigitalPortalAccess) {
-          Alert.alert(
-            'Abonnement requis',
-            'L\'accès au portail digital nécessite un abonnement Premium Tracking ou Enterprise Logistics.\n\nVoulez-vous découvrir nos plans ?',
-            [
-              {
-                text: 'Voir les plans',
-                onPress: () => router.push('/pricing'),
-              },
-              {
-                text: 'Annuler',
-                style: 'cancel',
-              },
-            ]
-          );
-          return;
+        // Check if user has digital portal access
+        // Access is granted if subscription plan is: premium_tracking, enterprise_logistics, or digital_portal
+        if (subscriptionAccess.hasDigitalPortalAccess) {
+          console.log('User has digital portal access - navigating to digital-portal');
+          // User has valid subscription - navigate to digital portal
+          router.push('/digital-portal');
+        } else {
+          console.log('User does not have digital portal access - redirecting to pricing with highlight');
+          // User does not have valid subscription - redirect to pricing with highlight
+          router.push('/pricing?highlight=digital_portal');
         }
-
-        // User has access - redirect to client dashboard (digital portal)
-        router.push('/client-dashboard');
         break;
 
       default:
