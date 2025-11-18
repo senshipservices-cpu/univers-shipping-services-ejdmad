@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -9,18 +9,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 
+interface Port {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+}
+
 interface ShipmentDetail {
   id: string;
   tracking_number: string;
   current_status: string;
-  origin_port: any;
-  destination_port: any;
+  origin_port: Port | null;
+  destination_port: Port | null;
   eta: string | null;
   etd: string | null;
   cargo_type: string | null;
   container_type: string | null;
   incoterm: string | null;
   client_visible_notes: string | null;
+  client: string;
   created_at: string;
   updated_at: string;
   last_update: string | null;
@@ -31,25 +39,33 @@ export default function ShipmentDetailScreen() {
   const theme = useTheme();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { id } = useLocalSearchParams();
+  const { id, shipment_id, tracking_number } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [shipment, setShipment] = useState<ShipmentDetail | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!user) {
+      console.log('User not authenticated, redirecting to client-space');
       router.replace('/(tabs)/client-space');
       return;
     }
-    if (id) {
+  }, [user, router]);
+
+  useEffect(() => {
+    if (user && (id || shipment_id)) {
       loadShipmentDetail();
     }
-  }, [user, id]);
+  }, [user, id, shipment_id]);
 
   const loadShipmentDetail = async () => {
     try {
       setLoading(true);
+      setUnauthorized(false);
 
-      // First get client ID
+      // First, get the client ID for the current user
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .select('id')
@@ -58,28 +74,77 @@ export default function ShipmentDetailScreen() {
 
       if (clientError) {
         console.error('Error loading client:', clientError);
+        Alert.alert(
+          'Erreur',
+          'Impossible de charger votre profil client. Veuillez réessayer.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+        setLoading(false);
         return;
       }
 
-      // Load shipment detail
+      setClientId(clientData.id);
+
+      // Determine which parameter to use for filtering
+      const shipmentIdParam = id || shipment_id;
+
+      // Load shipment detail with port information
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select(`
           *,
-          origin_port:ports!shipments_origin_port_fkey(name, city, country),
-          destination_port:ports!shipments_destination_port_fkey(name, city, country)
+          origin_port:ports!shipments_origin_port_fkey(id, name, city, country),
+          destination_port:ports!shipments_destination_port_fkey(id, name, city, country)
         `)
-        .eq('id', id)
-        .eq('client', clientData.id)
+        .eq('id', shipmentIdParam)
         .single();
 
       if (shipmentError) {
         console.error('Error loading shipment:', shipmentError);
-      } else {
-        setShipment(shipmentData);
+        Alert.alert(
+          'Erreur',
+          'Dossier introuvable.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+        setLoading(false);
+        return;
       }
+
+      // Security check: Verify that the shipment belongs to the user's client
+      if (shipmentData.client !== clientData.id) {
+        console.warn('Unauthorized access attempt to shipment:', shipmentIdParam);
+        setUnauthorized(true);
+        setLoading(false);
+        
+        // Show error and redirect after a delay
+        Alert.alert(
+          'Accès refusé',
+          'Vous n\'êtes pas autorisé à consulter ce dossier.',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => router.replace('/(tabs)/client-dashboard') 
+            }
+          ]
+        );
+        
+        // Auto-redirect after 3 seconds
+        setTimeout(() => {
+          router.replace('/(tabs)/client-dashboard');
+        }, 3000);
+        
+        return;
+      }
+
+      console.log('Shipment loaded successfully:', shipmentData);
+      setShipment(shipmentData);
     } catch (error) {
       console.error('Error loading shipment detail:', error);
+      Alert.alert(
+        'Erreur',
+        'Une erreur est survenue lors du chargement du dossier.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } finally {
       setLoading(false);
     }
@@ -90,19 +155,33 @@ export default function ShipmentDetailScreen() {
       case 'delivered':
         return '#10b981';
       case 'in_transit':
+      case 'confirmed':
         return colors.primary;
       case 'at_port':
         return '#f59e0b';
       case 'on_hold':
       case 'cancelled':
         return '#ef4444';
+      case 'draft':
+      case 'quote_pending':
+        return colors.textSecondary;
       default:
         return colors.textSecondary;
     }
   };
 
   const formatStatus = (status: string) => {
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const statusTranslations: Record<string, string> = {
+      'draft': 'Brouillon',
+      'quote_pending': 'Devis en attente',
+      'confirmed': 'Confirmé',
+      'in_transit': 'En transit',
+      'at_port': 'Au port',
+      'delivered': 'Livré',
+      'on_hold': 'En attente',
+      'cancelled': 'Annulé',
+    };
+    return statusTranslations[status] || status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   const getStatusIcon = (status: string) => {
@@ -110,6 +189,7 @@ export default function ShipmentDetailScreen() {
       case 'delivered':
         return { ios: 'checkmark.circle.fill', android: 'check_circle' };
       case 'in_transit':
+      case 'confirmed':
         return { ios: 'shippingbox.fill', android: 'local_shipping' };
       case 'at_port':
         return { ios: 'location.fill', android: 'location_on' };
@@ -117,11 +197,35 @@ export default function ShipmentDetailScreen() {
         return { ios: 'pause.circle.fill', android: 'pause_circle' };
       case 'cancelled':
         return { ios: 'xmark.circle.fill', android: 'cancel' };
+      case 'draft':
+      case 'quote_pending':
+        return { ios: 'doc.text', android: 'description' };
       default:
         return { ios: 'circle.fill', android: 'circle' };
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDateShort = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric'
+    });
+  };
+
+  // Loading state
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -134,17 +238,56 @@ export default function ShipmentDetailScreen() {
               color={theme.colors.text}
             />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Shipment Details</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Détail du dossier</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Loading shipment...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Chargement du dossier...</Text>
         </View>
       </View>
     );
   }
 
+  // Unauthorized access state
+  if (unauthorized) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/client-dashboard')}>
+            <IconSymbol
+              ios_icon_name="chevron.left"
+              android_material_icon_name="chevron_left"
+              size={28}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Détail du dossier</Text>
+          <View style={{ width: 28 }} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.shield.fill"
+            android_material_icon_name="block"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Accès refusé</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Vous n&apos;êtes pas autorisé à consulter ce dossier.
+          </Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.replace('/(tabs)/client-dashboard')}
+          >
+            <Text style={styles.primaryButtonText}>Retour au tableau de bord</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Shipment not found state
   if (!shipment) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -157,7 +300,7 @@ export default function ShipmentDetailScreen() {
               color={theme.colors.text}
             />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Shipment Details</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Détail du dossier</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={styles.emptyContainer}>
@@ -167,7 +310,16 @@ export default function ShipmentDetailScreen() {
             size={64}
             color={colors.textSecondary}
           />
-          <Text style={[styles.emptyText, { color: theme.colors.text }]}>Shipment not found</Text>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Dossier introuvable</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Le dossier demandé n&apos;existe pas ou a été supprimé.
+          </Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.primaryButtonText}>Retour</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -177,8 +329,9 @@ export default function ShipmentDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/client-dashboard')}>
           <IconSymbol
             ios_icon_name="chevron.left"
             android_material_icon_name="chevron_left"
@@ -186,7 +339,7 @@ export default function ShipmentDetailScreen() {
             color={theme.colors.text}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Shipment Details</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Détail du dossier</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -195,6 +348,13 @@ export default function ShipmentDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Page Title */}
+        <View style={styles.pageTitleContainer}>
+          <Text style={[styles.pageTitle, { color: theme.colors.text }]}>
+            Dossier logistique – {shipment.tracking_number}
+          </Text>
+        </View>
+
         {/* Status Card */}
         <View style={[styles.statusCard, { backgroundColor: getStatusColor(shipment.current_status) }]}>
           <IconSymbol
@@ -204,26 +364,28 @@ export default function ShipmentDetailScreen() {
             color="#ffffff"
           />
           <Text style={styles.statusTitle}>{formatStatus(shipment.current_status)}</Text>
-          <Text style={styles.trackingNumber}>{shipment.tracking_number}</Text>
+          <Text style={styles.trackingNumber}>N° de suivi : {shipment.tracking_number}</Text>
         </View>
 
         {/* Route Information */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Route</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Itinéraire</Text>
           <View style={styles.routeContainer}>
             <View style={styles.routeStep}>
               <View style={[styles.routeDot, { backgroundColor: colors.primary }]} />
               <View style={styles.routeInfo}>
-                <Text style={[styles.routeLabel, { color: theme.colors.text }]}>Origin</Text>
+                <Text style={[styles.routeLabel, { color: colors.textSecondary }]}>Port d&apos;origine</Text>
                 <Text style={[styles.routeValue, { color: theme.colors.text }]}>
-                  {shipment.origin_port?.name || 'Unknown'}
+                  {shipment.origin_port?.name || 'Non spécifié'}
                 </Text>
-                <Text style={styles.routeSubvalue}>
-                  {shipment.origin_port?.city}, {shipment.origin_port?.country}
-                </Text>
+                {shipment.origin_port?.city && shipment.origin_port?.country && (
+                  <Text style={styles.routeSubvalue}>
+                    {shipment.origin_port.city}, {shipment.origin_port.country}
+                  </Text>
+                )}
                 {shipment.etd && (
                   <Text style={styles.dateText}>
-                    ETD: {new Date(shipment.etd).toLocaleDateString()}
+                    ETD : {formatDateShort(shipment.etd)}
                   </Text>
                 )}
               </View>
@@ -232,16 +394,18 @@ export default function ShipmentDetailScreen() {
             <View style={styles.routeStep}>
               <View style={[styles.routeDot, { backgroundColor: colors.secondary }]} />
               <View style={styles.routeInfo}>
-                <Text style={[styles.routeLabel, { color: theme.colors.text }]}>Destination</Text>
+                <Text style={[styles.routeLabel, { color: colors.textSecondary }]}>Port de destination</Text>
                 <Text style={[styles.routeValue, { color: theme.colors.text }]}>
-                  {shipment.destination_port?.name || 'Unknown'}
+                  {shipment.destination_port?.name || 'Non spécifié'}
                 </Text>
-                <Text style={styles.routeSubvalue}>
-                  {shipment.destination_port?.city}, {shipment.destination_port?.country}
-                </Text>
+                {shipment.destination_port?.city && shipment.destination_port?.country && (
+                  <Text style={styles.routeSubvalue}>
+                    {shipment.destination_port.city}, {shipment.destination_port.country}
+                  </Text>
+                )}
                 {shipment.eta && (
                   <Text style={styles.dateText}>
-                    ETA: {new Date(shipment.eta).toLocaleDateString()}
+                    ETA : {formatDateShort(shipment.eta)}
                   </Text>
                 )}
               </View>
@@ -251,65 +415,141 @@ export default function ShipmentDetailScreen() {
 
         {/* Shipment Details */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Shipment Information</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Informations principales</Text>
           <View style={styles.detailsGrid}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>N° de suivi</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.tracking_number}
+              </Text>
+            </View>
+
             {shipment.cargo_type && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Cargo Type</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Type de cargaison</Text>
                 <Text style={[styles.detailValue, { color: theme.colors.text }]}>
                   {shipment.cargo_type}
                 </Text>
               </View>
             )}
+
             {shipment.container_type && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Container Type</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Type de conteneur</Text>
                 <Text style={[styles.detailValue, { color: theme.colors.text }]}>
                   {shipment.container_type}
                 </Text>
               </View>
             )}
+
             {shipment.incoterm && (
-              <View style={styles.detailItem}>
+              <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Incoterm</Text>
                 <Text style={[styles.detailValue, { color: theme.colors.text }]}>
                   {shipment.incoterm}
                 </Text>
               </View>
             )}
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Created</Text>
-              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                {new Date(shipment.created_at).toLocaleDateString()}
-              </Text>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Statut actuel</Text>
+              <View style={[styles.inlineStatusBadge, { backgroundColor: getStatusColor(shipment.current_status) + '20' }]}>
+                <Text style={[styles.inlineStatusText, { color: getStatusColor(shipment.current_status) }]}>
+                  {formatStatus(shipment.current_status)}
+                </Text>
+              </View>
             </View>
+
+            {shipment.etd && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Date de départ estimée (ETD)</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {formatDate(shipment.etd)}
+                </Text>
+              </View>
+            )}
+
+            {shipment.eta && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Date d&apos;arrivée estimée (ETA)</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {formatDate(shipment.eta)}
+                </Text>
+              </View>
+            )}
+
+            {shipment.last_update && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Dernière mise à jour</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {formatDate(shipment.last_update)}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Notes */}
+        {/* Client Visible Notes Section */}
         {shipment.client_visible_notes && (
           <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Notes</Text>
+            <View style={styles.sectionHeaderWithIcon}>
+              <IconSymbol
+                ios_icon_name="info.circle.fill"
+                android_material_icon_name="info"
+                size={24}
+                color={colors.primary}
+              />
+              <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 0 }]}>
+                Informations complémentaires
+              </Text>
+            </View>
             <Text style={[styles.notesText, { color: theme.colors.text }]}>
               {shipment.client_visible_notes}
             </Text>
           </View>
         )}
 
-        {/* Last Update */}
-        {shipment.last_update && (
-          <View style={styles.updateInfo}>
+        {/* Shipment History Placeholder */}
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeaderWithIcon}>
             <IconSymbol
-              ios_icon_name="clock"
-              android_material_icon_name="schedule"
-              size={16}
+              ios_icon_name="clock.arrow.circlepath"
+              android_material_icon_name="history"
+              size={24}
               color={colors.textSecondary}
             />
-            <Text style={styles.updateText}>
-              Last updated: {new Date(shipment.last_update).toLocaleString()}
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 0 }]}>
+              Historique / suivi avancé
             </Text>
           </View>
-        )}
+          <View style={styles.placeholderContainer}>
+            <IconSymbol
+              ios_icon_name="calendar.badge.clock"
+              android_material_icon_name="event_note"
+              size={40}
+              color={colors.textSecondary}
+            />
+            <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
+              L&apos;historique détaillé des événements de ce dossier sera disponible dans une prochaine version.
+            </Text>
+          </View>
+        </View>
+
+        {/* Back to Dashboard Button */}
+        <View style={styles.actionButtonContainer}>
+          <TouchableOpacity
+            style={[styles.backToDashboardButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(tabs)/client-dashboard')}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.left.circle.fill"
+              android_material_icon_name="arrow_back"
+              size={20}
+              color="#ffffff"
+            />
+            <Text style={styles.backToDashboardText}>Retour au tableau de bord</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -339,7 +579,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   loadingContainer: {
     flex: 1,
@@ -357,12 +597,40 @@ const styles = StyleSheet.create({
     gap: 16,
     padding: 40,
   },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  primaryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
+  pageTitleContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 32,
+  },
   statusCard: {
-    margin: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
     padding: 32,
     borderRadius: 16,
     alignItems: 'center',
@@ -394,6 +662,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
+    marginBottom: 16,
+  },
+  sectionHeaderWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 16,
   },
   routeContainer: {
@@ -444,8 +718,8 @@ const styles = StyleSheet.create({
   detailsGrid: {
     gap: 16,
   },
-  detailItem: {
-    gap: 4,
+  detailRow: {
+    gap: 6,
   },
   detailLabel: {
     fontSize: 12,
@@ -458,20 +732,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  inlineStatusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  inlineStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   notesText: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 24,
   },
-  updateInfo: {
+  placeholderContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 12,
+  },
+  placeholderText: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  actionButtonContainer: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  backToDashboardButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginBottom: 20,
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    elevation: 3,
   },
-  updateText: {
-    fontSize: 13,
-    color: colors.textSecondary,
+  backToDashboardText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
