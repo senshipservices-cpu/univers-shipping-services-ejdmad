@@ -350,6 +350,82 @@ export type Database = {
           }
         ]
       }
+      freight_quotes: {
+        Row: {
+          id: string
+          client: string | null
+          origin_port: string
+          destination_port: string
+          cargo_type: string | null
+          volume_details: string | null
+          incoterm: string | null
+          desired_eta: string | null
+          status: Database["public"]["Enums"]["freight_quote_status"]
+          quoted_price: number | null
+          currency: string
+          client_email: string | null
+          client_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client?: string | null
+          origin_port: string
+          destination_port: string
+          cargo_type?: string | null
+          volume_details?: string | null
+          incoterm?: string | null
+          desired_eta?: string | null
+          status?: Database["public"]["Enums"]["freight_quote_status"]
+          quoted_price?: number | null
+          currency?: string
+          client_email?: string | null
+          client_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client?: string | null
+          origin_port?: string
+          destination_port?: string
+          cargo_type?: string | null
+          volume_details?: string | null
+          incoterm?: string | null
+          desired_eta?: string | null
+          status?: Database["public"]["Enums"]["freight_quote_status"]
+          quoted_price?: number | null
+          currency?: string
+          client_email?: string | null
+          client_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_quotes_client_fkey"
+            columns: ["client"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_quotes_origin_port_fkey"
+            columns: ["origin_port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_quotes_destination_port_fkey"
+            columns: ["destination_port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -367,6 +443,7 @@ export type Database = {
       container_type: "FCL_20DC" | "FCL_40DC" | "FCL_40HC" | "LCL" | "BULK" | "RORO" | "OTHER"
       shipment_status: "draft" | "quote_pending" | "confirmed" | "in_transit" | "at_port" | "delivered" | "on_hold" | "cancelled"
       plan_type: "basic" | "premium_tracking" | "enterprise_logistics" | "agent_listing"
+      freight_quote_status: "received" | "in_progress" | "sent_to_client" | "accepted" | "refused"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -549,6 +626,13 @@ export const Constants = {
         premium_tracking: "premium_tracking",
         enterprise_logistics: "enterprise_logistics",
         agent_listing: "agent_listing",
+      },
+      freight_quote_status: {
+        received: "received",
+        in_progress: "in_progress",
+        sent_to_client: "sent_to_client",
+        accepted: "accepted",
+        refused: "refused",
       },
     },
   },
