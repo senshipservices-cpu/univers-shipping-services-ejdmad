@@ -178,11 +178,17 @@ export default function SubscriptionConfirmScreen() {
       const startDate = new Date();
       const endDate = new Date();
       
-      if (planDetails.billingPeriod === 'monthly') {
-        endDate.setMonth(endDate.getMonth() + 1);
-      } else {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      }
+      // Add 30 days to end date
+      endDate.setDate(endDate.getDate() + 30);
+
+      console.log('Creating subscription with:', {
+        client: client.id,
+        plan_type: planDetails.id,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        is_active: false,
+        status: 'pending',
+      });
 
       // Create subscription in pending status
       const { data: subscription, error: subscriptionError } = await supabase
@@ -205,15 +211,15 @@ export default function SubscriptionConfirmScreen() {
         throw subscriptionError;
       }
 
-      console.log('Subscription created:', subscription);
+      console.log('Subscription created successfully:', subscription);
 
       // Refresh client data
       await refreshClient();
 
       // Show success message
       Alert.alert(
-        'Demande envoyée',
-        `Votre demande d'abonnement ${planDetails.title} a été enregistrée.\n\nNotre équipe va traiter votre demande et vous contacter pour finaliser le paiement.\n\nVous recevrez un email de confirmation sous 24h.`,
+        'Merci !',
+        'Votre abonnement est en cours d\'activation.',
         [
           {
             text: 'OK',
