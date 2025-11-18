@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { Database } from "@/app/integrations/supabase/types";
@@ -21,6 +22,7 @@ export default function GlobalServicesScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t, language } = useLanguage();
+  const { user, client } = useAuth();
 
   const [servicesByCategory, setServicesByCategory] = useState<ServicesByCategory>({
     maritime: [],
@@ -28,6 +30,7 @@ export default function GlobalServicesScreen() {
     trade: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [userSubscription, setUserSubscription] = useState<any>(null);
 
   const fetchServices = useCallback(async () => {
     try {
@@ -71,9 +74,41 @@ export default function GlobalServicesScreen() {
     }
   }, []);
 
+  const fetchUserSubscription = useCallback(async () => {
+    if (!client?.id) {
+      setUserSubscription(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('client', client.id)
+        .eq('is_active', true)
+        .single();
+
+      if (error) {
+        console.log('No active subscription found');
+        setUserSubscription(null);
+        return;
+      }
+
+      console.log('User subscription:', data);
+      setUserSubscription(data);
+    } catch (error) {
+      console.error('Exception fetching subscription:', error);
+      setUserSubscription(null);
+    }
+  }, [client]);
+
   useEffect(() => {
     fetchServices();
   }, [fetchServices]);
+
+  useEffect(() => {
+    fetchUserSubscription();
+  }, [fetchUserSubscription]);
 
   const extractBulletPoints = (fullDesc: string | null): string[] => {
     if (!fullDesc) return [];
@@ -101,7 +136,97 @@ export default function GlobalServicesScreen() {
 
   const handleCtaPress = (service: Service) => {
     console.log('CTA pressed for service:', service.name_fr, 'CTA type:', service.cta_type);
-    // TODO: Implement navigation based on cta_type
+    
+    const ctaType = service.cta_type;
+    const serviceName = language === 'fr' ? service.name_fr : (service.name_en || service.name_fr);
+
+    switch (ctaType) {
+      case 'request_quote':
+        // Navigate to freight_quote with service_id parameter
+        router.push({
+          pathname: '/freight-quote',
+          params: { service_id: service.id },
+        });
+        break;
+
+      case 'pricing':
+        // Navigate to pricing page
+        router.push('/pricing');
+        // TODO: In the future, you could add a parameter to scroll to a specific section
+        // or highlight a specific plan
+        break;
+
+      case 'contact':
+        // Navigate to contact page with pre-filled subject
+        router.push({
+          pathname: '/contact',
+          params: { subject: `Consulting - ${serviceName}` },
+        });
+        break;
+
+      case 'subscribe':
+      case 'register':
+        // For portal access (Digital Maritime Solutions)
+        handlePortalAccess(service);
+        break;
+
+      default:
+        // Default to quote request
+        router.push({
+          pathname: '/freight-quote',
+          params: { service_id: service.id },
+        });
+        break;
+    }
+  };
+
+  const handlePortalAccess = (service: Service) => {
+    // Check if user is logged in
+    if (!user) {
+      Alert.alert(
+        "Connexion requise",
+        "Vous devez être connecté pour accéder au portail. Souhaitez-vous vous connecter ou créer un compte ?",
+        [
+          {
+            text: "Annuler",
+            style: "cancel",
+          },
+          {
+            text: "Se connecter",
+            onPress: () => router.push('/client-space'),
+          },
+        ]
+      );
+      return;
+    }
+
+    // Check if user has an active subscription that gives access to the portal
+    // Premium Tracking or Enterprise Logistics plans should give access
+    const hasPortalAccess = userSubscription && (
+      userSubscription.plan_type === 'premium_tracking' ||
+      userSubscription.plan_type === 'enterprise_logistics'
+    );
+
+    if (hasPortalAccess) {
+      // User has access, navigate to client dashboard
+      router.push('/client-dashboard');
+    } else {
+      // User doesn't have access, redirect to pricing with a message
+      Alert.alert(
+        "Abonnement requis",
+        "L'accès au portail digital nécessite un abonnement Premium Tracking ou Enterprise Logistics. Souhaitez-vous découvrir nos offres ?",
+        [
+          {
+            text: "Annuler",
+            style: "cancel",
+          },
+          {
+            text: "Voir les offres",
+            onPress: () => router.push('/pricing'),
+          },
+        ]
+      );
+    }
   };
 
   const renderServiceCard = (service: Service, index: number) => {
