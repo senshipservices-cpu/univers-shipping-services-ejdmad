@@ -13,6 +13,7 @@ interface ServiceCard {
   description: string;
   icon: string;
   color: string;
+  route: string;
 }
 
 interface RegionBadge {
@@ -25,30 +26,65 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useLanguage();
 
+  const quickAccessCards: ServiceCard[] = [
+    {
+      title: t.home.globalServices,
+      description: t.home.globalServicesDesc,
+      icon: "business",
+      color: colors.primary,
+      route: "/(tabs)/global-services",
+    },
+    {
+      title: t.home.portCoverage,
+      description: t.home.portCoverageDesc,
+      icon: "anchor",
+      color: colors.secondary,
+      route: "/(tabs)/port-coverage",
+    },
+    {
+      title: t.home.becomeAgent,
+      description: t.home.becomeAgentDesc,
+      icon: "handshake",
+      color: colors.accent,
+      route: "/(tabs)/become-agent",
+    },
+    {
+      title: t.home.pricing,
+      description: t.home.pricingDesc,
+      icon: "payments",
+      color: colors.primary,
+      route: "/(tabs)/pricing",
+    },
+  ];
+
   const serviceCategories: ServiceCard[] = [
     {
       title: t.home.maritimeShipping,
       description: t.home.maritimeShippingDesc,
       icon: "directions_boat",
       color: colors.primary,
+      route: "/(tabs)/global-services",
     },
     {
       title: t.home.logisticsPortHandling,
       description: t.home.logisticsPortHandlingDesc,
       icon: "local_shipping",
       color: colors.secondary,
+      route: "/(tabs)/global-services",
     },
     {
       title: t.home.tradeConsulting,
       description: t.home.tradeConsultingDesc,
       icon: "business_center",
       color: colors.accent,
+      route: "/(tabs)/global-services",
     },
     {
       title: t.home.digitalSolutions,
       description: t.home.digitalSolutionsDesc,
       icon: "computer",
       color: colors.primary,
+      route: "/(tabs)/global-services",
     },
   ];
 
@@ -125,6 +161,41 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* Quick Access Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Quick Access
+          </Text>
+          <Text style={styles.sectionSubtitle}>
+            Navigate to key sections of our platform
+          </Text>
+          
+          <View style={styles.quickAccessGrid}>
+            {quickAccessCards.map((card, index) => (
+              <React.Fragment key={index}>
+                <TouchableOpacity
+                  style={[styles.quickAccessCard, { backgroundColor: theme.colors.card }]}
+                  onPress={() => router.push(card.route as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.quickAccessIconContainer, { backgroundColor: card.color }]}>
+                    <IconSymbol
+                      ios_icon_name={card.icon}
+                      android_material_icon_name={card.icon as any}
+                      size={28}
+                      color="#ffffff"
+                    />
+                  </View>
+                  <Text style={[styles.quickAccessTitle, { color: theme.colors.text }]}>
+                    {card.title}
+                  </Text>
+                  <Text style={styles.quickAccessDescription}>{card.description}</Text>
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+
         {/* Services Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
@@ -151,7 +222,7 @@ export default function HomeScreen() {
                   
                   <TouchableOpacity
                     style={styles.serviceButton}
-                    onPress={() => router.push("/(tabs)/global-services")}
+                    onPress={() => router.push(service.route as any)}
                   >
                     <Text style={[styles.serviceButtonText, { color: service.color }]}>
                       {t.home.viewServices}
@@ -373,6 +444,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
+  },
+  quickAccessGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  quickAccessCard: {
+    width: '48%',
+    padding: 20,
+    borderRadius: 12,
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  quickAccessIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  quickAccessTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  quickAccessDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   servicesGrid: {
     gap: 16,

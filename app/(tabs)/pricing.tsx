@@ -125,9 +125,7 @@ export default function PricingScreen() {
     switch (action) {
       case 'basic':
         if (isAuthenticated) {
-          // TODO: Navigate to client dashboard when created
-          console.log('Navigate to client dashboard');
-          router.push('/client-space');
+          router.push('/client-dashboard');
         } else {
           router.push('/client-space');
         }
@@ -135,21 +133,20 @@ export default function PricingScreen() {
 
       case 'premium':
         if (isAuthenticated) {
-          // TODO: Navigate to plan confirmation page when created
-          console.log('Navigate to plan confirmation for Premium');
-          router.push('/client-space');
+          router.push('/client-dashboard');
         } else {
           router.push('/client-space');
         }
         break;
 
       case 'enterprise':
-        // Navigate to contact page (or show contact form)
+        // Navigate to contact page or show contact information
         console.log('Navigate to contact page');
         // TODO: Create contact page or show contact modal
         break;
 
       case 'agent':
+        // Navigate directly to become-agent page
         router.push('/become-agent');
         break;
 
@@ -207,6 +204,7 @@ export default function PricingScreen() {
                   styles.planCard,
                   { backgroundColor: theme.colors.card },
                   plan.id === 'premium' && styles.popularPlan,
+                  plan.id === 'agent' && styles.agentPlan,
                 ]}
               >
                 {plan.id === 'premium' && (
@@ -218,6 +216,18 @@ export default function PricingScreen() {
                       color="#ffffff"
                     />
                     <Text style={styles.popularBadgeText}>Populaire</Text>
+                  </View>
+                )}
+
+                {plan.id === 'agent' && (
+                  <View style={[styles.agentBadge, { backgroundColor: colors.accent }]}>
+                    <IconSymbol
+                      ios_icon_name="handshake"
+                      android_material_icon_name="handshake"
+                      size={14}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.agentBadgeText}>Partner Program</Text>
                   </View>
                 )}
                 
@@ -243,7 +253,7 @@ export default function PricingScreen() {
                           ios_icon_name="checkmark.circle.fill"
                           android_material_icon_name="check_circle"
                           size={20}
-                          color={colors.accent}
+                          color={plan.id === 'agent' ? colors.accent : colors.success}
                         />
                         <Text style={[styles.featureText, { color: theme.colors.text }]}>
                           {feature}
@@ -257,7 +267,7 @@ export default function PricingScreen() {
                   style={[
                     styles.selectButton,
                     { 
-                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.color,
+                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.color,
                     },
                   ]}
                   onPress={() => handlePlanAction(plan.action)}
@@ -376,6 +386,12 @@ const styles = StyleSheet.create({
     boxShadow: '0px 6px 16px rgba(3, 169, 244, 0.2)',
     elevation: 6,
   },
+  agentPlan: {
+    borderWidth: 2,
+    borderColor: colors.accent,
+    boxShadow: '0px 6px 16px rgba(255, 152, 0, 0.2)',
+    elevation: 6,
+  },
   popularBadge: {
     position: 'absolute',
     top: -12,
@@ -388,6 +404,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   popularBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  agentBadge: {
+    position: 'absolute',
+    top: -12,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  agentBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
