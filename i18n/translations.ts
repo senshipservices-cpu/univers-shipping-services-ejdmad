@@ -85,6 +85,10 @@ export interface Translations {
     whyChooseUsAdvantage3Desc: string;
     whyChooseUsAdvantage4Title: string;
     whyChooseUsAdvantage4Desc: string;
+    finalCtaTitle: string;
+    finalCtaSubtitle: string;
+    finalCtaContactExpert: string;
+    finalCtaViewPricing: string;
   };
   regions: {
     africa: string;
@@ -336,6 +340,10 @@ export const translations: Record<Language, Translations> = {
       whyChooseUsAdvantage3Desc: 'Maritime • Logistique • Douane • Digital.',
       whyChooseUsAdvantage4Title: 'Experts certifiés',
       whyChooseUsAdvantage4Desc: '25+ ans d\'expérience.',
+      finalCtaTitle: 'Besoin d\'une solution personnalisée ?',
+      finalCtaSubtitle: 'Nos experts sont à votre disposition pour analyser vos besoins et vous proposer une solution sur mesure.',
+      finalCtaContactExpert: 'Contacter un expert',
+      finalCtaViewPricing: 'Voir nos tarifs',
     },
     regions: {
       africa: 'Afrique',
@@ -585,6 +593,10 @@ export const translations: Record<Language, Translations> = {
       whyChooseUsAdvantage3Desc: 'Maritime • Logistics • Customs • Digital.',
       whyChooseUsAdvantage4Title: 'Certified experts',
       whyChooseUsAdvantage4Desc: '25+ years of experience.',
+      finalCtaTitle: 'Need a customized solution?',
+      finalCtaSubtitle: 'Our experts are at your disposal to analyze your needs and propose a tailor-made solution.',
+      finalCtaContactExpert: 'Contact an expert',
+      finalCtaViewPricing: 'View our pricing',
     },
     regions: {
       africa: 'Africa',
@@ -834,6 +846,10 @@ export const translations: Record<Language, Translations> = {
       whyChooseUsAdvantage3Desc: 'Marítimo • Logística • Aduanas • Digital.',
       whyChooseUsAdvantage4Title: 'Expertos certificados',
       whyChooseUsAdvantage4Desc: '25+ años de experiencia.',
+      finalCtaTitle: '¿Necesita una solución personalizada?',
+      finalCtaSubtitle: 'Nuestros expertos están a su disposición para analizar sus necesidades y proponer una solución a medida.',
+      finalCtaContactExpert: 'Contactar a un experto',
+      finalCtaViewPricing: 'Ver nuestros precios',
     },
     regions: {
       africa: 'África',
@@ -1083,6 +1099,10 @@ export const translations: Record<Language, Translations> = {
       whyChooseUsAdvantage3Desc: 'بحري • لوجستي • جمارك • رقمي.',
       whyChooseUsAdvantage4Title: 'خبراء معتمدون',
       whyChooseUsAdvantage4Desc: '25+ سنة من الخبرة.',
+      finalCtaTitle: 'هل تحتاج إلى حل مخصص؟',
+      finalCtaSubtitle: 'خبراؤنا تحت تصرفك لتحليل احتياجاتك واقتراح حل مصمم خصيصًا.',
+      finalCtaContactExpert: 'اتصل بخبير',
+      finalCtaViewPricing: 'عرض أسعارنا',
     },
     regions: {
       africa: 'أفريقيا',

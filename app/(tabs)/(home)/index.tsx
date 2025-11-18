@@ -375,36 +375,57 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* CTA Section */}
-        <View style={[styles.section, styles.ctaSection]}>
+        {/* Final CTA Section - NEW */}
+        <View style={[styles.section, styles.finalCtaSection]}>
           <LinearGradient
             colors={[colors.primary, colors.secondary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.ctaCard}
+            style={styles.finalCtaCard}
           >
             <IconSymbol
-              ios_icon_name="phone.fill"
-              android_material_icon_name="phone"
-              size={48}
+              ios_icon_name="lightbulb.fill"
+              android_material_icon_name="lightbulb"
+              size={56}
               color="#ffffff"
             />
-            <Text style={styles.ctaText}>{t.home.ctaText}</Text>
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => router.push({
-                pathname: "/(tabs)/contact",
-                params: { subject: "Demande d'assistance générale" }
-              })}
-            >
-              <Text style={styles.ctaButtonText}>{t.home.ctaButton}</Text>
-              <IconSymbol
-                ios_icon_name="arrow.right"
-                android_material_icon_name="arrow_forward"
-                size={20}
-                color={colors.primary}
-              />
-            </TouchableOpacity>
+            <Text style={styles.finalCtaTitle}>{t.home.finalCtaTitle}</Text>
+            <Text style={styles.finalCtaSubtitle}>{t.home.finalCtaSubtitle}</Text>
+            
+            <View style={styles.finalCtaButtons}>
+              <TouchableOpacity
+                style={styles.finalCtaButton}
+                onPress={() => router.push({
+                  pathname: "/(tabs)/contact",
+                  params: { subject: "Demande personnalisée" }
+                })}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.finalCtaButtonText}>{t.home.finalCtaContactExpert}</Text>
+                <IconSymbol
+                  ios_icon_name="arrow.right"
+                  android_material_icon_name="arrow_forward"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.finalCtaButton, styles.finalCtaButtonSecondary]}
+                onPress={() => router.push("/(tabs)/pricing")}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.finalCtaButtonText, styles.finalCtaButtonTextSecondary]}>
+                  {t.home.finalCtaViewPricing}
+                </Text>
+                <IconSymbol
+                  ios_icon_name="arrow.right"
+                  android_material_icon_name="arrow_forward"
+                  size={20}
+                  color="#ffffff"
+                />
+              </TouchableOpacity>
+            </View>
           </LinearGradient>
         </View>
 
@@ -691,36 +712,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 22,
   },
-  ctaSection: {
+  finalCtaSection: {
     paddingHorizontal: 20,
+    paddingVertical: 40,
   },
-  ctaCard: {
-    padding: 32,
-    borderRadius: 20,
+  finalCtaCard: {
+    padding: 40,
+    borderRadius: 24,
     alignItems: 'center',
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+    elevation: 8,
   },
-  ctaText: {
-    fontSize: 20,
-    fontWeight: '700',
+  finalCtaTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: '#ffffff',
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 24,
-    lineHeight: 28,
+    marginTop: 20,
+    marginBottom: 16,
+    lineHeight: 36,
   },
-  ctaButton: {
+  finalCtaSubtitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+    opacity: 0.95,
+    paddingHorizontal: 10,
+  },
+  finalCtaButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  finalCtaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
     paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     borderRadius: 12,
     gap: 8,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+    elevation: 4,
   },
-  ctaButtonText: {
-    fontSize: 17,
+  finalCtaButtonSecondary: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  finalCtaButtonText: {
+    fontSize: 16,
     fontWeight: '700',
     color: colors.primary,
+  },
+  finalCtaButtonTextSecondary: {
+    color: '#ffffff',
   },
   footer: {
     paddingHorizontal: 20,
