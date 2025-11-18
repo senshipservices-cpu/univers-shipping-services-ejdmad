@@ -76,6 +76,24 @@ export async function logServiceView(
 }
 
 /**
+ * Log service quote click event (when user clicks "Demander un devis")
+ */
+export async function logServiceQuoteClick(
+  serviceId: string | null,
+  userId?: string | null,
+  clientId?: string | null,
+  details?: string | null
+): Promise<void> {
+  await logEvent({
+    eventType: 'service_quote_click',
+    serviceId,
+    userId,
+    clientId,
+    details,
+  });
+}
+
+/**
  * Log quote creation event
  */
 export async function logQuoteCreated(

@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import { logEvent } from "@/utils/eventLogger";
 
 export default function FreightQuoteScreen() {
   const router = useRouter();
@@ -67,6 +68,22 @@ export default function FreightQuoteScreen() {
     }
   }, [client, user]);
 
+  // Log the "service_quote_click" event when the screen loads
+  useEffect(() => {
+    const logQuoteClickEvent = async () => {
+      await logEvent({
+        eventType: 'service_quote_click',
+        userId: user?.id || null,
+        clientId: client?.id || null,
+        serviceId: serviceId || null,
+        details: serviceName ? `Service: ${serviceName}` : null,
+      });
+      console.log('Logged service_quote_click event');
+    };
+
+    logQuoteClickEvent();
+  }, [user, client, serviceId, serviceName]);
+
   const handleSubmit = async () => {
     // Validation
     if (!formData.clientName.trim()) {
@@ -120,6 +137,16 @@ export default function FreightQuoteScreen() {
       }
 
       console.log('Quote submitted successfully:', data);
+
+      // Log quote_created event
+      await logEvent({
+        eventType: 'quote_created',
+        userId: user?.id || null,
+        clientId: client?.id || null,
+        serviceId: serviceId || null,
+        quoteId: data.id,
+        details: `Quote created for ${formData.cargoType}`,
+      });
 
       Alert.alert(
         "Demande envoyée !",
