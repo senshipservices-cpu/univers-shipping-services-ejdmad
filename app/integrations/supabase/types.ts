@@ -300,6 +300,56 @@ export type Database = {
           }
         ]
       }
+      subscriptions: {
+        Row: {
+          id: string
+          client: string
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          start_date: string
+          end_date: string | null
+          is_active: boolean
+          payment_provider: string | null
+          payment_reference: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client: string
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          start_date: string
+          end_date?: string | null
+          is_active?: boolean
+          payment_provider?: string | null
+          payment_reference?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client?: string
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          start_date?: string
+          end_date?: string | null
+          is_active?: boolean
+          payment_provider?: string | null
+          payment_reference?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_fkey"
+            columns: ["client"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -316,6 +366,7 @@ export type Database = {
       agent_status: "pending" | "validated" | "rejected"
       container_type: "FCL_20DC" | "FCL_40DC" | "FCL_40HC" | "LCL" | "BULK" | "RORO" | "OTHER"
       shipment_status: "draft" | "quote_pending" | "confirmed" | "in_transit" | "at_port" | "delivered" | "on_hold" | "cancelled"
+      plan_type: "basic" | "premium_tracking" | "enterprise_logistics" | "agent_listing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -492,6 +543,12 @@ export const Constants = {
         delivered: "delivered",
         on_hold: "on_hold",
         cancelled: "cancelled",
+      },
+      plan_type: {
+        basic: "basic",
+        premium_tracking: "premium_tracking",
+        enterprise_logistics: "enterprise_logistics",
+        agent_listing: "agent_listing",
       },
     },
   },
