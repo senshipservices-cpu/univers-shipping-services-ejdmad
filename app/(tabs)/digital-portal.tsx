@@ -9,6 +9,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { colors } from "@/styles/commonStyles";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function DigitalPortalScreen() {
   const router = useRouter();
@@ -85,38 +86,45 @@ export default function DigitalPortalScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <IconSymbol
-            ios_icon_name="globe.badge.chevron.backward"
-            android_material_icon_name="language"
-            size={80}
-            color={colors.primary}
-          />
-          <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
-            {t.digitalPortal.welcomeTitle}
-          </Text>
-          <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
-            {t.digitalPortal.welcomeSubtitle}
-          </Text>
+        {/* Hero Section */}
+        <LinearGradient
+          colors={[colors.primary, colors.secondary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroSection}
+        >
+          <View style={styles.heroContent}>
+            <IconSymbol
+              ios_icon_name="globe.badge.chevron.backward"
+              android_material_icon_name="language"
+              size={80}
+              color="#FFFFFF"
+            />
+            <Text style={styles.heroTitle}>
+              Votre Portail Maritime & Logistique
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              Tableau de bord digital complet pour suivre vos expéditions, documents, rapports et opérations en temps réel.
+            </Text>
 
-          {/* Subscription Badge */}
-          {subscription && (
-            <View style={[styles.subscriptionBadge, { backgroundColor: colors.primary + '20' }]}>
-              <IconSymbol
-                ios_icon_name="star.fill"
-                android_material_icon_name="star"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={[styles.subscriptionBadgeText, { color: colors.primary }]}>
-                {subscription.plan_type === 'premium_tracking' && 'Premium Tracking'}
-                {subscription.plan_type === 'enterprise_logistics' && 'Enterprise Logistics'}
-                {subscription.plan_type === 'digital_portal' && 'Digital Portal'}
-              </Text>
-            </View>
-          )}
-        </View>
+            {/* Subscription Badge */}
+            {subscription && (
+              <View style={styles.subscriptionBadge}>
+                <IconSymbol
+                  ios_icon_name="star.fill"
+                  android_material_icon_name="star"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={[styles.subscriptionBadgeText, { color: colors.primary }]}>
+                  {subscription.plan_type === 'premium_tracking' && 'Premium Tracking'}
+                  {subscription.plan_type === 'enterprise_logistics' && 'Enterprise Logistics'}
+                  {subscription.plan_type === 'digital_portal' && 'Digital Portal'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
 
         {/* Portal Features Grid */}
         <View style={styles.section}>
@@ -373,22 +381,30 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
   },
-  welcomeSection: {
-    alignItems: 'center',
+  heroSection: {
     paddingHorizontal: 20,
-    paddingVertical: 40,
-    gap: 12,
+    paddingVertical: 48,
+    marginBottom: 32,
   },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+  heroContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: '800',
     textAlign: 'center',
+    color: '#FFFFFF',
     marginTop: 16,
+    lineHeight: 40,
   },
-  welcomeSubtitle: {
-    fontSize: 16,
+  heroSubtitle: {
+    fontSize: 17,
     textAlign: 'center',
-    lineHeight: 24,
+    color: '#FFFFFF',
+    lineHeight: 26,
+    opacity: 0.95,
+    maxWidth: 600,
   },
   subscriptionBadge: {
     flexDirection: 'row',
@@ -398,6 +414,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     marginTop: 8,
+    backgroundColor: '#FFFFFF',
   },
   subscriptionBadgeText: {
     fontSize: 14,
