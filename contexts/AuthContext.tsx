@@ -2,14 +2,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { Tables } from '@/app/integrations/supabase/types';
+
+type Client = Tables<'clients'>;
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  client: Client | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, companyName?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, metadata?: { companyName?: string; contactName?: string }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  refreshClient: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,7 +22,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Fetch client record for the current user
+  const fetchClient = async (userId: string) => {
+    try {
+      console.log('Fetching client record for user:', userId);
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching client:', error);
+        setClient(null);
+        return;
+      }
+
+      console.log('Client record fetched:', data);
+      setClient(data);
+    } catch (error) {
+      console.error('Exception fetching client:', error);
+      setClient(null);
+    }
+  };
+
+  const refreshClient = async () => {
+    if (user?.id) {
+      await fetchClient(user.id);
+    }
+  };
 
   useEffect(() => {
     // Get initial session
@@ -25,6 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Initial session:', session);
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user?.id) {
+        fetchClient(session.user.id);
+      }
+      
       setLoading(false);
     });
 
@@ -33,6 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Auth state changed:', _event, session);
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user?.id) {
+        fetchClient(session.user.id);
+      } else {
+        setClient(null);
+      }
+      
       setLoading(false);
     });
 
@@ -52,6 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log('Sign in successful:', data);
+      
+      // Fetch client record after successful sign in
+      if (data.user?.id) {
+        await fetchClient(data.user.id);
+      }
+      
       return { error: null };
     } catch (error) {
       console.error('Sign in exception:', error);
@@ -59,7 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, companyName?: string) => {
+  const signUp = async (
+    email: string, 
+    password: string, 
+    metadata?: { companyName?: string; contactName?: string }
+  ) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -67,7 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: {
           emailRedirectTo: 'https://natively.dev/email-confirmed',
           data: {
-            company_name: companyName || 'New Client',
+            company_name: metadata?.companyName || 'À renseigner',
+            contact_name: metadata?.contactName,
           },
         },
       });
@@ -78,6 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log('Sign up successful:', data);
+      
+      // Note: The client record will be created automatically by the database trigger
+      // We'll fetch it after the user confirms their email and signs in
+      
       return { error: null };
     } catch (error) {
       console.error('Sign up exception:', error);
@@ -88,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      setClient(null);
       console.log('Sign out successful');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -97,10 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     session,
     user,
+    client,
     loading,
     signIn,
     signUp,
     signOut,
+    refreshClient,
   };
 
   return (
