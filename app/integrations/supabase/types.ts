@@ -221,6 +221,85 @@ export type Database = {
           }
         ]
       }
+      shipments: {
+        Row: {
+          id: string
+          tracking_number: string
+          client: string
+          origin_port: string
+          destination_port: string
+          cargo_type: string | null
+          container_type: Database["public"]["Enums"]["container_type"] | null
+          incoterm: string | null
+          current_status: Database["public"]["Enums"]["shipment_status"]
+          eta: string | null
+          etd: string | null
+          last_update: string | null
+          internal_notes: string | null
+          client_visible_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tracking_number: string
+          client: string
+          origin_port: string
+          destination_port: string
+          cargo_type?: string | null
+          container_type?: Database["public"]["Enums"]["container_type"] | null
+          incoterm?: string | null
+          current_status?: Database["public"]["Enums"]["shipment_status"]
+          eta?: string | null
+          etd?: string | null
+          last_update?: string | null
+          internal_notes?: string | null
+          client_visible_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tracking_number?: string
+          client?: string
+          origin_port?: string
+          destination_port?: string
+          cargo_type?: string | null
+          container_type?: Database["public"]["Enums"]["container_type"] | null
+          incoterm?: string | null
+          current_status?: Database["public"]["Enums"]["shipment_status"]
+          eta?: string | null
+          etd?: string | null
+          last_update?: string | null
+          internal_notes?: string | null
+          client_visible_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_client_fkey"
+            columns: ["client"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_origin_port_fkey"
+            columns: ["origin_port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_destination_port_fkey"
+            columns: ["destination_port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -235,6 +314,8 @@ export type Database = {
       port_status: "actif" | "en_preparation" | "futur"
       agent_activity: "consignation" | "customs" | "freight_forwarding" | "ship_supply" | "warehousing" | "trucking" | "consulting"
       agent_status: "pending" | "validated" | "rejected"
+      container_type: "FCL_20DC" | "FCL_40DC" | "FCL_40HC" | "LCL" | "BULK" | "RORO" | "OTHER"
+      shipment_status: "draft" | "quote_pending" | "confirmed" | "in_transit" | "at_port" | "delivered" | "on_hold" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -392,6 +473,25 @@ export const Constants = {
         pending: "pending",
         validated: "validated",
         rejected: "rejected",
+      },
+      container_type: {
+        FCL_20DC: "FCL_20DC",
+        FCL_40DC: "FCL_40DC",
+        FCL_40HC: "FCL_40HC",
+        LCL: "LCL",
+        BULK: "BULK",
+        RORO: "RORO",
+        OTHER: "OTHER",
+      },
+      shipment_status: {
+        draft: "draft",
+        quote_pending: "quote_pending",
+        confirmed: "confirmed",
+        in_transit: "in_transit",
+        at_port: "at_port",
+        delivered: "delivered",
+        on_hold: "on_hold",
+        cancelled: "cancelled",
       },
     },
   },
