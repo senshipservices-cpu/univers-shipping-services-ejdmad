@@ -57,6 +57,17 @@ export interface Translations {
     logistics: string;
     customs: string;
     warehousing: string;
+    allCategories: string;
+    maritimeShipping: string;
+    logisticsPortHandling: string;
+    tradeConsulting: string;
+    digitalServices: string;
+    premium: string;
+    details: string;
+    requestOffer: string;
+    category: string;
+    noServices: string;
+    loading: string;
   };
   portCoverage: {
     title: string;
@@ -88,6 +99,7 @@ export interface Translations {
     cancel: string;
     save: string;
     loading: string;
+    close: string;
   };
 }
 
@@ -142,12 +154,23 @@ export const translations: Record<Language, Translations> = {
       oceania: 'Océanie',
     },
     globalServices: {
-      title: 'Services Globaux',
-      subtitle: 'Solutions maritimes et logistiques complètes',
+      title: 'Nos services globaux',
+      subtitle: 'Des solutions maritimes, portuaires, logistiques et de consulting adaptées à vos flux internationaux.',
       maritime: 'Services Maritimes',
       logistics: 'Logistique',
       customs: 'Douanes',
       warehousing: 'Entreposage',
+      allCategories: 'Tous',
+      maritimeShipping: 'Maritime & Shipping',
+      logisticsPortHandling: 'Logistics & Port Handling',
+      tradeConsulting: 'Trade & Consulting',
+      digitalServices: 'Digital Services',
+      premium: 'Premium',
+      details: 'Détails',
+      requestOffer: 'Demander une offre pour ce service',
+      category: 'Catégorie',
+      noServices: 'Aucun service disponible pour cette catégorie.',
+      loading: 'Chargement des services...',
     },
     portCoverage: {
       title: 'Couverture Portuaire',
@@ -179,6 +202,7 @@ export const translations: Record<Language, Translations> = {
       cancel: 'Annuler',
       save: 'Enregistrer',
       loading: 'Chargement...',
+      close: 'Fermer',
     },
   },
   en: {
@@ -231,12 +255,23 @@ export const translations: Record<Language, Translations> = {
       oceania: 'Oceania',
     },
     globalServices: {
-      title: 'Global Services',
-      subtitle: 'Complete maritime and logistics solutions',
+      title: 'Our Global Services',
+      subtitle: 'Maritime, port, logistics and consulting solutions tailored to your international flows.',
       maritime: 'Maritime Services',
       logistics: 'Logistics',
       customs: 'Customs',
       warehousing: 'Warehousing',
+      allCategories: 'All',
+      maritimeShipping: 'Maritime & Shipping',
+      logisticsPortHandling: 'Logistics & Port Handling',
+      tradeConsulting: 'Trade & Consulting',
+      digitalServices: 'Digital Services',
+      premium: 'Premium',
+      details: 'Details',
+      requestOffer: 'Request an offer for this service',
+      category: 'Category',
+      noServices: 'No services available for this category.',
+      loading: 'Loading services...',
     },
     portCoverage: {
       title: 'Port Coverage',
@@ -268,6 +303,7 @@ export const translations: Record<Language, Translations> = {
       cancel: 'Cancel',
       save: 'Save',
       loading: 'Loading...',
+      close: 'Close',
     },
   },
   es: {
@@ -320,12 +356,23 @@ export const translations: Record<Language, Translations> = {
       oceania: 'Oceanía',
     },
     globalServices: {
-      title: 'Servicios Globales',
-      subtitle: 'Soluciones marítimas y logísticas completas',
+      title: 'Nuestros Servicios Globales',
+      subtitle: 'Soluciones marítimas, portuarias, logísticas y de consultoría adaptadas a sus flujos internacionales.',
       maritime: 'Servicios Marítimos',
       logistics: 'Logística',
       customs: 'Aduanas',
       warehousing: 'Almacenamiento',
+      allCategories: 'Todos',
+      maritimeShipping: 'Maritime & Shipping',
+      logisticsPortHandling: 'Logistics & Port Handling',
+      tradeConsulting: 'Trade & Consulting',
+      digitalServices: 'Digital Services',
+      premium: 'Premium',
+      details: 'Detalles',
+      requestOffer: 'Solicitar una oferta para este servicio',
+      category: 'Categoría',
+      noServices: 'No hay servicios disponibles para esta categoría.',
+      loading: 'Cargando servicios...',
     },
     portCoverage: {
       title: 'Cobertura Portuaria',
@@ -357,6 +404,7 @@ export const translations: Record<Language, Translations> = {
       cancel: 'Cancelar',
       save: 'Guardar',
       loading: 'Cargando...',
+      close: 'Cerrar',
     },
   },
   ar: {
@@ -409,12 +457,23 @@ export const translations: Record<Language, Translations> = {
       oceania: 'أوقيانوسيا',
     },
     globalServices: {
-      title: 'الخدمات العالمية',
-      subtitle: 'حلول بحرية ولوجستية شاملة',
+      title: 'خدماتنا العالمية',
+      subtitle: 'حلول بحرية وميناء ولوجستية واستشارية مصممة لتدفقاتك الدولية.',
       maritime: 'الخدمات البحرية',
       logistics: 'اللوجستيات',
       customs: 'الجمارك',
       warehousing: 'التخزين',
+      allCategories: 'الكل',
+      maritimeShipping: 'Maritime & Shipping',
+      logisticsPortHandling: 'Logistics & Port Handling',
+      tradeConsulting: 'Trade & Consulting',
+      digitalServices: 'Digital Services',
+      premium: 'بريميوم',
+      details: 'التفاصيل',
+      requestOffer: 'طلب عرض لهذه الخدمة',
+      category: 'الفئة',
+      noServices: 'لا توجد خدمات متاحة لهذه الفئة.',
+      loading: 'جار تحميل الخدمات...',
     },
     portCoverage: {
       title: 'التغطية الميناء',
@@ -446,6 +505,7 @@ export const translations: Record<Language, Translations> = {
       cancel: 'إلغاء',
       save: 'حفظ',
       loading: 'جار التحميل...',
+      close: 'إغلاق',
     },
   },
 };
