@@ -63,6 +63,7 @@ export interface Translations {
   globalServices: {
     title: string;
     subtitle: string;
+    heroTitle: string;
     maritime: string;
     logistics: string;
     customs: string;
@@ -78,6 +79,10 @@ export interface Translations {
     category: string;
     noServices: string;
     loading: string;
+    requestQuote: string;
+    viewPricing: string;
+    consultExpert: string;
+    accessPortal: string;
   };
   portCoverage: {
     title: string;
@@ -275,12 +280,13 @@ export const translations: Record<Language, Translations> = {
     globalServices: {
       title: 'Nos services globaux',
       subtitle: 'Des solutions maritimes, portuaires, logistiques et de consulting adaptées à vos flux internationaux.',
+      heroTitle: 'Services Maritimes & Logistiques Mondiaux',
       maritime: 'Services Maritimes',
       logistics: 'Logistique',
       customs: 'Douanes',
       warehousing: 'Entreposage',
       allCategories: 'Tous',
-      maritimeShipping: 'Maritime & Shipping',
+      maritimeShipping: 'Maritime & Shipping Services',
       logisticsPortHandling: 'Logistics & Port Handling',
       tradeConsulting: 'Trade & Consulting',
       digitalServices: 'Digital Services',
@@ -290,6 +296,10 @@ export const translations: Record<Language, Translations> = {
       category: 'Catégorie',
       noServices: 'Aucun service disponible pour cette catégorie.',
       loading: 'Chargement des services...',
+      requestQuote: 'Demander un devis',
+      viewPricing: 'Voir tarifs',
+      consultExpert: 'Consulter un expert',
+      accessPortal: 'Accéder au portail',
     },
     portCoverage: {
       title: 'Nos ports partenaires',
@@ -485,12 +495,13 @@ export const translations: Record<Language, Translations> = {
     globalServices: {
       title: 'Our Global Services',
       subtitle: 'Maritime, port, logistics and consulting solutions tailored to your international flows.',
+      heroTitle: 'Global Maritime & Logistics Services',
       maritime: 'Maritime Services',
       logistics: 'Logistics',
       customs: 'Customs',
       warehousing: 'Warehousing',
       allCategories: 'All',
-      maritimeShipping: 'Maritime & Shipping',
+      maritimeShipping: 'Maritime & Shipping Services',
       logisticsPortHandling: 'Logistics & Port Handling',
       tradeConsulting: 'Trade & Consulting',
       digitalServices: 'Digital Services',
@@ -500,6 +511,10 @@ export const translations: Record<Language, Translations> = {
       category: 'Category',
       noServices: 'No services available for this category.',
       loading: 'Loading services...',
+      requestQuote: 'Request a quote',
+      viewPricing: 'View pricing',
+      consultExpert: 'Consult an expert',
+      accessPortal: 'Access portal',
     },
     portCoverage: {
       title: 'Our Partner Ports',
@@ -695,12 +710,13 @@ export const translations: Record<Language, Translations> = {
     globalServices: {
       title: 'Nuestros Servicios Globales',
       subtitle: 'Soluciones marítimas, portuarias, logísticas y de consultoría adaptadas a sus flujos internacionales.',
+      heroTitle: 'Servicios Marítimos y Logísticos Globales',
       maritime: 'Servicios Marítimos',
       logistics: 'Logística',
       customs: 'Aduanas',
       warehousing: 'Almacenamiento',
       allCategories: 'Todos',
-      maritimeShipping: 'Maritime & Shipping',
+      maritimeShipping: 'Maritime & Shipping Services',
       logisticsPortHandling: 'Logistics & Port Handling',
       tradeConsulting: 'Trade & Consulting',
       digitalServices: 'Digital Services',
@@ -710,6 +726,10 @@ export const translations: Record<Language, Translations> = {
       category: 'Categoría',
       noServices: 'No hay servicios disponibles para esta categoría.',
       loading: 'Cargando servicios...',
+      requestQuote: 'Solicitar cotización',
+      viewPricing: 'Ver precios',
+      consultExpert: 'Consultar un experto',
+      accessPortal: 'Acceder al portal',
     },
     portCoverage: {
       title: 'Nuestros Puertos Asociados',
@@ -905,12 +925,13 @@ export const translations: Record<Language, Translations> = {
     globalServices: {
       title: 'خدماتنا العالمية',
       subtitle: 'حلول بحرية وميناء ولوجستية واستشارية مصممة لتدفقاتك الدولية.',
+      heroTitle: 'الخدمات البحرية واللوجستية العالمية',
       maritime: 'الخدمات البحرية',
       logistics: 'اللوجستيات',
       customs: 'الجمارك',
       warehousing: 'التخزين',
       allCategories: 'الكل',
-      maritimeShipping: 'Maritime & Shipping',
+      maritimeShipping: 'Maritime & Shipping Services',
       logisticsPortHandling: 'Logistics & Port Handling',
       tradeConsulting: 'Trade & Consulting',
       digitalServices: 'Digital Services',
@@ -920,6 +941,10 @@ export const translations: Record<Language, Translations> = {
       category: 'الفئة',
       noServices: 'لا توجد خدمات متاحة لهذه الفئة.',
       loading: 'جار تحميل الخدمات...',
+      requestQuote: 'طلب عرض أسعار',
+      viewPricing: 'عرض الأسعار',
+      consultExpert: 'استشارة خبير',
+      accessPortal: 'الوصول إلى البوابة',
     },
     portCoverage: {
       title: 'موانئنا الشريكة',
