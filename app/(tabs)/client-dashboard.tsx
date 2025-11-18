@@ -52,6 +52,9 @@ export default function ClientDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  
+  // Check if user is admin
+  const isAdmin = authClient?.is_super_admin === true || authClient?.admin_option === true;
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -287,14 +290,29 @@ export default function ClientDashboardScreen() {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
           {t('clientSpace.dashboard')}
         </Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <IconSymbol
-            ios_icon_name="rectangle.portrait.and.arrow.right"
-            android_material_icon_name="logout"
-            size={24}
-            color={colors.error}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {isAdmin && (
+            <TouchableOpacity 
+              onPress={() => router.push('/(tabs)/admin-dashboard')} 
+              style={styles.adminButton}
+            >
+              <IconSymbol
+                ios_icon_name="shield.lefthalf.filled"
+                android_material_icon_name="admin_panel_settings"
+                size={24}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <IconSymbol
+              ios_icon_name="rectangle.portrait.and.arrow.right"
+              android_material_icon_name="logout"
+              size={24}
+              color={colors.error}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -310,9 +328,22 @@ export default function ClientDashboardScreen() {
           <Text style={[styles.greetingText, { color: colors.textSecondary }]}>
             Bonjour,
           </Text>
-          <Text style={[styles.nameText, { color: theme.colors.text }]}>
-            {clientProfile.contact_name || clientProfile.email || 'Client'}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.nameText, { color: theme.colors.text }]}>
+              {clientProfile.contact_name || clientProfile.email || 'Client'}
+            </Text>
+            {isAdmin && (
+              <View style={[styles.adminBadge, { backgroundColor: colors.primary + '20' }]}>
+                <IconSymbol
+                  ios_icon_name="shield.lefthalf.filled"
+                  android_material_icon_name="admin_panel_settings"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={[styles.adminBadgeText, { color: colors.primary }]}>Admin</Text>
+              </View>
+            )}
+          </View>
           
           <View style={styles.infoRow}>
             <IconSymbol
@@ -611,6 +642,42 @@ export default function ClientDashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Administration
+            </Text>
+            <TouchableOpacity
+              style={[styles.adminCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}
+              onPress={() => router.push('/(tabs)/admin-dashboard')}
+            >
+              <View style={styles.adminCardContent}>
+                <IconSymbol
+                  ios_icon_name="shield.lefthalf.filled"
+                  android_material_icon_name="admin_panel_settings"
+                  size={40}
+                  color={colors.primary}
+                />
+                <View style={styles.adminCardText}>
+                  <Text style={[styles.adminCardTitle, { color: theme.colors.text }]}>
+                    Panneau d&apos;administration
+                  </Text>
+                  <Text style={[styles.adminCardSubtitle, { color: colors.textSecondary }]}>
+                    Gérer les devis, agents, abonnements et expéditions
+                  </Text>
+                </View>
+              </View>
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron_right"
+                size={24}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -632,6 +699,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  adminButton: {
+    padding: 8,
   },
   logoutButton: {
     padding: 8,
@@ -686,10 +761,28 @@ const styles = StyleSheet.create({
   greetingText: {
     fontSize: 16,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
   nameText: {
     fontSize: 32,
     fontWeight: '700',
-    marginBottom: 8,
+  },
+  adminBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  adminBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   infoRow: {
     flexDirection: 'row',
@@ -912,5 +1005,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  adminCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+  adminCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  adminCardText: {
+    flex: 1,
+    gap: 4,
+  },
+  adminCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  adminCardSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
