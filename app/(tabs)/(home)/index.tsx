@@ -268,7 +268,7 @@ export default function HomeScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © 2024 3S Global - Univers Shipping Services
+            © 2024 UNIVERSAL SHIPPING SERVICES
           </Text>
           <Text style={[styles.footerText, { marginTop: 4 }]}>
             Worldwide Maritime & Logistics Solutions

@@ -1,7 +1,8 @@
+
 {
   "expo": {
-    "name": "3S Global",
-    "slug": "3S Global",
+    "name": "UNIVERSAL SHIPPING SERVICES",
+    "slug": "UNIVERSAL SHIPPING SERVICES",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -44,5 +45,5 @@
       "router": {}
     }
   },
-  "scheme": "3S Global"
+  "scheme": "UNIVERSAL SHIPPING SERVICES"
 }
