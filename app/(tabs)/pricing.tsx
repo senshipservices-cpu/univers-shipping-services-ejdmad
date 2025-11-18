@@ -17,7 +17,7 @@ interface PricingPlan {
   features: string[];
   buttonText: string;
   color: string;
-  action: 'basic' | 'premium' | 'enterprise' | 'agent';
+  action: 'basic' | 'premium' | 'enterprise' | 'agent' | 'digital_portal';
 }
 
 interface FAQItem {
@@ -94,6 +94,23 @@ export default function PricingScreen() {
       action: 'enterprise',
     },
     {
+      id: 'digital_portal',
+      title: 'Digital Maritime Portal',
+      price: '149 € / mois',
+      description: 'Portail complet : tracking avancé, reporting, documentation en ligne, API intégration.',
+      features: [
+        'Tracking avancé en temps réel',
+        'Reporting automatisé et personnalisé',
+        'Documentation API complète',
+        'Intégration API REST',
+        'Support technique prioritaire',
+        'Accès au portail digital complet',
+      ],
+      buttonText: 'S\'abonner',
+      color: '#9C27B0',
+      action: 'digital_portal',
+    },
+    {
       id: 'agent',
       title: t.pricing.agentTitle,
       price: t.pricing.agentPrice,
@@ -149,6 +166,11 @@ export default function PricingScreen() {
       case 'enterprise':
         // Enterprise Logistics - redirect to contact page
         router.push('/contact');
+        break;
+
+      case 'digital_portal':
+        // Digital Portal - redirect to subscription confirmation
+        router.push('/subscription-confirm?plan_type=digital_portal');
         break;
 
       case 'agent':
@@ -214,7 +236,8 @@ export default function PricingScreen() {
                   { backgroundColor: theme.colors.card },
                   plan.id === 'premium' && styles.popularPlan,
                   plan.id === 'agent' && styles.agentPlan,
-                  highlightedPlan === 'digital_portal' && (plan.id === 'premium' || plan.id === 'enterprise') && styles.highlightedPlan,
+                  plan.id === 'digital_portal' && styles.digitalPortalPlan,
+                  highlightedPlan === 'digital_portal' && (plan.id === 'premium' || plan.id === 'enterprise' || plan.id === 'digital_portal') && styles.highlightedPlan,
                 ]}
               >
                 {plan.id === 'premium' && (
@@ -240,6 +263,18 @@ export default function PricingScreen() {
                     <Text style={styles.agentBadgeText}>Partner Program</Text>
                   </View>
                 )}
+
+                {plan.id === 'digital_portal' && (
+                  <View style={[styles.digitalPortalBadge, { backgroundColor: '#9C27B0' }]}>
+                    <IconSymbol
+                      ios_icon_name="globe"
+                      android_material_icon_name="language"
+                      size={14}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.digitalPortalBadgeText}>Digital Portal</Text>
+                  </View>
+                )}
                 
                 <Text style={[styles.planName, { color: plan.color }]}>
                   {plan.title}
@@ -263,7 +298,7 @@ export default function PricingScreen() {
                           ios_icon_name="checkmark.circle.fill"
                           android_material_icon_name="check_circle"
                           size={20}
-                          color={plan.id === 'agent' ? colors.accent : colors.success}
+                          color={plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : colors.success}
                         />
                         <Text style={[styles.featureText, { color: theme.colors.text }]}>
                           {feature}
@@ -277,7 +312,7 @@ export default function PricingScreen() {
                   style={[
                     styles.selectButton,
                     { 
-                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.color,
+                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : plan.color,
                     },
                   ]}
                   onPress={() => handlePlanAction(plan.action)}
@@ -409,6 +444,12 @@ const styles = StyleSheet.create({
     boxShadow: '0px 6px 16px rgba(255, 152, 0, 0.2)',
     elevation: 6,
   },
+  digitalPortalPlan: {
+    borderWidth: 2,
+    borderColor: '#9C27B0',
+    boxShadow: '0px 6px 16px rgba(156, 39, 176, 0.2)',
+    elevation: 6,
+  },
   popularBadge: {
     position: 'absolute',
     top: -12,
@@ -437,6 +478,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   agentBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  digitalPortalBadge: {
+    position: 'absolute',
+    top: -12,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  digitalPortalBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',

@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 
-type PlanType = 'basic' | 'premium_tracking' | 'enterprise_logistics' | 'agent_listing';
+type PlanType = 'basic' | 'premium_tracking' | 'enterprise_logistics' | 'agent_listing' | 'digital_portal';
 
 interface PlanDetails {
   id: PlanType;
@@ -31,7 +31,7 @@ export default function SubscriptionConfirmScreen() {
   const [loading, setLoading] = useState(false);
   const [planDetails, setPlanDetails] = useState<PlanDetails | null>(null);
 
-  const planType = params.plan as PlanType;
+  const planType = (params.plan || params.plan_type) as PlanType;
 
   const loadPlanDetails = useCallback(() => {
     const plans: Record<PlanType, PlanDetails> = {
@@ -78,6 +78,23 @@ export default function SubscriptionConfirmScreen() {
           'Support dédié',
         ],
         color: colors.secondary,
+        billingPeriod: 'monthly',
+      },
+      digital_portal: {
+        id: 'digital_portal',
+        title: 'Digital Maritime Portal',
+        price: '149 € / mois',
+        priceValue: 149,
+        description: 'Portail complet : tracking avancé, reporting, documentation en ligne, API intégration.',
+        features: [
+          'Tracking avancé en temps réel',
+          'Reporting automatisé et personnalisé',
+          'Documentation API complète',
+          'Intégration API REST',
+          'Support technique prioritaire',
+          'Accès au portail digital complet',
+        ],
+        color: '#9C27B0',
         billingPeriod: 'monthly',
       },
       agent_listing: {
