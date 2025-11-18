@@ -29,15 +29,13 @@ export default function LanguageSelectionScreen() {
     { code: 'ar', flag: '🇸🇦', nativeName: 'العربية' },
   ];
 
-  const handleLanguageSelect = (lang: Language) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedLanguage(lang);
-  };
-
-  const handleContinue = async () => {
+  const handleLanguageSelect = async (lang: Language) => {
+    console.log('Language selected:', lang);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await setLanguage(selectedLanguage);
+    setSelectedLanguage(lang);
+    await setLanguage(lang);
     await setIsLanguageSelected(true);
+    // Navigate to the main home screen immediately after selecting a language
     router.replace('/(tabs)/(home)/');
   };
 
@@ -97,21 +95,17 @@ export default function LanguageSelectionScreen() {
           ))}
         </View>
 
-        <TouchableOpacity
-          style={[styles.continueButton, { backgroundColor: colors.primary }]}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.continueButtonText}>
-            {currentTranslations.languageSelection.continue}
-          </Text>
+        <View style={styles.instructionContainer}>
           <IconSymbol
-            ios_icon_name="arrow.right"
-            android_material_icon_name="arrow_forward"
+            ios_icon_name="hand.tap.fill"
+            android_material_icon_name="touch_app"
             size={24}
-            color="#ffffff"
+            color={colors.primary}
           />
-        </TouchableOpacity>
+          <Text style={[styles.instructionText, { color: theme.colors.text }]}>
+            {currentTranslations.languageSelection.tapToSelect || 'Tap a language to continue'}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -194,20 +188,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  continueButton: {
+  instructionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 16,
     gap: 12,
-    boxShadow: '0px 4px 12px rgba(3, 169, 244, 0.3)',
-    elevation: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: colors.highlight,
   },
-  continueButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
+  instructionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
