@@ -168,6 +168,59 @@ export type Database = {
           }
         ]
       }
+      clients: {
+        Row: {
+          id: string
+          user_id: string
+          company_name: string
+          contact_name: string | null
+          phone: string | null
+          email: string | null
+          country: string | null
+          city: string | null
+          sector: string | null
+          is_verified: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_name: string
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          country?: string | null
+          city?: string | null
+          sector?: string | null
+          is_verified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_name?: string
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          country?: string | null
+          city?: string | null
+          sector?: string | null
+          is_verified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
