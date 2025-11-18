@@ -40,10 +40,27 @@ export default function GlobalServicesScreen() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
 
   const serviceIdParam = params.service_id as string | undefined;
+  const menuGroupParam = params.menu_group as string | undefined;
 
   useEffect(() => {
     loadServices();
   }, []);
+
+  useEffect(() => {
+    // Apply filter from navigation params if provided
+    if (menuGroupParam) {
+      const validCategories: CategoryFilter[] = [
+        'Maritime & Shipping Services',
+        'Logistics & Port Handling',
+        'Trade & Consulting'
+      ];
+      
+      if (validCategories.includes(menuGroupParam as CategoryFilter)) {
+        setSelectedCategory(menuGroupParam as CategoryFilter);
+        console.log('Applied menu_group filter:', menuGroupParam);
+      }
+    }
+  }, [menuGroupParam]);
 
   const loadServices = async () => {
     try {

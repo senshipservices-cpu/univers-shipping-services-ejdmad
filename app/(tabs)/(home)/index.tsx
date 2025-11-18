@@ -6,6 +6,7 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
+import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -166,6 +167,9 @@ export default function HomeScreen() {
 
         {/* Featured Services Section - NEW */}
         <FeaturedServices />
+
+        {/* Client Profile Solutions Section - NEW */}
+        <ClientProfileSolutions />
 
         {/* Quick Access Section */}
         <View style={styles.section}>

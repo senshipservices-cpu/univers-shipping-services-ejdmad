@@ -59,6 +59,23 @@ export interface Translations {
     viewPricingBtn: string;
     consultExpertBtn: string;
     accessPortalBtn: string;
+    profileSolutionsTitle: string;
+    profileSolutionsSubtitle: string;
+    profileImportersExporters: string;
+    profileImportersPoint1: string;
+    profileImportersPoint2: string;
+    profileImportersPoint3: string;
+    profileImportersButton: string;
+    profileShipowners: string;
+    profileShipownersPoint1: string;
+    profileShipownersPoint2: string;
+    profileShipownersPoint3: string;
+    profileShipownersButton: string;
+    profileBusinessB2B: string;
+    profileBusinessPoint1: string;
+    profileBusinessPoint2: string;
+    profileBusinessPoint3: string;
+    profileBusinessButton: string;
   };
   regions: {
     africa: string;
@@ -284,6 +301,23 @@ export const translations: Record<Language, Translations> = {
       viewPricingBtn: 'Voir tarifs',
       consultExpertBtn: 'Consulter un expert',
       accessPortalBtn: 'Accéder au portail',
+      profileSolutionsTitle: 'Solutions adaptées à votre activité',
+      profileSolutionsSubtitle: 'Découvrez nos services selon votre profil',
+      profileImportersExporters: 'Importateurs / Exportateurs',
+      profileImportersPoint1: 'Fret maritime & aérien',
+      profileImportersPoint2: 'Solutions Door-to-Door',
+      profileImportersPoint3: 'Douane & conformité',
+      profileImportersButton: 'Trouver un service',
+      profileShipowners: 'Armateurs / Navires',
+      profileShipownersPoint1: 'Ship Agency',
+      profileShipownersPoint2: 'Crew Change',
+      profileShipownersPoint3: 'Bunker Supply',
+      profileShipownersButton: 'Services navires',
+      profileBusinessB2B: 'Entreprises & B2B',
+      profileBusinessPoint1: 'Consulting & audits',
+      profileBusinessPoint2: 'Sourcing international',
+      profileBusinessPoint3: 'Solutions digitales',
+      profileBusinessButton: 'Voir solutions B2B',
     },
     regions: {
       africa: 'Afrique',
@@ -507,6 +541,23 @@ export const translations: Record<Language, Translations> = {
       viewPricingBtn: 'View pricing',
       consultExpertBtn: 'Consult an expert',
       accessPortalBtn: 'Access portal',
+      profileSolutionsTitle: 'Solutions tailored to your business',
+      profileSolutionsSubtitle: 'Discover our services according to your profile',
+      profileImportersExporters: 'Importers / Exporters',
+      profileImportersPoint1: 'Sea & Air Freight',
+      profileImportersPoint2: 'Door-to-Door Solutions',
+      profileImportersPoint3: 'Customs & Compliance',
+      profileImportersButton: 'Find a service',
+      profileShipowners: 'Shipowners / Vessels',
+      profileShipownersPoint1: 'Ship Agency',
+      profileShipownersPoint2: 'Crew Change',
+      profileShipownersPoint3: 'Bunker Supply',
+      profileShipownersButton: 'Vessel services',
+      profileBusinessB2B: 'Businesses & B2B',
+      profileBusinessPoint1: 'Consulting & audits',
+      profileBusinessPoint2: 'International sourcing',
+      profileBusinessPoint3: 'Digital solutions',
+      profileBusinessButton: 'View B2B solutions',
     },
     regions: {
       africa: 'Africa',
@@ -730,6 +781,23 @@ export const translations: Record<Language, Translations> = {
       viewPricingBtn: 'Ver precios',
       consultExpertBtn: 'Consultar un experto',
       accessPortalBtn: 'Acceder al portal',
+      profileSolutionsTitle: 'Soluciones adaptadas a su negocio',
+      profileSolutionsSubtitle: 'Descubra nuestros servicios según su perfil',
+      profileImportersExporters: 'Importadores / Exportadores',
+      profileImportersPoint1: 'Flete marítimo y aéreo',
+      profileImportersPoint2: 'Soluciones puerta a puerta',
+      profileImportersPoint3: 'Aduanas y cumplimiento',
+      profileImportersButton: 'Encontrar un servicio',
+      profileShipowners: 'Armadores / Buques',
+      profileShipownersPoint1: 'Agencia de buques',
+      profileShipownersPoint2: 'Cambio de tripulación',
+      profileShipownersPoint3: 'Suministro de combustible',
+      profileShipownersButton: 'Servicios de buques',
+      profileBusinessB2B: 'Empresas y B2B',
+      profileBusinessPoint1: 'Consultoría y auditorías',
+      profileBusinessPoint2: 'Sourcing internacional',
+      profileBusinessPoint3: 'Soluciones digitales',
+      profileBusinessButton: 'Ver soluciones B2B',
     },
     regions: {
       africa: 'África',
@@ -953,6 +1021,23 @@ export const translations: Record<Language, Translations> = {
       viewPricingBtn: 'عرض الأسعار',
       consultExpertBtn: 'استشارة خبير',
       accessPortalBtn: 'الوصول إلى البوابة',
+      profileSolutionsTitle: 'حلول مصممة لعملك',
+      profileSolutionsSubtitle: 'اكتشف خدماتنا حسب ملفك الشخصي',
+      profileImportersExporters: 'المستوردون / المصدرون',
+      profileImportersPoint1: 'الشحن البحري والجوي',
+      profileImportersPoint2: 'حلول من الباب إلى الباب',
+      profileImportersPoint3: 'الجمارك والامتثال',
+      profileImportersButton: 'العثور على خدمة',
+      profileShipowners: 'مالكو السفن / السفن',
+      profileShipownersPoint1: 'وكالة السفن',
+      profileShipownersPoint2: 'تغيير الطاقم',
+      profileShipownersPoint3: 'إمداد الوقود',
+      profileShipownersButton: 'خدمات السفن',
+      profileBusinessB2B: 'الشركات و B2B',
+      profileBusinessPoint1: 'الاستشارات والتدقيق',
+      profileBusinessPoint2: 'التوريد الدولي',
+      profileBusinessPoint3: 'الحلول الرقمية',
+      profileBusinessButton: 'عرض حلول B2B',
     },
     regions: {
       africa: 'أفريقيا',
