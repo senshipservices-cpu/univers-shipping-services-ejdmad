@@ -13,7 +13,7 @@ export default function HomeLayout() {
       console.log('Redirecting to language selection...');
       router.replace('/language-selection');
     }
-  }, [isLanguageSelected]);
+  }, [isLanguageSelected, router]);
 
   return (
     <Stack

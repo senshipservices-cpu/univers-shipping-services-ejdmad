@@ -74,7 +74,7 @@ export default function GlobalServicesScreen() {
 
   useEffect(() => {
     fetchServices();
-  }, []);
+  }, [fetchServices]);
 
   useEffect(() => {
     filterServices();
