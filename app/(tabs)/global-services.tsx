@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Modal, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -38,15 +38,7 @@ export default function GlobalServicesScreen() {
     { id: "digital_services", label: t.globalServices.digitalServices, value: "digital_services" },
   ];
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
-
-  useEffect(() => {
-    filterServices();
-  }, [selectedCategory, services]);
-
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     try {
       setIsLoading(true);
       console.log('Fetching services from Supabase...');
@@ -69,16 +61,24 @@ export default function GlobalServicesScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const filterServices = () => {
+  const filterServices = useCallback(() => {
     if (selectedCategory === "all") {
       setFilteredServices(services);
     } else {
       const filtered = services.filter(service => service.category === selectedCategory);
       setFilteredServices(filtered);
     }
-  };
+  }, [selectedCategory, services]);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  useEffect(() => {
+    filterServices();
+  }, [selectedCategory, services]);
 
   const getCategoryLabel = (category: ServiceCategory): string => {
     const categoryMap: Record<ServiceCategory, string> = {

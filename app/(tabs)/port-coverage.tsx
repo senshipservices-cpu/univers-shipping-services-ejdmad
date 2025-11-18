@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -28,11 +28,7 @@ export default function PortCoverageScreen() {
 
   const regions: RegionFilter[] = ["Tous", "Afrique", "Europe", "Asie", "Amériques", "Moyen-Orient", "Océanie"];
 
-  useEffect(() => {
-    fetchPorts();
-  }, [selectedRegion]);
-
-  const fetchPorts = async () => {
+  const fetchPorts = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching ports for region:', selectedRegion);
@@ -61,7 +57,11 @@ export default function PortCoverageScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRegion]);
+
+  useEffect(() => {
+    fetchPorts();
+  }, [selectedRegion]);
 
   const fetchPortAgents = async (portId: string) => {
     try {
