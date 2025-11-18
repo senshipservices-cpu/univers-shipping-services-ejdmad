@@ -30,6 +30,22 @@ interface Shipment {
   created_at: string;
 }
 
+interface ShipmentDocument {
+  id: string;
+  shipment: string;
+  file_path: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string | null;
+  type: string;
+  uploaded_at: string;
+  uploaded_by: string | null;
+}
+
+interface ShipmentWithDocuments extends Shipment {
+  documents: ShipmentDocument[];
+}
+
 export default function DigitalPortalScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -40,6 +56,9 @@ export default function DigitalPortalScreen() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loadingShipments, setLoadingShipments] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [documentsGroupedByShipment, setDocumentsGroupedByShipment] = useState<Record<string, ShipmentDocument[]>>({});
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('Digital Portal - Access Check:', {
@@ -101,16 +120,112 @@ export default function DigitalPortalScreen() {
     }
   }, [client]);
 
+  // Load documents for the logged-in client's shipments
+  const loadDocuments = useCallback(async () => {
+    if (!client?.id) {
+      console.log('No client ID available for documents');
+      return;
+    }
+
+    try {
+      setLoadingDocuments(true);
+
+      // First, get all shipment IDs for this client
+      const { data: clientShipments, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select('id')
+        .eq('client', client.id);
+
+      if (shipmentsError) {
+        console.error('Error loading shipments for documents:', shipmentsError);
+        return;
+      }
+
+      if (!clientShipments || clientShipments.length === 0) {
+        console.log('No shipments found for client');
+        setDocumentsGroupedByShipment({});
+        return;
+      }
+
+      const shipmentIds = clientShipments.map(s => s.id);
+
+      // Load all documents for these shipments
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('shipment_documents')
+        .select('*')
+        .in('shipment', shipmentIds)
+        .order('uploaded_at', { ascending: false });
+
+      if (documentsError) {
+        console.error('Error loading documents:', documentsError);
+      } else {
+        console.log('Documents loaded:', documentsData?.length || 0);
+        
+        // Group documents by shipment
+        const grouped: Record<string, ShipmentDocument[]> = {};
+        documentsData?.forEach((doc) => {
+          if (!grouped[doc.shipment]) {
+            grouped[doc.shipment] = [];
+          }
+          grouped[doc.shipment].push(doc);
+        });
+        
+        setDocumentsGroupedByShipment(grouped);
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }, [client]);
+
+  // Download document function
+  const downloadDocument = useCallback(async (document: ShipmentDocument) => {
+    try {
+      setDownloadingDocId(document.id);
+      console.log('Downloading document:', document.file_name);
+
+      const { data, error } = await supabase.storage
+        .from('shipment-documents')
+        .download(document.file_path);
+
+      if (error) {
+        console.error('Error downloading document:', error);
+        alert('Erreur lors du téléchargement du document');
+        return;
+      }
+
+      // Create a download link
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = document.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('Document downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Erreur lors du téléchargement du document');
+    } finally {
+      setDownloadingDocId(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (user && client && hasDigitalPortalAccess && !subscriptionLoading) {
       loadShipments();
+      loadDocuments();
     }
-  }, [user, client, hasDigitalPortalAccess, subscriptionLoading, loadShipments]);
+  }, [user, client, hasDigitalPortalAccess, subscriptionLoading, loadShipments, loadDocuments]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadShipments();
-  }, [loadShipments]);
+    loadDocuments();
+  }, [loadShipments, loadDocuments]);
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
@@ -424,6 +539,152 @@ export default function DigitalPortalScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
+            </View>
+          )}
+        </View>
+
+        {/* MODULE 2 - Documents & fichiers */}
+        <View style={styles.section}>
+          <View style={styles.moduleTitleContainer}>
+            <View style={[styles.moduleNumber, { backgroundColor: colors.secondary }]}>
+              <Text style={styles.moduleNumberText}>2</Text>
+            </View>
+            <Text style={[styles.moduleTitle, { color: theme.colors.text }]}>
+              Documents & Fichiers
+            </Text>
+          </View>
+          <Text style={[styles.moduleSubtitle, { color: colors.textSecondary }]}>
+            Accédez à tous vos documents d&apos;expédition
+          </Text>
+
+          {loadingDocuments ? (
+            <View style={styles.loadingShipmentsContainer}>
+              <ActivityIndicator size="large" color={colors.secondary} />
+              <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+                Chargement des documents...
+              </Text>
+            </View>
+          ) : Object.keys(documentsGroupedByShipment).length === 0 ? (
+            <View style={[styles.emptyShipmentsCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <IconSymbol
+                ios_icon_name="doc.text"
+                android_material_icon_name="description"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.emptyShipmentsTitle, { color: theme.colors.text }]}>
+                Aucun document disponible
+              </Text>
+              <Text style={[styles.emptyShipmentsText, { color: colors.textSecondary }]}>
+                Les documents de vos expéditions apparaîtront ici une fois téléchargés.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.documentsListContainer}>
+              {shipments.map((shipment, shipmentIndex) => {
+                const shipmentDocs = documentsGroupedByShipment[shipment.id] || [];
+                
+                if (shipmentDocs.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <View
+                    key={shipmentIndex}
+                    style={[styles.documentGroupCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                  >
+                    {/* Shipment Header */}
+                    <View style={styles.documentGroupHeader}>
+                      <View style={styles.documentGroupHeaderLeft}>
+                        <IconSymbol
+                          ios_icon_name="shippingbox.fill"
+                          android_material_icon_name="local_shipping"
+                          size={20}
+                          color={colors.secondary}
+                        />
+                        <Text style={[styles.documentGroupTitle, { color: theme.colors.text }]}>
+                          {shipment.tracking_number}
+                        </Text>
+                      </View>
+                      <View style={[styles.documentCountBadge, { backgroundColor: colors.secondary + '20' }]}>
+                        <Text style={[styles.documentCountText, { color: colors.secondary }]}>
+                          {shipmentDocs.length} {shipmentDocs.length === 1 ? 'document' : 'documents'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Route Info */}
+                    <View style={styles.documentGroupRoute}>
+                      <Text style={[styles.documentGroupRouteText, { color: colors.textSecondary }]}>
+                        {shipment.origin_port?.name || 'N/A'} → {shipment.destination_port?.name || 'N/A'}
+                      </Text>
+                    </View>
+
+                    {/* Documents List */}
+                    <View style={styles.documentsList}>
+                      {shipmentDocs.map((doc, docIndex) => (
+                        <View
+                          key={docIndex}
+                          style={[styles.documentItem, { borderColor: colors.border }]}
+                        >
+                          <View style={styles.documentItemLeft}>
+                            <View style={[styles.documentIconContainer, { backgroundColor: colors.secondary + '15' }]}>
+                              <IconSymbol
+                                ios_icon_name="doc.fill"
+                                android_material_icon_name="insert_drive_file"
+                                size={20}
+                                color={colors.secondary}
+                              />
+                            </View>
+                            <View style={styles.documentItemInfo}>
+                              <Text style={[styles.documentItemName, { color: theme.colors.text }]} numberOfLines={1}>
+                                {doc.file_name}
+                              </Text>
+                              <View style={styles.documentItemMeta}>
+                                <Text style={[styles.documentItemMetaText, { color: colors.textSecondary }]}>
+                                  {doc.type}
+                                </Text>
+                                {doc.file_size && (
+                                  <React.Fragment>
+                                    <Text style={[styles.documentItemMetaSeparator, { color: colors.textSecondary }]}>
+                                      •
+                                    </Text>
+                                    <Text style={[styles.documentItemMetaText, { color: colors.textSecondary }]}>
+                                      {(doc.file_size / 1024 / 1024).toFixed(2)} MB
+                                    </Text>
+                                  </React.Fragment>
+                                )}
+                                <Text style={[styles.documentItemMetaSeparator, { color: colors.textSecondary }]}>
+                                  •
+                                </Text>
+                                <Text style={[styles.documentItemMetaText, { color: colors.textSecondary }]}>
+                                  {formatDate(doc.uploaded_at)}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.documentDownloadButton, { backgroundColor: colors.secondary }]}
+                            onPress={() => downloadDocument(doc)}
+                            disabled={downloadingDocId === doc.id}
+                          >
+                            {downloadingDocId === doc.id ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <IconSymbol
+                                ios_icon_name="arrow.down.circle.fill"
+                                android_material_icon_name="download"
+                                size={20}
+                                color="#FFFFFF"
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -993,5 +1254,106 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+  },
+  documentsListContainer: {
+    gap: 16,
+  },
+  documentGroupCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 16,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+  },
+  documentGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  documentGroupHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  documentGroupTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  documentCountBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  documentCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  documentGroupRoute: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  documentGroupRouteText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  documentsList: {
+    gap: 12,
+  },
+  documentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  },
+  documentItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  documentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  documentItemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  documentItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  documentItemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  documentItemMetaText: {
+    fontSize: 12,
+  },
+  documentItemMetaSeparator: {
+    fontSize: 12,
+  },
+  documentDownloadButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+    elevation: 3,
   },
 });

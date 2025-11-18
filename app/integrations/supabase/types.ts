@@ -503,6 +503,63 @@ export type Database = {
         }
         Relationships: []
       }
+      shipment_documents: {
+        Row: {
+          id: string
+          shipment: string
+          file_path: string
+          file_name: string
+          file_size: number | null
+          mime_type: string | null
+          type: string
+          uploaded_at: string
+          uploaded_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          shipment: string
+          file_path: string
+          file_name: string
+          file_size?: number | null
+          mime_type?: string | null
+          type: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          shipment?: string
+          file_path?: string
+          file_name?: string
+          file_size?: number | null
+          mime_type?: string | null
+          type?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_documents_shipment_fkey"
+            columns: ["shipment"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
