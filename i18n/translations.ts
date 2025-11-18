@@ -244,6 +244,32 @@ export interface Translations {
     faqQuestion4: string;
     faqAnswer4: string;
   };
+  digitalPortal: {
+    title: string;
+    welcomeTitle: string;
+    welcomeSubtitle: string;
+    redirecting: string;
+    featuresTitle: string;
+    advancedTracking: string;
+    advancedTrackingDesc: string;
+    documents: string;
+    documentsDesc: string;
+    analytics: string;
+    analyticsDesc: string;
+    apiAccess: string;
+    apiAccessDesc: string;
+    quickActions: string;
+    newQuote: string;
+    contactSupport: string;
+    resources: string;
+    userGuide: string;
+    userGuideDesc: string;
+    apiDocs: string;
+    apiDocsDesc: string;
+    support: string;
+    supportDesc: string;
+    infoBanner: string;
+  };
   common: {
     back: string;
     next: string;
@@ -499,6 +525,32 @@ export const translations: Record<Language, Translations> = {
       faqQuestion4: 'Y a-t-il un engagement de durée ?',
       faqAnswer4: 'Non, tous nos plans sont sans engagement. Vous pouvez annuler à tout moment depuis votre espace client.',
     },
+    digitalPortal: {
+      title: 'Portail Digital Maritime',
+      welcomeTitle: 'Bienvenue sur votre Portail Digital',
+      welcomeSubtitle: 'Accédez à tous vos outils de gestion maritime et logistique en un seul endroit.',
+      redirecting: 'Redirection vers la page de tarification...',
+      featuresTitle: 'Fonctionnalités du portail',
+      advancedTracking: 'Suivi Avancé',
+      advancedTrackingDesc: 'Suivez vos expéditions en temps réel avec des mises à jour détaillées et des notifications automatiques.',
+      documents: 'Documents & Rapports',
+      documentsDesc: 'Accédez à tous vos documents d\'expédition, factures et rapports personnalisés.',
+      analytics: 'Analytiques & Reporting',
+      analyticsDesc: 'Visualisez vos statistiques d\'expédition et générez des rapports détaillés pour optimiser vos opérations.',
+      apiAccess: 'Accès API',
+      apiAccessDesc: 'Intégrez nos services dans vos systèmes avec notre API REST complète et documentée.',
+      quickActions: 'Actions rapides',
+      newQuote: 'Nouveau devis',
+      contactSupport: 'Contacter le support',
+      resources: 'Ressources',
+      userGuide: 'Guide utilisateur',
+      userGuideDesc: 'Apprenez à utiliser toutes les fonctionnalités du portail',
+      apiDocs: 'Documentation API',
+      apiDocsDesc: 'Documentation complète pour l\'intégration API',
+      support: 'Support technique',
+      supportDesc: 'Contactez notre équipe pour toute assistance',
+      infoBanner: 'Nouvelles fonctionnalités à venir : Gestion multi-sites, Intégration EDI, et Tableaux de bord personnalisables.',
+    },
     common: {
       back: 'Retour',
       next: 'Suivant',
@@ -751,6 +803,32 @@ export const translations: Record<Language, Translations> = {
       faqAnswer3: 'Absolutely! For businesses with specific needs, we offer customized solutions. Contact our sales team to discuss your requirements.',
       faqQuestion4: 'Is there a commitment period?',
       faqAnswer4: 'No, all our plans are commitment-free. You can cancel at any time from your client space.',
+    },
+    digitalPortal: {
+      title: 'Digital Maritime Portal',
+      welcomeTitle: 'Welcome to Your Digital Portal',
+      welcomeSubtitle: 'Access all your maritime and logistics management tools in one place.',
+      redirecting: 'Redirecting to pricing page...',
+      featuresTitle: 'Portal Features',
+      advancedTracking: 'Advanced Tracking',
+      advancedTrackingDesc: 'Track your shipments in real-time with detailed updates and automatic notifications.',
+      documents: 'Documents & Reports',
+      documentsDesc: 'Access all your shipping documents, invoices and custom reports.',
+      analytics: 'Analytics & Reporting',
+      analyticsDesc: 'Visualize your shipping statistics and generate detailed reports to optimize your operations.',
+      apiAccess: 'API Access',
+      apiAccessDesc: 'Integrate our services into your systems with our complete and documented REST API.',
+      quickActions: 'Quick Actions',
+      newQuote: 'New Quote',
+      contactSupport: 'Contact Support',
+      resources: 'Resources',
+      userGuide: 'User Guide',
+      userGuideDesc: 'Learn how to use all portal features',
+      apiDocs: 'API Documentation',
+      apiDocsDesc: 'Complete documentation for API integration',
+      support: 'Technical Support',
+      supportDesc: 'Contact our team for any assistance',
+      infoBanner: 'Coming soon: Multi-site management, EDI Integration, and Customizable dashboards.',
     },
     common: {
       back: 'Back',
@@ -1005,6 +1083,32 @@ export const translations: Record<Language, Translations> = {
       faqQuestion4: '¿Hay un período de compromiso?',
       faqAnswer4: 'No, todos nuestros planes son sin compromiso. Puede cancelar en cualquier momento desde su espacio de cliente.',
     },
+    digitalPortal: {
+      title: 'Portal Digital Marítimo',
+      welcomeTitle: 'Bienvenido a su Portal Digital',
+      welcomeSubtitle: 'Acceda a todas sus herramientas de gestión marítima y logística en un solo lugar.',
+      redirecting: 'Redirigiendo a la página de precios...',
+      featuresTitle: 'Características del Portal',
+      advancedTracking: 'Seguimiento Avanzado',
+      advancedTrackingDesc: 'Rastree sus envíos en tiempo real con actualizaciones detalladas y notificaciones automáticas.',
+      documents: 'Documentos e Informes',
+      documentsDesc: 'Acceda a todos sus documentos de envío, facturas e informes personalizados.',
+      analytics: 'Análisis e Informes',
+      analyticsDesc: 'Visualice sus estadísticas de envío y genere informes detallados para optimizar sus operaciones.',
+      apiAccess: 'Acceso API',
+      apiAccessDesc: 'Integre nuestros servicios en sus sistemas con nuestra API REST completa y documentada.',
+      quickActions: 'Acciones Rápidas',
+      newQuote: 'Nueva Cotización',
+      contactSupport: 'Contactar Soporte',
+      resources: 'Recursos',
+      userGuide: 'Guía del Usuario',
+      userGuideDesc: 'Aprenda a usar todas las funciones del portal',
+      apiDocs: 'Documentación API',
+      apiDocsDesc: 'Documentación completa para la integración API',
+      support: 'Soporte Técnico',
+      supportDesc: 'Contacte a nuestro equipo para cualquier asistencia',
+      infoBanner: 'Próximamente: Gestión multisitio, Integración EDI y Paneles personalizables.',
+    },
     common: {
       back: 'Atrás',
       next: 'Siguiente',
@@ -1257,6 +1361,32 @@ export const translations: Record<Language, Translations> = {
       faqAnswer3: 'بالتأكيد! للشركات ذات الاحتياجات الخاصة، نقدم حلولاً مخصصة. اتصل بفريق المبيعات لدينا لمناقشة متطلباتك.',
       faqQuestion4: 'هل هناك فترة التزام؟',
       faqAnswer4: 'لا، جميع خططنا بدون التزام. يمكنك الإلغاء في أي وقت من مساحة العميل الخاصة بك.',
+    },
+    digitalPortal: {
+      title: 'البوابة الرقمية البحرية',
+      welcomeTitle: 'مرحبًا بك في بوابتك الرقمية',
+      welcomeSubtitle: 'الوصول إلى جميع أدوات إدارة الشحن واللوجستيات الخاصة بك في مكان واحد.',
+      redirecting: 'إعادة التوجيه إلى صفحة التسعير...',
+      featuresTitle: 'ميزات البوابة',
+      advancedTracking: 'التتبع المتقدم',
+      advancedTrackingDesc: 'تتبع شحناتك في الوقت الفعلي مع تحديثات مفصلة وإشعارات تلقائية.',
+      documents: 'المستندات والتقارير',
+      documentsDesc: 'الوصول إلى جميع مستندات الشحن والفواتير والتقارير المخصصة.',
+      analytics: 'التحليلات والتقارير',
+      analyticsDesc: 'تصور إحصائيات الشحن الخاصة بك وإنشاء تقارير مفصلة لتحسين عملياتك.',
+      apiAccess: 'الوصول إلى API',
+      apiAccessDesc: 'دمج خدماتنا في أنظمتك مع API REST الكامل والموثق.',
+      quickActions: 'الإجراءات السريعة',
+      newQuote: 'عرض أسعار جديد',
+      contactSupport: 'اتصل بالدعم',
+      resources: 'الموارد',
+      userGuide: 'دليل المستخدم',
+      userGuideDesc: 'تعلم كيفية استخدام جميع ميزات البوابة',
+      apiDocs: 'وثائق API',
+      apiDocsDesc: 'وثائق كاملة لتكامل API',
+      support: 'الدعم الفني',
+      supportDesc: 'اتصل بفريقنا للحصول على أي مساعدة',
+      infoBanner: 'قريبًا: إدارة متعددة المواقع، تكامل EDI، ولوحات معلومات قابلة للتخصيص.',
     },
     common: {
       back: 'رجوع',

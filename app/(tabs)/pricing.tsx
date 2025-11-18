@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { PageHeader } from "@/components/PageHeader";
@@ -29,12 +29,20 @@ export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
+  const params = useLocalSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const [highlightedPlan, setHighlightedPlan] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+    
+    // Check for highlight parameter
+    if (params.highlight) {
+      console.log('Highlighting plan:', params.highlight);
+      setHighlightedPlan(params.highlight as string);
+    }
+  }, [params.highlight]);
 
   const checkAuthStatus = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -166,6 +174,25 @@ export default function PricingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {highlightedPlan === 'digital_portal' && (
+          <View style={[styles.accessBanner, { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}>
+            <IconSymbol
+              ios_icon_name="lock.fill"
+              android_material_icon_name="lock"
+              size={32}
+              color={colors.accent}
+            />
+            <View style={styles.accessBannerContent}>
+              <Text style={[styles.accessBannerTitle, { color: theme.colors.text }]}>
+                Accès au Portail Digital requis
+              </Text>
+              <Text style={[styles.accessBannerText, { color: colors.textSecondary }]}>
+                Pour accéder au Portail Digital Maritime, vous devez souscrire à un plan Premium Tracking, Enterprise Logistics ou Digital Portal.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.heroSection}>
           <IconSymbol
             ios_icon_name="dollarsign.circle.fill"
@@ -187,6 +214,7 @@ export default function PricingScreen() {
                   { backgroundColor: theme.colors.card },
                   plan.id === 'premium' && styles.popularPlan,
                   plan.id === 'agent' && styles.agentPlan,
+                  highlightedPlan === 'digital_portal' && (plan.id === 'premium' || plan.id === 'enterprise') && styles.highlightedPlan,
                 ]}
               >
                 {plan.id === 'premium' && (
@@ -320,6 +348,29 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
+  accessBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 8,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+  accessBannerContent: {
+    flex: 1,
+    gap: 8,
+  },
+  accessBannerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  accessBannerText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
   heroSection: {
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -389,6 +440,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  highlightedPlan: {
+    borderWidth: 3,
+    borderColor: colors.accent,
+    boxShadow: '0px 8px 24px rgba(255, 152, 0, 0.3)',
+    elevation: 8,
   },
   planName: {
     fontSize: 24,

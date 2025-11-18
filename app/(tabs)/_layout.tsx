@@ -68,6 +68,7 @@ export default function TabLayout() {
         <Stack.Screen key="become-agent" name="become-agent" />
         <Stack.Screen key="client-space" name="client-space" />
         <Stack.Screen key="client-dashboard" name="client-dashboard" />
+        <Stack.Screen key="digital-portal" name="digital-portal" />
         <Stack.Screen key="shipment-detail" name="shipment-detail" />
         <Stack.Screen key="client-profile" name="client-profile" />
         <Stack.Screen key="profile" name="profile" />
