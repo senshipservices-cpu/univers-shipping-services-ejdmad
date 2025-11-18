@@ -53,6 +53,12 @@ export interface Translations {
     clientSpaceDesc: string;
     pricing: string;
     pricingDesc: string;
+    featuredServicesTitle: string;
+    featuredServicesSubtitle: string;
+    requestQuoteBtn: string;
+    viewPricingBtn: string;
+    consultExpertBtn: string;
+    accessPortalBtn: string;
   };
   regions: {
     africa: string;
@@ -272,6 +278,12 @@ export const translations: Record<Language, Translations> = {
       clientSpaceDesc: 'Accédez à votre compte et suivez vos envois',
       pricing: 'Tarification',
       pricingDesc: 'Obtenez un devis personnalisé',
+      featuredServicesTitle: 'Nos Services Phares',
+      featuredServicesSubtitle: 'Les solutions les plus demandées par nos clients internationaux.',
+      requestQuoteBtn: 'Demander un devis',
+      viewPricingBtn: 'Voir tarifs',
+      consultExpertBtn: 'Consulter un expert',
+      accessPortalBtn: 'Accéder au portail',
     },
     regions: {
       africa: 'Afrique',
@@ -489,6 +501,12 @@ export const translations: Record<Language, Translations> = {
       clientSpaceDesc: 'Access your account and track shipments',
       pricing: 'Pricing',
       pricingDesc: 'Get a personalized quote',
+      featuredServicesTitle: 'Our Featured Services',
+      featuredServicesSubtitle: 'The most requested solutions by our international clients.',
+      requestQuoteBtn: 'Request a quote',
+      viewPricingBtn: 'View pricing',
+      consultExpertBtn: 'Consult an expert',
+      accessPortalBtn: 'Access portal',
     },
     regions: {
       africa: 'Africa',
@@ -706,6 +724,12 @@ export const translations: Record<Language, Translations> = {
       clientSpaceDesc: 'Accede a tu cuenta y rastrea envíos',
       pricing: 'Precios',
       pricingDesc: 'Obtén una cotización personalizada',
+      featuredServicesTitle: 'Nuestros Servicios Destacados',
+      featuredServicesSubtitle: 'Las soluciones más solicitadas por nuestros clientes internacionales.',
+      requestQuoteBtn: 'Solicitar cotización',
+      viewPricingBtn: 'Ver precios',
+      consultExpertBtn: 'Consultar un experto',
+      accessPortalBtn: 'Acceder al portal',
     },
     regions: {
       africa: 'África',
@@ -923,6 +947,12 @@ export const translations: Record<Language, Translations> = {
       clientSpaceDesc: 'الوصول إلى حسابك وتتبع الشحنات',
       pricing: 'التسعير',
       pricingDesc: 'احصل على عرض أسعار مخصص',
+      featuredServicesTitle: 'خدماتنا المميزة',
+      featuredServicesSubtitle: 'الحلول الأكثر طلبًا من قبل عملائنا الدوليين.',
+      requestQuoteBtn: 'طلب عرض أسعار',
+      viewPricingBtn: 'عرض الأسعار',
+      consultExpertBtn: 'استشارة خبير',
+      accessPortalBtn: 'الوصول إلى البوابة',
     },
     regions: {
       africa: 'أفريقيا',

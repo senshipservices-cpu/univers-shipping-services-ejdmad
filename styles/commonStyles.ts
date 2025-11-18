@@ -17,6 +17,7 @@ export const useColors = () => {
     text: isDark ? '#FFFFFF' : '#000000',
     textSecondary: isDark ? '#B0B0B0' : '#666666',
     border: isDark ? '#333333' : '#E0E0E0',
+    highlight: isDark ? '#2A2A2A' : '#F0F8FF',
   };
 };
 
@@ -37,4 +38,6 @@ export const colors = {
   textSecondaryDark: '#B0B0B0',
   border: '#E0E0E0',
   borderDark: '#333333',
+  highlight: '#F0F8FF',
+  highlightDark: '#2A2A2A',
 };

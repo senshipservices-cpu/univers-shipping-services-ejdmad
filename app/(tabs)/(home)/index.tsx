@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { FeaturedServices } from "@/components/FeaturedServices";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -162,6 +163,9 @@ export default function HomeScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        {/* Featured Services Section - NEW */}
+        <FeaturedServices />
 
         {/* Quick Access Section */}
         <View style={styles.section}>
