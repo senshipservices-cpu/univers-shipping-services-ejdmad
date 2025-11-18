@@ -1,22 +1,74 @@
 
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 
 export default function ClientSpaceScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
+  const { user, signIn, signUp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    console.log('Form submitted:', { email, password, isLogin });
+  // If user is already logged in, redirect to dashboard
+  React.useEffect(() => {
+    if (user) {
+      router.replace('/(tabs)/client-dashboard');
+    }
+  }, [user]);
+
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (!isLogin && !companyName) {
+      Alert.alert('Error', 'Please enter your company name');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          Alert.alert('Login Error', error.message || 'Failed to login. Please check your credentials.');
+        } else {
+          // Navigation will happen automatically via useEffect
+          console.log('Login successful');
+        }
+      } else {
+        const { error } = await signUp(email, password, companyName);
+        if (error) {
+          Alert.alert('Registration Error', error.message || 'Failed to register. Please try again.');
+        } else {
+          Alert.alert(
+            'Registration Successful',
+            'Please check your email to verify your account before logging in.',
+            [{ text: 'OK', onPress: () => setIsLogin(true) }]
+          );
+          setEmail('');
+          setPassword('');
+          setCompanyName('');
+        }
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,6 +115,28 @@ export default function ClientSpaceScreen() {
 
         <View style={styles.formContainer}>
           <View style={[styles.formCard, { backgroundColor: theme.colors.card }]}>
+            {!isLogin && (
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Company Name</Text>
+                <View style={styles.inputContainer}>
+                  <IconSymbol
+                    ios_icon_name="building.2"
+                    android_material_icon_name="business"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: theme.colors.text }]}
+                    placeholder="Your Company Name"
+                    placeholderTextColor={colors.textSecondary}
+                    value={companyName}
+                    onChangeText={setCompanyName}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+            )}
+
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
               <View style={styles.inputContainer}>
@@ -111,11 +185,12 @@ export default function ClientSpaceScreen() {
             )}
 
             <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+              style={[styles.submitButton, { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 }]}
               onPress={handleSubmit}
+              disabled={loading}
             >
               <Text style={styles.submitButtonText}>
-                {isLogin ? t.clientSpace.login : t.clientSpace.register}
+                {loading ? 'Please wait...' : (isLogin ? t.clientSpace.login : t.clientSpace.register)}
               </Text>
             </TouchableOpacity>
 

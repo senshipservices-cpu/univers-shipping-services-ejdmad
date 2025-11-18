@@ -112,6 +112,10 @@ export interface Translations {
     register: string;
     tracking: string;
     documents: string;
+    dashboard: string;
+    myProfile: string;
+    shipments: string;
+    subscription: string;
   };
   pricing: {
     title: string;
@@ -278,6 +282,10 @@ export const translations: Record<Language, Translations> = {
       register: 'Inscription',
       tracking: 'Suivi',
       documents: 'Documents',
+      dashboard: 'Tableau de bord',
+      myProfile: 'Mon profil',
+      shipments: 'Expéditions',
+      subscription: 'Abonnement',
     },
     pricing: {
       title: 'Plans & Abonnements',
@@ -442,6 +450,10 @@ export const translations: Record<Language, Translations> = {
       register: 'Register',
       tracking: 'Tracking',
       documents: 'Documents',
+      dashboard: 'Dashboard',
+      myProfile: 'My Profile',
+      shipments: 'Shipments',
+      subscription: 'Subscription',
     },
     pricing: {
       title: 'Plans & Subscriptions',
@@ -606,6 +618,10 @@ export const translations: Record<Language, Translations> = {
       register: 'Registrarse',
       tracking: 'Seguimiento',
       documents: 'Documentos',
+      dashboard: 'Panel de control',
+      myProfile: 'Mi perfil',
+      shipments: 'Envíos',
+      subscription: 'Suscripción',
     },
     pricing: {
       title: 'Planes y Suscripciones',
@@ -770,6 +786,10 @@ export const translations: Record<Language, Translations> = {
       register: 'التسجيل',
       tracking: 'التتبع',
       documents: 'المستندات',
+      dashboard: 'لوحة التحكم',
+      myProfile: 'ملفي الشخصي',
+      shipments: 'الشحنات',
+      subscription: 'الاشتراك',
     },
     pricing: {
       title: 'الخطط والاشتراكات',
