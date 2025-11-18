@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -20,11 +20,11 @@ export default function ClientSpaceScreen() {
   const [loading, setLoading] = useState(false);
 
   // If user is already logged in, redirect to dashboard
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       router.replace('/(tabs)/client-dashboard');
     }
-  }, [user]);
+  }, [user, router]);
 
   const handleSubmit = async () => {
     if (!email || !password) {

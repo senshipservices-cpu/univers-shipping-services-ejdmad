@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -45,18 +45,7 @@ export default function ShipmentDetailScreen() {
   const [unauthorized, setUnauthorized] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  // Redirect if not authenticated
-  if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
-  }
-
-  useEffect(() => {
-    if (user && (id || shipment_id)) {
-      loadShipmentDetail();
-    }
-  }, [user, id, shipment_id]);
-
-  const loadShipmentDetail = async () => {
+  const loadShipmentDetail = useCallback(async () => {
     try {
       setLoading(true);
       setUnauthorized(false);
@@ -144,9 +133,15 @@ export default function ShipmentDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, id, shipment_id, router]);
 
-  const getStatusColor = (status: string) => {
+  useEffect(() => {
+    if (user && (id || shipment_id)) {
+      loadShipmentDetail();
+    }
+  }, [user, id, shipment_id, loadShipmentDetail]);
+
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'delivered':
         return '#10b981';
@@ -164,9 +159,9 @@ export default function ShipmentDetailScreen() {
       default:
         return colors.textSecondary;
     }
-  };
+  }, []);
 
-  const formatStatus = (status: string) => {
+  const formatStatus = useCallback((status: string) => {
     const statusTranslations: Record<string, string> = {
       'draft': 'Brouillon',
       'quote_pending': 'Devis en attente',
@@ -178,9 +173,9 @@ export default function ShipmentDetailScreen() {
       'cancelled': 'Annulé',
     };
     return statusTranslations[status] || status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'delivered':
         return { ios: 'checkmark.circle.fill', android: 'check_circle' };
@@ -199,9 +194,9 @@ export default function ShipmentDetailScreen() {
       default:
         return { ios: 'circle.fill', android: 'circle' };
     }
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { 
       year: 'numeric', 
@@ -210,16 +205,21 @@ export default function ShipmentDetailScreen() {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
+  }, []);
 
-  const formatDateShort = (dateString: string) => {
+  const formatDateShort = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric'
     });
-  };
+  }, []);
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
 
   // Loading state
   if (loading) {

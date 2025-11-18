@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, ActivityIndicator } from "react-native";
 import { useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -39,18 +39,7 @@ export default function ClientProfileScreen() {
     sector: '',
   });
 
-  // Redirect if not authenticated
-  if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
-  }
-
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -79,7 +68,13 @@ export default function ClientProfileScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
 
   const handleSave = async () => {
     if (!formData.company_name) {
@@ -134,6 +129,11 @@ export default function ClientProfileScreen() {
   const handleBackToDashboard = () => {
     router.push('/(tabs)/client-dashboard');
   };
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
 
   if (loading) {
     return (

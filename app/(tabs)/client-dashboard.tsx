@@ -60,11 +60,6 @@ export default function ClientDashboardScreen() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
-  // Redirect if not authenticated
-  if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
-  }
-
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     if (!user?.id) {
@@ -145,7 +140,7 @@ export default function ClientDashboardScreen() {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     Alert.alert(
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
@@ -164,9 +159,9 @@ export default function ClientDashboardScreen() {
         },
       ]
     );
-  };
+  }, [signOut, router]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'delivered':
         return '#10b981';
@@ -184,13 +179,13 @@ export default function ClientDashboardScreen() {
       default:
         return colors.textSecondary;
     }
-  };
+  }, []);
 
-  const formatStatus = (status: string) => {
+  const formatStatus = useCallback((status: string) => {
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
+  }, []);
 
-  const formatPlanType = (planType: string) => {
+  const formatPlanType = useCallback((planType: string) => {
     const planNames: Record<string, string> = {
       'basic': 'Basic',
       'premium_tracking': 'Premium Tracking',
@@ -198,16 +193,21 @@ export default function ClientDashboardScreen() {
       'agent_listing': 'Agent Listing',
     };
     return planNames[planType] || planType;
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString(undefined, { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
     });
-  };
+  }, []);
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
 
   // Loading state
   if (loading) {
