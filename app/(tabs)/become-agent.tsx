@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, TextInp
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
+import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
@@ -242,7 +243,18 @@ export default function BecomeAgentScreen() {
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
             {t.becomeAgent.applicationForm}
           </Text>
-          <View style={{ width: 28 }} />
+          <TouchableOpacity
+            style={[styles.quoteButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(tabs)/freight-quote')}
+          >
+            <IconSymbol
+              ios_icon_name="doc.text.fill"
+              android_material_icon_name="description"
+              size={18}
+              color="#ffffff"
+            />
+            <Text style={styles.quoteButtonText}>{t.home.requestQuote}</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -526,23 +538,7 @@ export default function BecomeAgentScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <IconSymbol
-            ios_icon_name="chevron.left"
-            android_material_icon_name="chevron_left"
-            size={28}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          {t.becomeAgent.title}
-        </Text>
-        <View style={{ width: 28 }} />
-      </View>
+      <PageHeader title={t.becomeAgent.title} />
 
       <ScrollView
         style={styles.scrollView}
@@ -674,16 +670,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 12,
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  quoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  quoteButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   scrollView: {
     flex: 1,
