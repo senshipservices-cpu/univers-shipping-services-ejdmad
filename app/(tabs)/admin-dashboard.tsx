@@ -939,14 +939,24 @@ export default function AdminDashboardScreen() {
             Admin Dashboard
           </Text>
         </View>
-        <TouchableOpacity onPress={() => router.back()}>
-          <IconSymbol
-            ios_icon_name="xmark.circle.fill"
-            android_material_icon_name="close"
-            size={28}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/kpi-dashboard')} style={styles.kpiButton}>
+            <IconSymbol
+              ios_icon_name="chart.bar.fill"
+              android_material_icon_name="analytics"
+              size={24}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()}>
+            <IconSymbol
+              ios_icon_name="xmark.circle.fill"
+              android_material_icon_name="close"
+              size={28}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Navigation */}
@@ -999,6 +1009,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  kpiButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary + '20',
   },
   headerTitle: {
     fontSize: 24,

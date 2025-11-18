@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Tables } from '@/app/integrations/supabase/types';
+import { logLogin, logLogout } from '@/utils/eventLogger';
 
 type Client = Tables<'clients'>;
 
@@ -104,6 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch client record after successful sign in
       if (data.user?.id) {
         await fetchClient(data.user.id);
+        
+        // Log login event
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        await logLogin(data.user.id, clientData?.id || null);
       }
       
       return { error: null };
@@ -150,6 +160,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      // Log logout event before signing out
+      if (user?.id) {
+        await logLogout(user.id, client?.id || null);
+      }
+      
       await supabase.auth.signOut();
       setClient(null);
       console.log('Sign out successful');

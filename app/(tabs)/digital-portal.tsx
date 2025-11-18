@@ -11,6 +11,7 @@ import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
+import { logPortalAccess, logPortalDenied } from "@/utils/eventLogger";
 
 interface Port {
   id: string;
@@ -87,10 +88,25 @@ export default function DigitalPortalScreen() {
     if (!subscriptionLoading) {
       setIsCheckingAccess(false);
 
-      // Redirect to pricing if no access
-      if (user && client && !hasDigitalPortalAccess) {
-        console.log('Digital Portal - Redirecting to pricing (no valid subscription)');
-        router.replace('/(tabs)/pricing?highlight=digital_portal');
+      // Log portal access or denial
+      if (user && client) {
+        if (hasDigitalPortalAccess) {
+          // Log successful portal access
+          logPortalAccess(
+            user.id,
+            client.id,
+            `Subscription: ${subscription?.plan_type || 'unknown'}`
+          );
+        } else {
+          // Log portal access denied
+          logPortalDenied(
+            user.id,
+            client.id,
+            'No active subscription'
+          );
+          console.log('Digital Portal - Redirecting to pricing (no valid subscription)');
+          router.replace('/(tabs)/pricing?highlight=digital_portal');
+        }
       }
     }
   }, [user, client, hasDigitalPortalAccess, subscriptionLoading, subscription, router]);

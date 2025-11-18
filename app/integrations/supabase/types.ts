@@ -180,6 +180,8 @@ export type Database = {
           city: string | null
           sector: string | null
           is_verified: boolean
+          is_super_admin: boolean
+          admin_option: boolean
           created_at: string
           updated_at: string
         }
@@ -194,6 +196,8 @@ export type Database = {
           city?: string | null
           sector?: string | null
           is_verified?: boolean
+          is_super_admin?: boolean
+          admin_option?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -208,6 +212,8 @@ export type Database = {
           city?: string | null
           sector?: string | null
           is_verified?: boolean
+          is_super_admin?: boolean
+          admin_option?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -556,6 +562,88 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      events_log: {
+        Row: {
+          id: string
+          event_type: string
+          user_id: string | null
+          client_id: string | null
+          service_id: string | null
+          quote_id: string | null
+          shipment_id: string | null
+          port_id: string | null
+          details: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_type: string
+          user_id?: string | null
+          client_id?: string | null
+          service_id?: string | null
+          quote_id?: string | null
+          shipment_id?: string | null
+          port_id?: string | null
+          details?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_type?: string
+          user_id?: string | null
+          client_id?: string | null
+          service_id?: string | null
+          quote_id?: string | null
+          shipment_id?: string | null
+          port_id?: string | null
+          details?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_log_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services_global"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_log_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "freight_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_log_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_log_port_id_fkey"
+            columns: ["port_id"]
+            isOneToOne: false
+            referencedRelation: "ports"
             referencedColumns: ["id"]
           }
         ]
