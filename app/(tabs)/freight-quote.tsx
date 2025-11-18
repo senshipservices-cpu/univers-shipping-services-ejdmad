@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -30,23 +30,9 @@ export default function FreightQuoteScreen() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (serviceId) {
-      fetchServiceName();
-    }
-  }, [serviceId]);
-
-  useEffect(() => {
-    if (client) {
-      setFormData(prev => ({
-        ...prev,
-        clientName: client.contact_name || "",
-        clientEmail: user?.email || "",
-      }));
-    }
-  }, [client, user]);
-
-  const fetchServiceName = async () => {
+  const fetchServiceName = useCallback(async () => {
+    if (!serviceId) return;
+    
     try {
       const { data, error } = await supabase
         .from('services_global')
@@ -63,7 +49,23 @@ export default function FreightQuoteScreen() {
     } catch (error) {
       console.error('Exception fetching service:', error);
     }
-  };
+  }, [serviceId]);
+
+  useEffect(() => {
+    if (serviceId) {
+      fetchServiceName();
+    }
+  }, [serviceId, fetchServiceName]);
+
+  useEffect(() => {
+    if (client) {
+      setFormData(prev => ({
+        ...prev,
+        clientName: client.contact_name || "",
+        clientEmail: user?.email || "",
+      }));
+    }
+  }, [client, user]);
 
   const handleSubmit = async () => {
     // Validation

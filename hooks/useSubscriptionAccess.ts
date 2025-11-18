@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/app/integrations/supabase/client';
 
@@ -29,7 +29,7 @@ export function useSubscriptionAccess(): SubscriptionAccess {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadSubscription = async () => {
+  const loadSubscription = useCallback(async () => {
     if (!client?.id) {
       setSubscription(null);
       setLoading(false);
@@ -67,11 +67,11 @@ export function useSubscriptionAccess(): SubscriptionAccess {
     } finally {
       setLoading(false);
     }
-  };
+  }, [client?.id]);
 
   useEffect(() => {
     loadSubscription();
-  }, [client?.id]);
+  }, [loadSubscription]);
 
   const refresh = async () => {
     await loadSubscription();

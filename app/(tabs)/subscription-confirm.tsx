@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -33,49 +33,7 @@ export default function SubscriptionConfirmScreen() {
 
   const planType = params.plan as PlanType;
 
-  useEffect(() => {
-    if (!user) {
-      Alert.alert(
-        'Connexion requise',
-        'Vous devez être connecté pour souscrire à un abonnement.',
-        [
-          {
-            text: 'Se connecter',
-            onPress: () => router.push('/(tabs)/client-space'),
-          },
-          {
-            text: 'Annuler',
-            style: 'cancel',
-            onPress: () => router.back(),
-          },
-        ]
-      );
-      return;
-    }
-
-    if (!client) {
-      Alert.alert(
-        'Profil incomplet',
-        'Veuillez compléter votre profil client avant de souscrire.',
-        [
-          {
-            text: 'Compléter mon profil',
-            onPress: () => router.push('/(tabs)/client-profile'),
-          },
-          {
-            text: 'Annuler',
-            style: 'cancel',
-            onPress: () => router.back(),
-          },
-        ]
-      );
-      return;
-    }
-
-    loadPlanDetails();
-  }, [user, client, planType]);
-
-  const loadPlanDetails = () => {
+  const loadPlanDetails = useCallback(() => {
     const plans: Record<PlanType, PlanDetails> = {
       basic: {
         id: 'basic',
@@ -146,7 +104,49 @@ export default function SubscriptionConfirmScreen() {
       Alert.alert('Erreur', 'Plan invalide');
       router.back();
     }
-  };
+  }, [planType, router]);
+
+  useEffect(() => {
+    if (!user) {
+      Alert.alert(
+        'Connexion requise',
+        'Vous devez être connecté pour souscrire à un abonnement.',
+        [
+          {
+            text: 'Se connecter',
+            onPress: () => router.push('/(tabs)/client-space'),
+          },
+          {
+            text: 'Annuler',
+            style: 'cancel',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+      return;
+    }
+
+    if (!client) {
+      Alert.alert(
+        'Profil incomplet',
+        'Veuillez compléter votre profil client avant de souscrire.',
+        [
+          {
+            text: 'Compléter mon profil',
+            onPress: () => router.push('/(tabs)/client-profile'),
+          },
+          {
+            text: 'Annuler',
+            style: 'cancel',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+      return;
+    }
+
+    loadPlanDetails();
+  }, [user, client, planType, loadPlanDetails, router]);
 
   const handleConfirmSubscription = async () => {
     if (!client || !planDetails) {
