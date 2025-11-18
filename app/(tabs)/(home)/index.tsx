@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
 import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
 import { colors } from "@/styles/commonStyles";
@@ -29,10 +30,21 @@ interface WhyChooseUsAdvantage {
   icon: string;
 }
 
+// Admin email whitelist - Must match the one in kpi-dashboard.tsx
+const ADMIN_EMAILS = [
+  'admin@3sglobal.com',
+  'admin_email@gmail.com', // As specified in the requirement
+  'your-email@example.com', // Replace with actual admin emails
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
+  const { user } = useAuth();
+
+  // Check if user is admin
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
   const quickAccessCards: ServiceCard[] = [
     {
@@ -137,6 +149,50 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Top Header with Admin Dashboard Button */}
+      <View style={[styles.topHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
+        <View style={styles.headerLeft}>
+          <IconSymbol
+            ios_icon_name="shippingbox.fill"
+            android_material_icon_name="local_shipping"
+            size={32}
+            color={colors.primary}
+          />
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>3S Global</Text>
+        </View>
+        
+        <View style={styles.headerRight}>
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.adminButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(tabs)/kpi-dashboard')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol
+                ios_icon_name="chart.bar.fill"
+                android_material_icon_name="analytics"
+                size={20}
+                color="#ffffff"
+              />
+              <Text style={styles.adminButtonText}>Admin Dashboard</Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => router.push('/(tabs)/profile')}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="person.circle"
+              android_material_icon_name="account_circle"
+              size={28}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -447,6 +503,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  adminButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  profileButton: {
+    padding: 4,
+  },
   scrollView: {
     flex: 1,
   },
@@ -454,7 +550,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   heroSection: {
-    paddingTop: Platform.OS === 'android' ? 60 : 80,
+    paddingTop: 40,
     paddingBottom: 48,
     paddingHorizontal: 20,
   },

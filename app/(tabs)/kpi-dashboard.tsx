@@ -14,6 +14,7 @@ const { width } = Dimensions.get('window');
 // Admin email whitelist - Add authorized admin emails here
 const ADMIN_EMAILS = [
   'admin@3sglobal.com',
+  'admin_email@gmail.com', // As specified in the requirement
   'your-email@example.com', // Replace with actual admin emails
 ];
 
