@@ -61,6 +61,113 @@ export type Database = {
         }
         Relationships: []
       }
+      ports: {
+        Row: {
+          id: string
+          name: string
+          city: string | null
+          country: string | null
+          region: Database["public"]["Enums"]["port_region"] | null
+          services_available: Database["public"]["Enums"]["port_service"][] | null
+          description_fr: string | null
+          description_en: string | null
+          is_hub: boolean
+          status: Database["public"]["Enums"]["port_status"]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          city?: string | null
+          country?: string | null
+          region?: Database["public"]["Enums"]["port_region"] | null
+          services_available?: Database["public"]["Enums"]["port_service"][] | null
+          description_fr?: string | null
+          description_en?: string | null
+          is_hub?: boolean
+          status?: Database["public"]["Enums"]["port_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          city?: string | null
+          country?: string | null
+          region?: Database["public"]["Enums"]["port_region"] | null
+          services_available?: Database["public"]["Enums"]["port_service"][] | null
+          description_fr?: string | null
+          description_en?: string | null
+          is_hub?: boolean
+          status?: Database["public"]["Enums"]["port_status"]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      global_agents: {
+        Row: {
+          id: string
+          company_name: string
+          port: string
+          activities: Database["public"]["Enums"]["agent_activity"][]
+          years_experience: number | null
+          whatsapp: string | null
+          email: string | null
+          website: string | null
+          certifications: string | null
+          logo: string | null
+          status: Database["public"]["Enums"]["agent_status"]
+          is_premium_listing: boolean
+          notes_internal: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_name: string
+          port: string
+          activities: Database["public"]["Enums"]["agent_activity"][]
+          years_experience?: number | null
+          whatsapp?: string | null
+          email?: string | null
+          website?: string | null
+          certifications?: string | null
+          logo?: string | null
+          status?: Database["public"]["Enums"]["agent_status"]
+          is_premium_listing?: boolean
+          notes_internal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_name?: string
+          port?: string
+          activities?: Database["public"]["Enums"]["agent_activity"][]
+          years_experience?: number | null
+          whatsapp?: string | null
+          email?: string | null
+          website?: string | null
+          certifications?: string | null
+          logo?: string | null
+          status?: Database["public"]["Enums"]["agent_status"]
+          is_premium_listing?: boolean
+          notes_internal?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_agents_port_fkey"
+            columns: ["port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -70,6 +177,11 @@ export type Database = {
     }
     Enums: {
       service_category: "maritime_shipping" | "logistics_port_handling" | "trade_consulting" | "digital_services"
+      port_region: "Afrique" | "Europe" | "Asie" | "Amériques" | "Océanie" | "Moyen-Orient"
+      port_service: "consignation" | "chartering" | "customs" | "logistics" | "ship_supply" | "crew_support" | "warehousing" | "door_to_door"
+      port_status: "actif" | "en_preparation" | "futur"
+      agent_activity: "consignation" | "customs" | "freight_forwarding" | "ship_supply" | "warehousing" | "trucking" | "consulting"
+      agent_status: "pending" | "validated" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -190,6 +302,43 @@ export const Constants = {
         logistics_port_handling: "logistics_port_handling",
         trade_consulting: "trade_consulting",
         digital_services: "digital_services",
+      },
+      port_region: {
+        Afrique: "Afrique",
+        Europe: "Europe",
+        Asie: "Asie",
+        Amériques: "Amériques",
+        Océanie: "Océanie",
+        "Moyen-Orient": "Moyen-Orient",
+      },
+      port_service: {
+        consignation: "consignation",
+        chartering: "chartering",
+        customs: "customs",
+        logistics: "logistics",
+        ship_supply: "ship_supply",
+        crew_support: "crew_support",
+        warehousing: "warehousing",
+        door_to_door: "door_to_door",
+      },
+      port_status: {
+        actif: "actif",
+        en_preparation: "en_preparation",
+        futur: "futur",
+      },
+      agent_activity: {
+        consignation: "consignation",
+        customs: "customs",
+        freight_forwarding: "freight_forwarding",
+        ship_supply: "ship_supply",
+        warehousing: "warehousing",
+        trucking: "trucking",
+        consulting: "consulting",
+      },
+      agent_status: {
+        pending: "pending",
+        validated: "validated",
+        rejected: "rejected",
       },
     },
   },
