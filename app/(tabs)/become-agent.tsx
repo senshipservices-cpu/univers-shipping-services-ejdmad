@@ -1,11 +1,12 @@
 
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, TextInput, Alert, Modal, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
+import { supabase } from "@/app/integrations/supabase/client";
 
 interface Benefit {
   title: string;
@@ -13,10 +14,56 @@ interface Benefit {
   icon: string;
 }
 
+interface Port {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+}
+
+interface ActivityOption {
+  value: string;
+  label: string;
+}
+
 export default function BecomeAgentScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
+
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [ports, setPorts] = useState<Port[]>([]);
+  const [showPortPicker, setShowPortPicker] = useState(false);
+  const [showActivityPicker, setShowActivityPicker] = useState(false);
+  const [portSearchQuery, setPortSearchQuery] = useState("");
+
+  // Form fields
+  const [formData, setFormData] = useState({
+    companyName: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    website: "",
+    selectedPort: null as Port | null,
+    selectedActivities: [] as string[],
+    yearsExperience: "",
+    certifications: "",
+    message: "",
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const activityOptions: ActivityOption[] = [
+    { value: "consignation", label: "Ship Agency / Consignation" },
+    { value: "customs", label: "Customs Clearance" },
+    { value: "freight_forwarding", label: "Freight Forwarding" },
+    { value: "ship_supply", label: "Ship Supply" },
+    { value: "warehousing", label: "Warehousing" },
+    { value: "trucking", label: "Trucking / Transport" },
+    { value: "consulting", label: "Consulting" },
+  ];
 
   const benefits: Benefit[] = [
     {
@@ -50,6 +97,502 @@ export default function BecomeAgentScreen() {
       icon: "verified",
     },
   ];
+
+  useEffect(() => {
+    loadPorts();
+  }, []);
+
+  const loadPorts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ports")
+        .select("id, name, city, country")
+        .eq("status", "actif")
+        .order("name");
+
+      if (error) {
+        console.error("Error loading ports:", error);
+        return;
+      }
+
+      setPorts(data || []);
+    } catch (error) {
+      console.error("Error loading ports:", error);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.companyName.trim()) {
+      newErrors.companyName = t.becomeAgent.requiredField;
+    }
+    if (!formData.contactName.trim()) {
+      newErrors.contactName = t.becomeAgent.requiredField;
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = t.becomeAgent.requiredField;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = t.becomeAgent.invalidEmail;
+    }
+    if (!formData.phone.trim()) {
+      newErrors.phone = t.becomeAgent.requiredField;
+    }
+    if (!formData.selectedPort) {
+      newErrors.port = t.becomeAgent.requiredField;
+    }
+    if (formData.selectedActivities.length === 0) {
+      newErrors.activities = t.becomeAgent.selectAtLeastOne;
+    }
+    if (!formData.yearsExperience.trim() || isNaN(Number(formData.yearsExperience))) {
+      newErrors.yearsExperience = t.becomeAgent.requiredField;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      Alert.alert(t.becomeAgent.errorTitle, "Please fill in all required fields correctly");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: projectData } = await supabase.auth.getSession();
+      const supabaseUrl = supabase.supabaseUrl;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/submit-agent-application`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${projectData.session?.access_token || ""}`,
+        },
+        body: JSON.stringify({
+          company_name: formData.companyName,
+          port_id: formData.selectedPort?.id,
+          activities: formData.selectedActivities,
+          years_experience: Number(formData.yearsExperience),
+          contact_name: formData.contactName,
+          email: formData.email,
+          phone: formData.phone,
+          whatsapp: formData.whatsapp || formData.phone,
+          website: formData.website,
+          certifications: formData.certifications,
+          message: formData.message,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        Alert.alert(
+          t.becomeAgent.successTitle,
+          t.becomeAgent.successMessage,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setShowForm(false);
+                setFormData({
+                  companyName: "",
+                  contactName: "",
+                  email: "",
+                  phone: "",
+                  whatsapp: "",
+                  website: "",
+                  selectedPort: null,
+                  selectedActivities: [],
+                  yearsExperience: "",
+                  certifications: "",
+                  message: "",
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        throw new Error(result.error || "Submission failed");
+      }
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      Alert.alert(t.becomeAgent.errorTitle, t.becomeAgent.errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleActivity = (activity: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedActivities: prev.selectedActivities.includes(activity)
+        ? prev.selectedActivities.filter((a) => a !== activity)
+        : [...prev.selectedActivities, activity],
+    }));
+  };
+
+  const filteredPorts = ports.filter((port) =>
+    `${port.name} ${port.city} ${port.country}`
+      .toLowerCase()
+      .includes(portSearchQuery.toLowerCase())
+  );
+
+  if (showForm) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setShowForm(false)}
+          >
+            <IconSymbol
+              ios_icon_name="chevron.left"
+              android_material_icon_name="chevron_left"
+              size={28}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            {t.becomeAgent.applicationForm}
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.formScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.formSection}>
+            <Text style={[styles.formSectionTitle, { color: theme.colors.text }]}>
+              {t.becomeAgent.companyInfo}
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.companyName} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.companyName ? "#ff4444" : colors.border }]}
+                placeholder={t.becomeAgent.companyNamePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.companyName}
+                onChangeText={(text) => setFormData({ ...formData, companyName: text })}
+              />
+              {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.contactName} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.contactName ? "#ff4444" : colors.border }]}
+                placeholder={t.becomeAgent.contactNamePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.contactName}
+                onChangeText={(text) => setFormData({ ...formData, contactName: text })}
+              />
+              {errors.contactName && <Text style={styles.errorText}>{errors.contactName}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.email} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.email ? "#ff4444" : colors.border }]}
+                placeholder={t.becomeAgent.emailPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.email}
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.phone} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.phone ? "#ff4444" : colors.border }]}
+                placeholder={t.becomeAgent.phonePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.phone}
+                onChangeText={(text) => setFormData({ ...formData, phone: text })}
+                keyboardType="phone-pad"
+              />
+              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.whatsapp}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.whatsappPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.whatsapp}
+                onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.website}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.websitePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.website}
+                onChangeText={(text) => setFormData({ ...formData, website: text })}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <View style={styles.formSection}>
+            <Text style={[styles.formSectionTitle, { color: theme.colors.text }]}>
+              {t.becomeAgent.portSelection}
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.selectPort} *
+              </Text>
+              <TouchableOpacity
+                style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: errors.port ? "#ff4444" : colors.border }]}
+                onPress={() => setShowPortPicker(true)}
+              >
+                <Text style={[styles.pickerButtonText, { color: formData.selectedPort ? theme.colors.text : colors.textSecondary }]}>
+                  {formData.selectedPort
+                    ? `${formData.selectedPort.name}, ${formData.selectedPort.city}, ${formData.selectedPort.country}`
+                    : t.becomeAgent.selectPort}
+                </Text>
+                <IconSymbol
+                  ios_icon_name="chevron.down"
+                  android_material_icon_name="expand_more"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              {errors.port && <Text style={styles.errorText}>{errors.port}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.activities} *
+              </Text>
+              <TouchableOpacity
+                style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: errors.activities ? "#ff4444" : colors.border }]}
+                onPress={() => setShowActivityPicker(true)}
+              >
+                <Text style={[styles.pickerButtonText, { color: formData.selectedActivities.length > 0 ? theme.colors.text : colors.textSecondary }]}>
+                  {formData.selectedActivities.length > 0
+                    ? `${formData.selectedActivities.length} selected`
+                    : t.becomeAgent.selectActivities}
+                </Text>
+                <IconSymbol
+                  ios_icon_name="chevron.down"
+                  android_material_icon_name="expand_more"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              {errors.activities && <Text style={styles.errorText}>{errors.activities}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.yearsExperience} *
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: errors.yearsExperience ? "#ff4444" : colors.border }]}
+                placeholder="5"
+                placeholderTextColor={colors.textSecondary}
+                value={formData.yearsExperience}
+                onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
+                keyboardType="number-pad"
+              />
+              {errors.yearsExperience && <Text style={styles.errorText}>{errors.yearsExperience}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.certifications}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.certificationsPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.certifications}
+                onChangeText={(text) => setFormData({ ...formData, certifications: text })}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                {t.becomeAgent.message}
+              </Text>
+              <TextInput
+                style={[styles.textArea, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: colors.border }]}
+                placeholder={t.becomeAgent.messagePlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={formData.message}
+                onChangeText={(text) => setFormData({ ...formData, message: text })}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: colors.accent, opacity: loading ? 0.6 : 1 }]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <React.Fragment>
+                <Text style={styles.submitButtonText}>
+                  {loading ? t.becomeAgent.submitting : t.becomeAgent.submitApplication}
+                </Text>
+                <IconSymbol
+                  ios_icon_name="paperplane.fill"
+                  android_material_icon_name="send"
+                  size={20}
+                  color="#ffffff"
+                />
+              </React.Fragment>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Port Picker Modal */}
+        <Modal
+          visible={showPortPicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPortPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  {t.becomeAgent.selectPort}
+                </Text>
+                <TouchableOpacity onPress={() => setShowPortPicker(false)}>
+                  <IconSymbol
+                    ios_icon_name="xmark"
+                    android_material_icon_name="close"
+                    size={24}
+                    color={theme.colors.text}
+                  />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={[styles.searchInput, { backgroundColor: theme.colors.background, color: theme.colors.text }]}
+                placeholder={t.becomeAgent.searchPort}
+                placeholderTextColor={colors.textSecondary}
+                value={portSearchQuery}
+                onChangeText={setPortSearchQuery}
+              />
+              <ScrollView style={styles.modalList}>
+                {filteredPorts.map((port, index) => (
+                  <React.Fragment key={port.id}>
+                    <TouchableOpacity
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setFormData({ ...formData, selectedPort: port });
+                        setShowPortPicker(false);
+                        setPortSearchQuery("");
+                      }}
+                    >
+                      <Text style={[styles.modalItemText, { color: theme.colors.text }]}>
+                        {port.name}, {port.city}, {port.country}
+                      </Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Activity Picker Modal */}
+        <Modal
+          visible={showActivityPicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowActivityPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  {t.becomeAgent.selectActivities}
+                </Text>
+                <TouchableOpacity onPress={() => setShowActivityPicker(false)}>
+                  <IconSymbol
+                    ios_icon_name="xmark"
+                    android_material_icon_name="close"
+                    size={24}
+                    color={theme.colors.text}
+                  />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {activityOptions.map((activity, index) => (
+                  <React.Fragment key={activity.value}>
+                    <TouchableOpacity
+                      style={styles.checkboxItem}
+                      onPress={() => toggleActivity(activity.value)}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          {
+                            backgroundColor: formData.selectedActivities.includes(activity.value)
+                              ? colors.accent
+                              : "transparent",
+                            borderColor: formData.selectedActivities.includes(activity.value)
+                              ? colors.accent
+                              : colors.border,
+                          },
+                        ]}
+                      >
+                        {formData.selectedActivities.includes(activity.value) && (
+                          <IconSymbol
+                            ios_icon_name="checkmark"
+                            android_material_icon_name="check"
+                            size={16}
+                            color="#ffffff"
+                          />
+                        )}
+                      </View>
+                      <Text style={[styles.checkboxLabel, { color: theme.colors.text }]}>
+                        {activity.label}
+                      </Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -174,7 +717,7 @@ export default function BecomeAgentScreen() {
         <View style={styles.ctaSection}>
           <TouchableOpacity
             style={[styles.applyButton, { backgroundColor: colors.accent }]}
-            onPress={() => console.log('Apply pressed')}
+            onPress={() => setShowForm(true)}
           >
             <Text style={styles.applyButtonText}>{t.becomeAgent.apply}</Text>
             <IconSymbol
@@ -215,6 +758,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 120,
+  },
+  formScrollContent: {
+    paddingBottom: 140,
   },
   heroSection: {
     alignItems: 'center',
@@ -316,5 +862,135 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  formSection: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  formSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    minHeight: 100,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  submitButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  searchInput: {
+    marginHorizontal: 20,
+    marginVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 16,
+  },
+  modalList: {
+    flex: 1,
+  },
+  modalItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalItemText: {
+    fontSize: 16,
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    flex: 1,
   },
 });

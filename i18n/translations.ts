@@ -105,6 +105,39 @@ export interface Translations {
     subtitle: string;
     benefits: string;
     apply: string;
+    applicationForm: string;
+    companyInfo: string;
+    companyName: string;
+    companyNamePlaceholder: string;
+    contactName: string;
+    contactNamePlaceholder: string;
+    email: string;
+    emailPlaceholder: string;
+    phone: string;
+    phonePlaceholder: string;
+    whatsapp: string;
+    whatsappPlaceholder: string;
+    website: string;
+    websitePlaceholder: string;
+    portSelection: string;
+    selectPort: string;
+    searchPort: string;
+    activities: string;
+    selectActivities: string;
+    yearsExperience: string;
+    certifications: string;
+    certificationsPlaceholder: string;
+    message: string;
+    messagePlaceholder: string;
+    submitApplication: string;
+    submitting: string;
+    successTitle: string;
+    successMessage: string;
+    errorTitle: string;
+    errorMessage: string;
+    requiredField: string;
+    invalidEmail: string;
+    selectAtLeastOne: string;
   };
   clientSpace: {
     title: string;
@@ -275,6 +308,39 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'Rejoignez notre réseau',
       benefits: 'Avantages',
       apply: 'Postuler',
+      applicationForm: 'Formulaire de candidature',
+      companyInfo: 'Informations sur l\'entreprise',
+      companyName: 'Nom de l\'entreprise',
+      companyNamePlaceholder: 'Entrez le nom de votre entreprise',
+      contactName: 'Nom du contact',
+      contactNamePlaceholder: 'Votre nom complet',
+      email: 'Email',
+      emailPlaceholder: 'votre@email.com',
+      phone: 'Téléphone',
+      phonePlaceholder: '+33 6 12 34 56 78',
+      whatsapp: 'WhatsApp (optionnel)',
+      whatsappPlaceholder: '+33 6 12 34 56 78',
+      website: 'Site web (optionnel)',
+      websitePlaceholder: 'https://www.votresite.com',
+      portSelection: 'Sélection du port',
+      selectPort: 'Sélectionnez un port',
+      searchPort: 'Rechercher un port...',
+      activities: 'Activités',
+      selectActivities: 'Sélectionnez vos activités',
+      yearsExperience: 'Années d\'expérience',
+      certifications: 'Certifications (optionnel)',
+      certificationsPlaceholder: 'ISO 9001, IATA, etc.',
+      message: 'Message (optionnel)',
+      messagePlaceholder: 'Parlez-nous de votre entreprise et de votre expérience...',
+      submitApplication: 'Soumettre la candidature',
+      submitting: 'Envoi en cours...',
+      successTitle: 'Candidature envoyée !',
+      successMessage: 'Merci pour votre candidature. Notre équipe vous contactera sous 3-5 jours ouvrables.',
+      errorTitle: 'Erreur',
+      errorMessage: 'Une erreur s\'est produite lors de l\'envoi de votre candidature. Veuillez réessayer.',
+      requiredField: 'Ce champ est requis',
+      invalidEmail: 'Email invalide',
+      selectAtLeastOne: 'Sélectionnez au moins une activité',
     },
     clientSpace: {
       title: 'Espace Client',
@@ -443,6 +509,39 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'Join our network',
       benefits: 'Benefits',
       apply: 'Apply',
+      applicationForm: 'Application Form',
+      companyInfo: 'Company Information',
+      companyName: 'Company Name',
+      companyNamePlaceholder: 'Enter your company name',
+      contactName: 'Contact Name',
+      contactNamePlaceholder: 'Your full name',
+      email: 'Email',
+      emailPlaceholder: 'your@email.com',
+      phone: 'Phone',
+      phonePlaceholder: '+1 234 567 8900',
+      whatsapp: 'WhatsApp (optional)',
+      whatsappPlaceholder: '+1 234 567 8900',
+      website: 'Website (optional)',
+      websitePlaceholder: 'https://www.yourwebsite.com',
+      portSelection: 'Port Selection',
+      selectPort: 'Select a port',
+      searchPort: 'Search for a port...',
+      activities: 'Activities',
+      selectActivities: 'Select your activities',
+      yearsExperience: 'Years of Experience',
+      certifications: 'Certifications (optional)',
+      certificationsPlaceholder: 'ISO 9001, IATA, etc.',
+      message: 'Message (optional)',
+      messagePlaceholder: 'Tell us about your company and experience...',
+      submitApplication: 'Submit Application',
+      submitting: 'Submitting...',
+      successTitle: 'Application Submitted!',
+      successMessage: 'Thank you for your application. Our team will contact you within 3-5 business days.',
+      errorTitle: 'Error',
+      errorMessage: 'An error occurred while submitting your application. Please try again.',
+      requiredField: 'This field is required',
+      invalidEmail: 'Invalid email',
+      selectAtLeastOne: 'Select at least one activity',
     },
     clientSpace: {
       title: 'Client Space',
@@ -611,6 +710,39 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'Únete a nuestra red',
       benefits: 'Beneficios',
       apply: 'Aplicar',
+      applicationForm: 'Formulario de Solicitud',
+      companyInfo: 'Información de la Empresa',
+      companyName: 'Nombre de la Empresa',
+      companyNamePlaceholder: 'Ingrese el nombre de su empresa',
+      contactName: 'Nombre de Contacto',
+      contactNamePlaceholder: 'Su nombre completo',
+      email: 'Correo Electrónico',
+      emailPlaceholder: 'su@email.com',
+      phone: 'Teléfono',
+      phonePlaceholder: '+34 612 345 678',
+      whatsapp: 'WhatsApp (opcional)',
+      whatsappPlaceholder: '+34 612 345 678',
+      website: 'Sitio Web (opcional)',
+      websitePlaceholder: 'https://www.suempresa.com',
+      portSelection: 'Selección de Puerto',
+      selectPort: 'Seleccione un puerto',
+      searchPort: 'Buscar un puerto...',
+      activities: 'Actividades',
+      selectActivities: 'Seleccione sus actividades',
+      yearsExperience: 'Años de Experiencia',
+      certifications: 'Certificaciones (opcional)',
+      certificationsPlaceholder: 'ISO 9001, IATA, etc.',
+      message: 'Mensaje (opcional)',
+      messagePlaceholder: 'Cuéntenos sobre su empresa y experiencia...',
+      submitApplication: 'Enviar Solicitud',
+      submitting: 'Enviando...',
+      successTitle: '¡Solicitud Enviada!',
+      successMessage: 'Gracias por su solicitud. Nuestro equipo se pondrá en contacto con usted en 3-5 días hábiles.',
+      errorTitle: 'Error',
+      errorMessage: 'Ocurrió un error al enviar su solicitud. Por favor, inténtelo de nuevo.',
+      requiredField: 'Este campo es obligatorio',
+      invalidEmail: 'Correo electrónico inválido',
+      selectAtLeastOne: 'Seleccione al menos una actividad',
     },
     clientSpace: {
       title: 'Espacio Cliente',
@@ -779,6 +911,39 @@ export const translations: Record<Language, Translations> = {
       subtitle: 'انضم إلى شبكتنا',
       benefits: 'الفوائد',
       apply: 'تقديم الطلب',
+      applicationForm: 'نموذج الطلب',
+      companyInfo: 'معلومات الشركة',
+      companyName: 'اسم الشركة',
+      companyNamePlaceholder: 'أدخل اسم شركتك',
+      contactName: 'اسم جهة الاتصال',
+      contactNamePlaceholder: 'اسمك الكامل',
+      email: 'البريد الإلكتروني',
+      emailPlaceholder: 'your@email.com',
+      phone: 'الهاتف',
+      phonePlaceholder: '+966 50 123 4567',
+      whatsapp: 'واتساب (اختياري)',
+      whatsappPlaceholder: '+966 50 123 4567',
+      website: 'الموقع الإلكتروني (اختياري)',
+      websitePlaceholder: 'https://www.yourwebsite.com',
+      portSelection: 'اختيار الميناء',
+      selectPort: 'اختر ميناء',
+      searchPort: 'البحث عن ميناء...',
+      activities: 'الأنشطة',
+      selectActivities: 'اختر أنشطتك',
+      yearsExperience: 'سنوات الخبرة',
+      certifications: 'الشهادات (اختياري)',
+      certificationsPlaceholder: 'ISO 9001, IATA, إلخ.',
+      message: 'رسالة (اختياري)',
+      messagePlaceholder: 'أخبرنا عن شركتك وخبرتك...',
+      submitApplication: 'إرسال الطلب',
+      submitting: 'جاري الإرسال...',
+      successTitle: 'تم إرسال الطلب!',
+      successMessage: 'شكراً لطلبك. سيتصل بك فريقنا خلال 3-5 أيام عمل.',
+      errorTitle: 'خطأ',
+      errorMessage: 'حدث خطأ أثناء إرسال طلبك. يرجى المحاولة مرة أخرى.',
+      requiredField: 'هذا الحقل مطلوب',
+      invalidEmail: 'بريد إلكتروني غير صالح',
+      selectAtLeastOne: 'اختر نشاطاً واحداً على الأقل',
     },
     clientSpace: {
       title: 'مساحة العميل',
