@@ -311,6 +311,7 @@ export type Database = {
           payment_provider: string | null
           payment_reference: string | null
           notes: string | null
+          status: string
           created_at: string
           updated_at: string
         }
@@ -324,6 +325,7 @@ export type Database = {
           payment_provider?: string | null
           payment_reference?: string | null
           notes?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -337,6 +339,7 @@ export type Database = {
           payment_provider?: string | null
           payment_reference?: string | null
           notes?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -367,6 +370,13 @@ export type Database = {
           client_name: string | null
           created_at: string
           updated_at: string
+          service_id: string | null
+          quote_amount: number | null
+          quote_currency: string
+          payment_status: string
+          client_decision: string | null
+          can_pay_online: boolean
+          ordered_as_shipment: string | null
         }
         Insert: {
           id?: string
@@ -384,6 +394,13 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           updated_at?: string
+          service_id?: string | null
+          quote_amount?: number | null
+          quote_currency?: string
+          payment_status?: string
+          client_decision?: string | null
+          can_pay_online?: boolean
+          ordered_as_shipment?: string | null
         }
         Update: {
           id?: string
@@ -401,6 +418,13 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           updated_at?: string
+          service_id?: string | null
+          quote_amount?: number | null
+          quote_currency?: string
+          payment_status?: string
+          client_decision?: string | null
+          can_pay_online?: boolean
+          ordered_as_shipment?: string | null
         }
         Relationships: [
           {
@@ -423,8 +447,61 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ports"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_quotes_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services_global"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_quotes_ordered_as_shipment_fkey"
+            columns: ["ordered_as_shipment"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
           }
         ]
+      }
+      email_notifications: {
+        Row: {
+          id: string
+          recipient_email: string
+          email_type: string
+          subject: string | null
+          body: string | null
+          metadata: Json | null
+          sent_at: string
+          status: string
+          error_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          recipient_email: string
+          email_type: string
+          subject?: string | null
+          body?: string | null
+          metadata?: Json | null
+          sent_at?: string
+          status?: string
+          error_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recipient_email?: string
+          email_type?: string
+          subject?: string | null
+          body?: string | null
+          metadata?: Json | null
+          sent_at?: string
+          status?: string
+          error_message?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -442,7 +519,7 @@ export type Database = {
       agent_status: "pending" | "validated" | "rejected"
       container_type: "FCL_20DC" | "FCL_40DC" | "FCL_40HC" | "LCL" | "BULK" | "RORO" | "OTHER"
       shipment_status: "draft" | "quote_pending" | "confirmed" | "in_transit" | "at_port" | "delivered" | "on_hold" | "cancelled"
-      plan_type: "basic" | "premium_tracking" | "enterprise_logistics" | "agent_listing"
+      plan_type: "basic" | "premium_tracking" | "enterprise_logistics" | "agent_listing" | "digital_portal"
       freight_quote_status: "received" | "in_progress" | "sent_to_client" | "accepted" | "refused"
     }
     CompositeTypes: {
@@ -626,6 +703,7 @@ export const Constants = {
         premium_tracking: "premium_tracking",
         enterprise_logistics: "enterprise_logistics",
         agent_listing: "agent_listing",
+        digital_portal: "digital_portal",
       },
       freight_quote_status: {
         received: "received",

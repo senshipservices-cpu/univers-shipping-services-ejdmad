@@ -17,6 +17,7 @@ interface SubscriptionAccess {
   hasPremiumTracking: boolean;
   hasEnterpriseLogistics: boolean;
   hasAgentListing: boolean;
+  hasDigitalPortal: boolean;
   hasDigitalPortalAccess: boolean;
   hasFullTrackingAccess: boolean;
   subscription: Subscription | null;
@@ -24,6 +25,15 @@ interface SubscriptionAccess {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Hook to manage subscription access control
+ * 
+ * Portal Access Policy:
+ * The digital portal is accessible only if:
+ * - subscription.plan_type IN ("premium_tracking", "enterprise_logistics", "digital_portal")
+ * - AND subscription.is_active = true
+ * - AND subscription.status = 'active'
+ */
 export function useSubscriptionAccess(): SubscriptionAccess {
   const { user, client } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -82,18 +92,34 @@ export function useSubscriptionAccess(): SubscriptionAccess {
   const hasPremiumTracking = hasActiveSubscription && subscription.plan_type === 'premium_tracking';
   const hasEnterpriseLogistics = hasActiveSubscription && subscription.plan_type === 'enterprise_logistics';
   const hasAgentListing = hasActiveSubscription && subscription.plan_type === 'agent_listing';
+  const hasDigitalPortal = hasActiveSubscription && subscription.plan_type === 'digital_portal';
   
-  // Digital portal access: premium_tracking OR enterprise_logistics
-  const hasDigitalPortalAccess = hasPremiumTracking || hasEnterpriseLogistics;
+  /**
+   * Digital Portal Access Policy:
+   * Access is granted if the user has an active subscription with one of these plan types:
+   * - premium_tracking
+   * - enterprise_logistics
+   * - digital_portal
+   */
+  const hasDigitalPortalAccess = hasActiveSubscription && (
+    subscription.plan_type === 'premium_tracking' ||
+    subscription.plan_type === 'enterprise_logistics' ||
+    subscription.plan_type === 'digital_portal'
+  );
   
-  // Full tracking access: premium_tracking OR enterprise_logistics
-  const hasFullTrackingAccess = hasPremiumTracking || hasEnterpriseLogistics;
+  // Full tracking access: premium_tracking OR enterprise_logistics OR digital_portal
+  const hasFullTrackingAccess = hasActiveSubscription && (
+    subscription.plan_type === 'premium_tracking' ||
+    subscription.plan_type === 'enterprise_logistics' ||
+    subscription.plan_type === 'digital_portal'
+  );
 
   return {
     hasActiveSubscription,
     hasPremiumTracking,
     hasEnterpriseLogistics,
     hasAgentListing,
+    hasDigitalPortal,
     hasDigitalPortalAccess,
     hasFullTrackingAccess,
     subscription,
