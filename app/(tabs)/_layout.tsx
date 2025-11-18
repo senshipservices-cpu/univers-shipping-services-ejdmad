@@ -2,8 +2,12 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+
+  // Define tabs based on authentication status
   const tabs: TabBarItem[] = [
     {
       name: '(home)',
@@ -33,13 +37,19 @@ export default function TabLayout() {
       name: 'become-agent',
       route: '/(tabs)/become-agent',
       icon: 'handshake',
-      label: 'Agent',
+      label: 'Devenir agent',
     },
-    {
+    // Conditional tab based on authentication
+    user ? {
+      name: 'client-dashboard',
+      route: '/(tabs)/client-dashboard',
+      icon: 'dashboard',
+      label: 'Mon espace',
+    } : {
       name: 'client-space',
       route: '/(tabs)/client-space',
       icon: 'person',
-      label: 'Client',
+      label: 'Connexion',
     },
   ];
 
@@ -57,7 +67,11 @@ export default function TabLayout() {
         <Stack.Screen key="pricing" name="pricing" />
         <Stack.Screen key="become-agent" name="become-agent" />
         <Stack.Screen key="client-space" name="client-space" />
+        <Stack.Screen key="client-dashboard" name="client-dashboard" />
+        <Stack.Screen key="shipment-detail" name="shipment-detail" />
+        <Stack.Screen key="client-profile" name="client-profile" />
         <Stack.Screen key="profile" name="profile" />
+        <Stack.Screen key="test-signup" name="test-signup" />
       </Stack>
       <FloatingTabBar tabs={tabs} containerWidth={420} />
     </>

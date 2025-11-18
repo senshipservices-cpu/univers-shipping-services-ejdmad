@@ -1,8 +1,11 @@
 
 import React from 'react';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger key="home" name="(home)">
@@ -23,12 +26,19 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="become-agent" name="become-agent">
         <Icon sf="person.badge.plus.fill" />
-        <Label>Agent</Label>
+        <Label>Devenir agent</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="client-space" name="client-space">
-        <Icon sf="person.circle.fill" />
-        <Label>Client</Label>
-      </NativeTabs.Trigger>
+      {user ? (
+        <NativeTabs.Trigger key="client-dashboard" name="client-dashboard">
+          <Icon sf="square.grid.2x2.fill" />
+          <Label>Mon espace</Label>
+        </NativeTabs.Trigger>
+      ) : (
+        <NativeTabs.Trigger key="client-space" name="client-space">
+          <Icon sf="person.circle.fill" />
+          <Label>Connexion</Label>
+        </NativeTabs.Trigger>
+      )}
     </NativeTabs>
   );
 }

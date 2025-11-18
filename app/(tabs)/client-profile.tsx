@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -39,12 +39,15 @@ export default function ClientProfileScreen() {
     sector: '',
   });
 
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
+
   useEffect(() => {
-    if (!user) {
-      router.replace('/(tabs)/client-space');
-      return;
+    if (user) {
+      loadProfile();
     }
-    loadProfile();
   }, [user]);
 
   const loadProfile = async () => {

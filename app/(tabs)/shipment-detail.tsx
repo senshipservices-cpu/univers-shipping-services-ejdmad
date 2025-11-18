@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -46,13 +46,9 @@ export default function ShipmentDetailScreen() {
   const [clientId, setClientId] = useState<string | null>(null);
 
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!user) {
-      console.log('User not authenticated, redirecting to client-space');
-      router.replace('/(tabs)/client-space');
-      return;
-    }
-  }, [user, router]);
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
 
   useEffect(() => {
     if (user && (id || shipment_id)) {

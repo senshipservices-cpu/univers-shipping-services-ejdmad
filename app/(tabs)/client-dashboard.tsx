@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl, ActivityIndicator, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -53,20 +53,17 @@ export default function ClientDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, client: authClient } = useAuth();
+  const { user, client: authClient, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
-  // Check authentication and redirect if needed
-  useEffect(() => {
-    if (!user) {
-      console.log('User not authenticated, redirecting to client-space');
-      router.replace('/(tabs)/client-space');
-    }
-  }, [user, router]);
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -148,6 +145,27 @@ export default function ClientDashboardScreen() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Déconnexion',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/(tabs)/(home)/');
+          },
+        },
+      ]
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'delivered':
@@ -199,6 +217,14 @@ export default function ClientDashboardScreen() {
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
             {t('clientSpace.dashboard')}
           </Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <IconSymbol
+              ios_icon_name="rectangle.portrait.and.arrow.right"
+              android_material_icon_name="logout"
+              size={24}
+              color={colors.error}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -218,6 +244,14 @@ export default function ClientDashboardScreen() {
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
             {t('clientSpace.dashboard')}
           </Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <IconSymbol
+              ios_icon_name="rectangle.portrait.and.arrow.right"
+              android_material_icon_name="logout"
+              size={24}
+              color={colors.error}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.emptyStateContainer}>
           <IconSymbol
@@ -250,6 +284,14 @@ export default function ClientDashboardScreen() {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
           {t('clientSpace.dashboard')}
         </Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <IconSymbol
+            ios_icon_name="rectangle.portrait.and.arrow.right"
+            android_material_icon_name="logout"
+            size={24}
+            color={colors.error}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -547,6 +589,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
+  },
+  logoutButton: {
+    padding: 8,
   },
   scrollView: {
     flex: 1,
