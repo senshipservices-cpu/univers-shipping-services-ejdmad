@@ -46,6 +46,13 @@ interface ShipmentWithDocuments extends Shipment {
   documents: ShipmentDocument[];
 }
 
+interface Statistics {
+  quotesTotal: number;
+  shipmentsTotal: number;
+  shipmentsInProgress: number;
+  shipmentsDelivered: number;
+}
+
 export default function DigitalPortalScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -59,6 +66,13 @@ export default function DigitalPortalScreen() {
   const [documentsGroupedByShipment, setDocumentsGroupedByShipment] = useState<Record<string, ShipmentDocument[]>>({});
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<Statistics>({
+    quotesTotal: 0,
+    shipmentsTotal: 0,
+    shipmentsInProgress: 0,
+    shipmentsDelivered: 0,
+  });
+  const [loadingStatistics, setLoadingStatistics] = useState(false);
 
   useEffect(() => {
     console.log('Digital Portal - Access Check:', {
@@ -179,6 +193,78 @@ export default function DigitalPortalScreen() {
     }
   }, [client]);
 
+  // Load statistics for the logged-in client
+  const loadStatistics = useCallback(async () => {
+    if (!client?.id) {
+      console.log('No client ID available for statistics');
+      return;
+    }
+
+    try {
+      setLoadingStatistics(true);
+
+      // Fetch total freight quotes
+      const { count: quotesCount, error: quotesError } = await supabase
+        .from('freight_quotes')
+        .select('*', { count: 'exact', head: true })
+        .eq('client', client.id);
+
+      if (quotesError) {
+        console.error('Error fetching quotes:', quotesError);
+      }
+
+      // Fetch total shipments
+      const { count: shipmentsCount, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .eq('client', client.id);
+
+      if (shipmentsError) {
+        console.error('Error fetching shipments:', shipmentsError);
+      }
+
+      // Fetch shipments in progress (not delivered)
+      const { count: inProgressCount, error: inProgressError } = await supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .eq('client', client.id)
+        .neq('current_status', 'delivered');
+
+      if (inProgressError) {
+        console.error('Error fetching in progress shipments:', inProgressError);
+      }
+
+      // Fetch delivered shipments
+      const { count: deliveredCount, error: deliveredError } = await supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .eq('client', client.id)
+        .eq('current_status', 'delivered');
+
+      if (deliveredError) {
+        console.error('Error fetching delivered shipments:', deliveredError);
+      }
+
+      setStatistics({
+        quotesTotal: quotesCount || 0,
+        shipmentsTotal: shipmentsCount || 0,
+        shipmentsInProgress: inProgressCount || 0,
+        shipmentsDelivered: deliveredCount || 0,
+      });
+
+      console.log('Statistics loaded:', {
+        quotesTotal: quotesCount || 0,
+        shipmentsTotal: shipmentsCount || 0,
+        shipmentsInProgress: inProgressCount || 0,
+        shipmentsDelivered: deliveredCount || 0,
+      });
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+    } finally {
+      setLoadingStatistics(false);
+    }
+  }, [client]);
+
   // Download document function
   const downloadDocument = useCallback(async (document: ShipmentDocument) => {
     try {
@@ -218,14 +304,16 @@ export default function DigitalPortalScreen() {
     if (user && client && hasDigitalPortalAccess && !subscriptionLoading) {
       loadShipments();
       loadDocuments();
+      loadStatistics();
     }
-  }, [user, client, hasDigitalPortalAccess, subscriptionLoading, loadShipments, loadDocuments]);
+  }, [user, client, hasDigitalPortalAccess, subscriptionLoading, loadShipments, loadDocuments, loadStatistics]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadShipments();
     loadDocuments();
-  }, [loadShipments, loadDocuments]);
+    loadStatistics();
+  }, [loadShipments, loadDocuments, loadStatistics]);
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
@@ -685,6 +773,112 @@ export default function DigitalPortalScreen() {
                   </View>
                 );
               })}
+            </View>
+          )}
+        </View>
+
+        {/* MODULE 3 - Rapports & statistiques */}
+        <View style={styles.section}>
+          <View style={styles.moduleTitleContainer}>
+            <View style={[styles.moduleNumber, { backgroundColor: colors.accent }]}>
+              <Text style={styles.moduleNumberText}>3</Text>
+            </View>
+            <Text style={[styles.moduleTitle, { color: theme.colors.text }]}>
+              Rapports & Statistiques
+            </Text>
+          </View>
+          <Text style={[styles.moduleSubtitle, { color: colors.textSecondary }]}>
+            Vue d&apos;ensemble de vos activités en temps réel
+          </Text>
+
+          {loadingStatistics ? (
+            <View style={styles.loadingShipmentsContainer}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+                Chargement des statistiques...
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.statsGrid}>
+              {/* Total Shipments */}
+              <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
+                  <IconSymbol
+                    ios_icon_name="shippingbox.fill"
+                    android_material_icon_name="local_shipping"
+                    size={32}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                    {statistics.shipmentsTotal}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Total Shipments
+                  </Text>
+                </View>
+              </View>
+
+              {/* Shipments en cours */}
+              <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.secondary + '20' }]}>
+                  <IconSymbol
+                    ios_icon_name="arrow.triangle.2.circlepath"
+                    android_material_icon_name="sync"
+                    size={32}
+                    color={colors.secondary}
+                  />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                    {statistics.shipmentsInProgress}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Shipments en cours
+                  </Text>
+                </View>
+              </View>
+
+              {/* Freight Quotes */}
+              <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '20' }]}>
+                  <IconSymbol
+                    ios_icon_name="doc.text.fill"
+                    android_material_icon_name="description"
+                    size={32}
+                    color={colors.accent}
+                  />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                    {statistics.quotesTotal}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Freight Quotes
+                  </Text>
+                </View>
+              </View>
+
+              {/* Shipments Livrés */}
+              <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.success + '20' }]}>
+                  <IconSymbol
+                    ios_icon_name="checkmark.circle.fill"
+                    android_material_icon_name="check_circle"
+                    size={32}
+                    color={colors.success}
+                  />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                    {statistics.shipmentsDelivered}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Shipments Livrés
+                  </Text>
+                </View>
+              </View>
             </View>
           )}
         </View>
@@ -1170,6 +1364,39 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 16,
+  },
+  statsGrid: {
+    gap: 16,
+  },
+  statCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 16,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+  },
+  statIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statContent: {
+    flex: 1,
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
+  statLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   featuresGrid: {
     gap: 16,
