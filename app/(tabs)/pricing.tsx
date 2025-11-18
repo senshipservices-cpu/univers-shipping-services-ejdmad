@@ -124,6 +124,7 @@ export default function PricingScreen() {
 
     switch (action) {
       case 'basic':
+        // Basic plan - redirect to client space or dashboard
         if (isAuthenticated) {
           router.push('/client-dashboard');
         } else {
@@ -132,21 +133,17 @@ export default function PricingScreen() {
         break;
 
       case 'premium':
-        if (isAuthenticated) {
-          router.push('/client-dashboard');
-        } else {
-          router.push('/client-space');
-        }
+        // Premium Tracking - redirect to subscription confirmation
+        router.push('/subscription-confirm?plan=premium_tracking');
         break;
 
       case 'enterprise':
-        // Navigate to contact page or show contact information
-        console.log('Navigate to contact page');
-        // TODO: Create contact page or show contact modal
+        // Enterprise Logistics - redirect to contact page
+        router.push('/contact');
         break;
 
       case 'agent':
-        // Navigate directly to become-agent page
+        // Agent Listing - redirect to become-agent page
         router.push('/become-agent');
         break;
 

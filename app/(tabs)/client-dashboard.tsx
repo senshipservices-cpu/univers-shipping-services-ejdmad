@@ -6,6 +6,7 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 
@@ -41,24 +42,16 @@ interface Shipment {
   last_update: string | null;
 }
 
-interface Subscription {
-  id: string;
-  plan_type: string;
-  start_date: string;
-  end_date: string | null;
-  is_active: boolean;
-}
-
 export default function ClientDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
   const { user, client: authClient, signOut } = useAuth();
+  const subscriptionAccess = useSubscriptionAccess();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -79,7 +72,6 @@ export default function ClientDashboardScreen() {
 
       if (clientError) {
         console.error('Error loading client profile:', clientError);
-        // If no client profile exists, show message
         if (clientError.code === 'PGRST116') {
           setClientProfile(null);
           setLoading(false);
@@ -106,19 +98,6 @@ export default function ClientDashboardScreen() {
         } else {
           setShipments(shipmentsData || []);
         }
-
-        // Load active subscriptions for this client
-        const { data: subscriptionsData, error: subscriptionsError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('client', clientData.id)
-          .eq('is_active', true);
-
-        if (subscriptionsError) {
-          console.error('Error loading subscriptions:', subscriptionsError);
-        } else {
-          setSubscriptions(subscriptionsData || []);
-        }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -138,7 +117,8 @@ export default function ClientDashboardScreen() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadDashboardData();
-  }, [loadDashboardData]);
+    subscriptionAccess.refresh();
+  }, [loadDashboardData, subscriptionAccess]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert(
@@ -203,6 +183,29 @@ export default function ClientDashboardScreen() {
       day: 'numeric' 
     });
   }, []);
+
+  const handleShipmentClick = (shipmentId: string) => {
+    // Check if user has access to full tracking
+    if (!subscriptionAccess.hasFullTrackingAccess) {
+      Alert.alert(
+        'Accès limité',
+        'Le suivi détaillé des expéditions nécessite un abonnement Premium Tracking ou Enterprise Logistics.\n\nVoulez-vous découvrir nos plans ?',
+        [
+          {
+            text: 'Voir les plans',
+            onPress: () => router.push('/(tabs)/pricing'),
+          },
+          {
+            text: 'Annuler',
+            style: 'cancel',
+          },
+        ]
+      );
+      return;
+    }
+
+    router.push(`/(tabs)/shipment-detail?id=${shipmentId}`);
+  };
 
   // Redirect if not authenticated
   if (!user) {
@@ -353,13 +356,79 @@ export default function ClientDashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* My Subscriptions Section */}
+        {/* Subscription Status Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Mes abonnements
+            Mon abonnement
           </Text>
           
-          {subscriptions.length === 0 ? (
+          {subscriptionAccess.loading ? (
+            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.emptyCardText, { color: theme.colors.text }]}>
+                Chargement...
+              </Text>
+            </View>
+          ) : subscriptionAccess.hasActiveSubscription && subscriptionAccess.subscription ? (
+            <View style={[styles.subscriptionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={styles.subscriptionHeader}>
+                <View style={[styles.planBadge, { backgroundColor: colors.primary + '20' }]}>
+                  <IconSymbol
+                    ios_icon_name="star.fill"
+                    android_material_icon_name="star"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.planType, { color: colors.primary }]}>
+                    {formatPlanType(subscriptionAccess.subscription.plan_type)}
+                  </Text>
+                </View>
+                <View style={[styles.activeBadge, { backgroundColor: '#10b981' + '20' }]}>
+                  <Text style={[styles.activeText, { color: '#10b981' }]}>Actif</Text>
+                </View>
+              </View>
+              <View style={styles.subscriptionDates}>
+                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                  Début : {formatDate(subscriptionAccess.subscription.start_date)}
+                </Text>
+                {subscriptionAccess.subscription.end_date && (
+                  <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                    Fin : {formatDate(subscriptionAccess.subscription.end_date)}
+                  </Text>
+                )}
+              </View>
+              
+              {/* Access Features */}
+              <View style={styles.accessFeatures}>
+                {subscriptionAccess.hasDigitalPortalAccess && (
+                  <View style={styles.accessFeature}>
+                    <IconSymbol
+                      ios_icon_name="checkmark.circle.fill"
+                      android_material_icon_name="check_circle"
+                      size={16}
+                      color={colors.success}
+                    />
+                    <Text style={[styles.accessFeatureText, { color: theme.colors.text }]}>
+                      Accès au portail digital
+                    </Text>
+                  </View>
+                )}
+                {subscriptionAccess.hasFullTrackingAccess && (
+                  <View style={styles.accessFeature}>
+                    <IconSymbol
+                      ios_icon_name="checkmark.circle.fill"
+                      android_material_icon_name="check_circle"
+                      size={16}
+                      color={colors.success}
+                    />
+                    <Text style={[styles.accessFeatureText, { color: theme.colors.text }]}>
+                      Suivi complet des expéditions
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : (
             <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
               <IconSymbol
                 ios_icon_name="star.circle"
@@ -368,10 +437,10 @@ export default function ClientDashboardScreen() {
                 color={colors.textSecondary}
               />
               <Text style={[styles.emptyCardText, { color: theme.colors.text }]}>
-                Vous n&apos;avez pas encore d&apos;abonnement actif.
+                Mode Basic - Accès limité
               </Text>
               <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>
-                Consultez la page Pricing pour découvrir nos plans.
+                Passez à Premium Tracking ou Enterprise Logistics pour un accès complet au tracking et au portail digital.
               </Text>
               <TouchableOpacity
                 style={[styles.secondaryButton, { borderColor: colors.primary }]}
@@ -381,42 +450,6 @@ export default function ClientDashboardScreen() {
                   Voir les plans
                 </Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.subscriptionsContainer}>
-              {subscriptions.map((subscription, index) => (
-                <View
-                  key={index}
-                  style={[styles.subscriptionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-                >
-                  <View style={styles.subscriptionHeader}>
-                    <View style={[styles.planBadge, { backgroundColor: colors.primary + '20' }]}>
-                      <IconSymbol
-                        ios_icon_name="star.fill"
-                        android_material_icon_name="star"
-                        size={16}
-                        color={colors.primary}
-                      />
-                      <Text style={[styles.planType, { color: colors.primary }]}>
-                        {formatPlanType(subscription.plan_type)}
-                      </Text>
-                    </View>
-                    <View style={[styles.activeBadge, { backgroundColor: '#10b981' + '20' }]}>
-                      <Text style={[styles.activeText, { color: '#10b981' }]}>Actif</Text>
-                    </View>
-                  </View>
-                  <View style={styles.subscriptionDates}>
-                    <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                      Début : {formatDate(subscription.start_date)}
-                    </Text>
-                    {subscription.end_date && (
-                      <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                        Fin : {formatDate(subscription.end_date)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              ))}
             </View>
           )}
         </View>
@@ -455,7 +488,7 @@ export default function ClientDashboardScreen() {
                 <TouchableOpacity
                   key={index}
                   style={[styles.shipmentCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-                  onPress={() => router.push(`/(tabs)/shipment-detail?id=${shipment.id}`)}
+                  onPress={() => handleShipmentClick(shipment.id)}
                 >
                   <View style={styles.shipmentHeader}>
                     <View style={styles.shipmentInfo}>
@@ -516,9 +549,23 @@ export default function ClientDashboardScreen() {
                     </View>
                   )}
 
+                  {!subscriptionAccess.hasFullTrackingAccess && (
+                    <View style={[styles.lockBadge, { backgroundColor: colors.warning + '20' }]}>
+                      <IconSymbol
+                        ios_icon_name="lock.fill"
+                        android_material_icon_name="lock"
+                        size={12}
+                        color={colors.warning}
+                      />
+                      <Text style={[styles.lockText, { color: colors.warning }]}>
+                        Détails limités - Passez à Premium
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={styles.shipmentFooter}>
                     <Text style={[styles.detailLink, { color: colors.primary }]}>
-                      Voir le détail →
+                      {subscriptionAccess.hasFullTrackingAccess ? 'Voir le détail →' : 'Voir les plans →'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -535,9 +582,7 @@ export default function ClientDashboardScreen() {
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => {
-                Alert.alert('Demander un devis', 'Cette fonctionnalité sera bientôt disponible.');
-              }}
+              onPress={() => router.push('/(tabs)/freight-quote')}
             >
               <IconSymbol
                 ios_icon_name="doc.text"
@@ -552,9 +597,7 @@ export default function ClientDashboardScreen() {
 
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => {
-                Alert.alert('Contacter le support', 'Email: support@3sglobal.com');
-              }}
+              onPress={() => router.push('/(tabs)/contact')}
             >
               <IconSymbol
                 ios_icon_name="envelope"
@@ -719,9 +762,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  subscriptionsContainer: {
-    gap: 12,
-  },
   subscriptionCard: {
     padding: 16,
     borderRadius: 16,
@@ -758,6 +798,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dateLabel: {
+    fontSize: 14,
+  },
+  accessFeatures: {
+    gap: 8,
+    marginTop: 8,
+  },
+  accessFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accessFeatureText: {
     fontSize: 14,
   },
   shipmentsContainer: {
@@ -821,6 +873,19 @@ const styles = StyleSheet.create({
   etaText: {
     fontSize: 13,
     fontStyle: 'italic',
+  },
+  lockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  lockText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   shipmentFooter: {
     paddingTop: 8,
