@@ -717,25 +717,37 @@ export default function AdminDashboardScreen() {
                 <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
                   {agent.company_name}
                 </Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(agent.status) + '20' }]}>
-                  <Text style={[styles.statusText, { color: getStatusColor(agent.status) }]}>
-                    {formatStatus(agent.status)}
-                  </Text>
+                <View style={styles.statusBadgeRow}>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(agent.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(agent.status) }]}>
+                      {formatStatus(agent.status)}
+                    </Text>
+                  </View>
+                  {agent.is_premium_listing && (
+                    <View style={[styles.premiumBadgeSmall, { backgroundColor: '#f59e0b' + '20' }]}>
+                      <IconSymbol
+                        ios_icon_name="star.fill"
+                        android_material_icon_name="star"
+                        size={12}
+                        color="#f59e0b"
+                      />
+                      <Text style={[styles.premiumTextSmall, { color: '#f59e0b' }]}>Premium</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-              {agent.status === 'pending' && (
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                  onPress={() => openAgentStatusModal(agent)}
-                >
-                  <IconSymbol
-                    ios_icon_name="pencil"
-                    android_material_icon_name="edit"
-                    size={16}
-                    color="#FFFFFF"
-                  />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                onPress={() => router.push(`/(tabs)/admin-agent-details?agent_id=${agent.id}`)}
+              >
+                <Text style={[styles.manageButtonText, { color: '#FFFFFF' }]}>Gérer</Text>
+                <IconSymbol
+                  ios_icon_name="arrow.right.circle.fill"
+                  android_material_icon_name="open_in_new"
+                  size={18}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.cardContent}>
@@ -774,7 +786,8 @@ export default function AdminDashboardScreen() {
                     color={colors.textSecondary}
                   />
                   <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                    {agent.activities.join(', ')}
+                    {agent.activities.slice(0, 3).join(', ')}
+                    {agent.activities.length > 3 && ` +${agent.activities.length - 3}`}
                   </Text>
                 </View>
               )}
@@ -791,54 +804,6 @@ export default function AdminDashboardScreen() {
                 </Text>
               </View>
             </View>
-
-            {agent.status === 'pending' && (
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={[styles.validateButton, { backgroundColor: '#10b981' }]}
-                  onPress={() => {
-                    Alert.alert(
-                      'Valider l\'agent',
-                      `Êtes-vous sûr de vouloir valider ${agent.company_name} ?`,
-                      [
-                        { text: 'Annuler', style: 'cancel' },
-                        { text: 'Valider', onPress: () => updateAgentStatus(agent.id, 'validated') },
-                      ]
-                    );
-                  }}
-                >
-                  <IconSymbol
-                    ios_icon_name="checkmark.circle"
-                    android_material_icon_name="check_circle"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.actionButtonText}>Valider</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.rejectButton, { backgroundColor: '#ef4444' }]}
-                  onPress={() => {
-                    Alert.alert(
-                      'Rejeter l\'agent',
-                      `Êtes-vous sûr de vouloir rejeter ${agent.company_name} ?`,
-                      [
-                        { text: 'Annuler', style: 'cancel' },
-                        { text: 'Rejeter', style: 'destructive', onPress: () => updateAgentStatus(agent.id, 'rejected') },
-                      ]
-                    );
-                  }}
-                >
-                  <IconSymbol
-                    ios_icon_name="xmark.circle"
-                    android_material_icon_name="cancel"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.actionButtonText}>Rejeter</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         ))
       )}
@@ -1306,6 +1271,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  statusBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1314,6 +1285,18 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  premiumBadgeSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  premiumTextSmall: {
+    fontSize: 10,
     fontWeight: '600',
   },
   actionButton: {
