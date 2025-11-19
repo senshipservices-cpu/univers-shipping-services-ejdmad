@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Image, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -12,15 +12,18 @@ import { supabase } from "@/app/integrations/supabase/client";
 interface Port {
   id: string;
   name: string;
+  city: string | null;
   country: string;
   region: string;
   is_hub: boolean;
   services_available: string[];
   description_fr: string | null;
   description_en: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
-type RegionFilter = 'all' | 'Afrique' | 'Europe' | 'Asie' | 'Amériques' | 'Moyen-Orient' | 'Océanie';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function PortCoverageScreen() {
   const router = useRouter();
@@ -29,7 +32,6 @@ export default function PortCoverageScreen() {
   const [ports, setPorts] = useState<Port[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('all');
 
   useEffect(() => {
     loadPorts();
@@ -61,23 +63,92 @@ export default function PortCoverageScreen() {
   const filteredPorts = ports.filter(port => {
     const matchesSearch = port.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          port.country.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRegion = selectedRegion === 'all' || port.region === selectedRegion;
-    return matchesSearch && matchesRegion;
+    return matchesSearch;
   });
 
-  const regions: { id: RegionFilter; label: string }[] = [
-    { id: 'all', label: t.portCoverage.allRegions },
-    { id: 'Afrique', label: t.regions.africa },
-    { id: 'Europe', label: t.regions.europe },
-    { id: 'Asie', label: t.regions.asia },
-    { id: 'Amériques', label: t.regions.americas },
-    { id: 'Moyen-Orient', label: t.regions.middleEast },
-    { id: 'Océanie', label: t.regions.oceania },
-  ];
+  // Group ports by region
+  const portsByRegion = {
+    africa: filteredPorts.filter(p => p.region === 'Afrique'),
+    europe: filteredPorts.filter(p => p.region === 'Europe'),
+    asia: filteredPorts.filter(p => p.region === 'Asie' || p.region === 'Moyen-Orient'),
+    americas: filteredPorts.filter(p => p.region === 'Amériques'),
+  };
 
-  // Get port description based on language
-  const getPortDescription = (port: Port) => {
-    return language === 'en' && port.description_en ? port.description_en : port.description_fr;
+  const getRegionTitle = (region: string) => {
+    switch (region) {
+      case 'africa':
+        return language === 'en' ? `Africa (${portsByRegion.africa.length}+ ports)` : `Afrique (${portsByRegion.africa.length}+ ports)`;
+      case 'europe':
+        return language === 'en' ? `Europe (${portsByRegion.europe.length}+ ports)` : `Europe (${portsByRegion.europe.length}+ ports)`;
+      case 'asia':
+        return language === 'en' ? `Asia & Middle East (${portsByRegion.asia.length}+ ports)` : `Asie & Moyen-Orient (${portsByRegion.asia.length}+ ports)`;
+      case 'americas':
+        return language === 'en' ? `Americas (${portsByRegion.americas.length}+ ports)` : `Amériques (${portsByRegion.americas.length}+ ports)`;
+      default:
+        return '';
+    }
+  };
+
+  const getRegionIcon = (region: string) => {
+    switch (region) {
+      case 'africa':
+        return '🌍';
+      case 'europe':
+        return '🇪🇺';
+      case 'asia':
+        return '🌏';
+      case 'americas':
+        return '🌎';
+      default:
+        return '🌐';
+    }
+  };
+
+  const renderPortsByRegion = (region: 'africa' | 'europe' | 'asia' | 'americas') => {
+    const regionPorts = portsByRegion[region];
+    
+    if (regionPorts.length === 0) {
+      return null;
+    }
+
+    return (
+      <View key={region} style={styles.regionSection}>
+        <View style={styles.regionHeader}>
+          <Text style={styles.regionIcon}>{getRegionIcon(region)}</Text>
+          <Text style={[styles.regionTitle, { color: theme.colors.text }]}>
+            {getRegionTitle(region)}
+          </Text>
+        </View>
+
+        <View style={styles.portsGrid}>
+          {regionPorts.map((port, index) => (
+            <React.Fragment key={index}>
+              <TouchableOpacity
+                style={[styles.portMiniCard, { backgroundColor: theme.colors.card }]}
+                onPress={() => router.push(`/port-detail?id=${port.id}`)}
+              >
+                {port.is_hub && (
+                  <View style={[styles.hubBadgeMini, { backgroundColor: colors.accent }]}>
+                    <IconSymbol
+                      ios_icon_name="star.fill"
+                      android_material_icon_name="star"
+                      size={10}
+                      color="#ffffff"
+                    />
+                  </View>
+                )}
+                <Text style={[styles.portMiniName, { color: theme.colors.text }]} numberOfLines={1}>
+                  {port.name}
+                </Text>
+                <Text style={[styles.portMiniCountry, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {port.country}
+                </Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -89,16 +160,92 @@ export default function PortCoverageScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Hero Section */}
         <View style={styles.heroSection}>
-          <IconSymbol
-            ios_icon_name="anchor.fill"
-            android_material_icon_name="anchor"
-            size={80}
-            color={colors.primary}
-          />
-          <Text style={[styles.subtitle, { color: theme.colors.text }]}>
-            {t.portCoverage.subtitle}
+          <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
+            {language === 'en' ? '100+ Ports Across 5 Continents' : '100+ Ports sur 5 Continents'}
           </Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+            {language === 'en' 
+              ? 'Strategic presence across major global maritime hubs.' 
+              : 'Une présence stratégique dans les principaux hubs maritimes mondiaux.'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.heroButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              // Scroll to the first region section
+              console.log('View nearby ports');
+            }}
+          >
+            <Text style={styles.heroButtonText}>
+              {language === 'en' ? 'View ports near you' : 'Voir les ports près de chez vous'}
+            </Text>
+            <IconSymbol
+              ios_icon_name="arrow.down"
+              android_material_icon_name="arrow_downward"
+              size={16}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Interactive Map Section */}
+        <View style={styles.mapSection}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {language === 'en' ? 'Global Port Network' : 'Réseau Portuaire Mondial'}
+          </Text>
+          
+          <View style={[styles.mapContainer, { backgroundColor: colors.highlight }]}>
+            {/* World Map Background */}
+            <View style={styles.mapPlaceholder}>
+              <IconSymbol
+                ios_icon_name="map.fill"
+                android_material_icon_name="map"
+                size={80}
+                color={colors.primary}
+              />
+              <Text style={[styles.mapPlaceholderText, { color: colors.textSecondary }]}>
+                {language === 'en' 
+                  ? `${ports.length} active ports worldwide` 
+                  : `${ports.length} ports actifs dans le monde`}
+              </Text>
+            </View>
+
+            {/* Port Markers (simplified visualization) */}
+            {ports.filter(p => p.lat && p.lng).slice(0, 20).map((port, index) => (
+              <React.Fragment key={index}>
+                <TouchableOpacity
+                  style={[
+                    styles.portMarker,
+                    {
+                      // Simple positioning based on lat/lng
+                      // This is a simplified Mercator projection
+                      left: `${((port.lng! + 180) / 360) * 100}%`,
+                      top: `${((90 - port.lat!) / 180) * 100}%`,
+                    },
+                  ]}
+                  onPress={() => router.push(`/port-detail?id=${port.id}`)}
+                >
+                  <View style={[styles.markerDot, { backgroundColor: port.is_hub ? colors.accent : colors.primary }]} />
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </View>
+
+          <View style={styles.mapLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                {language === 'en' ? 'Active Port' : 'Port Actif'}
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                {language === 'en' ? 'Hub Port' : 'Port Hub'}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -120,37 +267,6 @@ export default function PortCoverageScreen() {
           </View>
         </View>
 
-        {/* Region Filter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.regionScroll}
-          contentContainerStyle={styles.regionScrollContent}
-        >
-          {regions.map((region, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.regionButton,
-                {
-                  backgroundColor: selectedRegion === region.id ? colors.primary : theme.colors.card,
-                  borderColor: selectedRegion === region.id ? colors.primary : colors.border,
-                },
-              ]}
-              onPress={() => setSelectedRegion(region.id)}
-            >
-              <Text
-                style={[
-                  styles.regionButtonText,
-                  { color: selectedRegion === region.id ? '#ffffff' : theme.colors.text },
-                ]}
-              >
-                {region.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -158,94 +274,46 @@ export default function PortCoverageScreen() {
               {t.portCoverage.loading}
             </Text>
           </View>
-        ) : filteredPorts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <IconSymbol
-              ios_icon_name="tray"
-              android_material_icon_name="inbox"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-              {t.portCoverage.noPorts}
-            </Text>
-          </View>
         ) : (
-          <View style={styles.portsContainer}>
-            {filteredPorts.map((port, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.portCard, { backgroundColor: theme.colors.card }]}>
-                  {port.is_hub && (
-                    <View style={[styles.hubBadge, { backgroundColor: colors.accent }]}>
-                      <IconSymbol
-                        ios_icon_name="star.fill"
-                        android_material_icon_name="star"
-                        size={12}
-                        color="#ffffff"
-                      />
-                      <Text style={styles.hubBadgeText}>{t.portCoverage.hub}</Text>
-                    </View>
-                  )}
+          <>
+            {/* Ports by Region */}
+            <View style={styles.regionsContainer}>
+              {renderPortsByRegion('africa')}
+              {renderPortsByRegion('europe')}
+              {renderPortsByRegion('asia')}
+              {renderPortsByRegion('americas')}
+            </View>
 
-                  <Text style={[styles.portName, { color: theme.colors.text }]}>
-                    {port.name}
-                  </Text>
-
-                  <View style={styles.portInfo}>
-                    <IconSymbol
-                      ios_icon_name="location.fill"
-                      android_material_icon_name="location_on"
-                      size={16}
-                      color={colors.textSecondary}
-                    />
-                    <Text style={[styles.portCountry, { color: colors.textSecondary }]}>
-                      {port.country} • {port.region}
-                    </Text>
-                  </View>
-
-                  {port.services_available && port.services_available.length > 0 && (
-                    <View style={styles.servicesContainer}>
-                      <Text style={[styles.servicesLabel, { color: theme.colors.text }]}>
-                        {t.portCoverage.services}:
-                      </Text>
-                      <View style={styles.servicesList}>
-                        {port.services_available.slice(0, 3).map((service, serviceIndex) => (
-                          <View key={serviceIndex} style={[styles.serviceTag, { backgroundColor: colors.highlight }]}>
-                            <Text style={[styles.serviceTagText, { color: colors.primary }]}>
-                              {service}
-                            </Text>
-                          </View>
-                        ))}
-                        {port.services_available.length > 3 && (
-                          <Text style={[styles.moreServices, { color: colors.textSecondary }]}>
-                            +{port.services_available.length - 3}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={[styles.viewButton, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push(`/port-detail?id=${port.id}`)}
-                  >
-                    <Text style={styles.viewButtonText}>{t.portCoverage.viewDetails}</Text>
-                    <IconSymbol
-                      ios_icon_name="arrow.right"
-                      android_material_icon_name="arrow_forward"
-                      size={16}
-                      color="#ffffff"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </React.Fragment>
-            ))}
-          </View>
+            {filteredPorts.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <IconSymbol
+                  ios_icon_name="tray"
+                  android_material_icon_name="inbox"
+                  size={64}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+                  {t.portCoverage.noPorts}
+                </Text>
+              </View>
+            )}
+          </>
         )}
 
-        {/* CTA Section */}
+        {/* CTA: Port Not Listed */}
         <View style={[styles.ctaSection, { backgroundColor: colors.highlight }]}>
-          <Text style={[styles.ctaText, { color: theme.colors.text }]}>
+          <IconSymbol
+            ios_icon_name="plus.circle.fill"
+            android_material_icon_name="add_circle"
+            size={48}
+            color={colors.primary}
+          />
+          <Text style={[styles.ctaTitle, { color: theme.colors.text }]}>
+            {language === 'en' 
+              ? 'Port not listed?' 
+              : 'Port non listé ?'}
+          </Text>
+          <Text style={[styles.ctaText, { color: colors.textSecondary }]}>
             {t.portCoverage.ctaText}
           </Text>
           <TouchableOpacity
@@ -253,6 +321,77 @@ export default function PortCoverageScreen() {
             onPress={() => router.push('/become-agent')}
           >
             <Text style={styles.ctaButtonText}>{t.portCoverage.ctaButton}</Text>
+            <IconSymbol
+              ios_icon_name="arrow.right"
+              android_material_icon_name="arrow_forward"
+              size={18}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Agents Premium / Global Network Section */}
+        <View style={[styles.premiumSection, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.premiumTitle, { color: theme.colors.text }]}>
+            {language === 'en' 
+              ? 'Premium Agents & Global Network' 
+              : 'Agents Premium & Réseau Global'}
+          </Text>
+          <Text style={[styles.premiumSubtitle, { color: colors.textSecondary }]}>
+            {language === 'en'
+              ? 'Join our network of certified maritime agents and logistics partners across the world.'
+              : 'Rejoignez notre réseau d\'agents maritimes certifiés et de partenaires logistiques à travers le monde.'}
+          </Text>
+
+          <View style={styles.premiumFeatures}>
+            <View style={styles.premiumFeature}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.primary}
+              />
+              <Text style={[styles.premiumFeatureText, { color: theme.colors.text }]}>
+                {language === 'en' 
+                  ? 'Verified & certified agents' 
+                  : 'Agents vérifiés et certifiés'}
+              </Text>
+            </View>
+            <View style={styles.premiumFeature}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.primary}
+              />
+              <Text style={[styles.premiumFeatureText, { color: theme.colors.text }]}>
+                {language === 'en' 
+                  ? 'Global visibility on our platform' 
+                  : 'Visibilité mondiale sur notre plateforme'}
+              </Text>
+            </View>
+            <View style={styles.premiumFeature}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={24}
+                color={colors.primary}
+              />
+              <Text style={[styles.premiumFeatureText, { color: theme.colors.text }]}>
+                {language === 'en' 
+                  ? 'Priority B2B client referrals' 
+                  : 'Recommandations clients B2B prioritaires'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.premiumButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/become-agent')}
+          >
+            <Text style={styles.premiumButtonText}>
+              {language === 'en' ? 'Become a Premium Agent' : 'Devenir Agent Premium'}
+            </Text>
             <IconSymbol
               ios_icon_name="arrow.right"
               android_material_icon_name="arrow_forward"
@@ -281,16 +420,94 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 40,
   },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     textAlign: 'center',
-    marginTop: 20,
-    lineHeight: 26,
+    marginBottom: 12,
+    lineHeight: 36,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  heroButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  heroButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  mapSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  mapContainer: {
+    height: 300,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mapPlaceholderText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  portMarker: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  markerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  mapLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   searchContainer: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   searchBar: {
     flexDirection: 'row',
@@ -305,23 +522,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-  },
-  regionScroll: {
-    marginBottom: 24,
-  },
-  regionScrollContent: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  regionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  regionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   loadingContainer: {
     padding: 40,
@@ -340,101 +540,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-  portsContainer: {
+  regionsContainer: {
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 32,
   },
-  portCard: {
-    padding: 20,
-    borderRadius: 16,
+  regionSection: {
+    marginBottom: 8,
+  },
+  regionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  regionIcon: {
+    fontSize: 32,
+  },
+  regionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  portsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  portMiniCard: {
+    width: (SCREEN_WIDTH - 64) / 2,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     position: 'relative',
   },
-  hubBadge: {
+  hubBadgeMini: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  hubBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  portName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-    paddingRight: 60,
-  },
-  portInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  portCountry: {
-    fontSize: 14,
-  },
-  servicesContainer: {
-    marginBottom: 16,
-  },
-  servicesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  servicesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignItems: 'center',
-  },
-  serviceTag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  serviceTagText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  moreServices: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
     borderRadius: 10,
-    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  viewButtonText: {
+  portMiniName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  portMiniCountry: {
+    fontSize: 13,
   },
   ctaSection: {
     marginHorizontal: 20,
     marginTop: 32,
-    padding: 24,
+    padding: 32,
     borderRadius: 16,
     alignItems: 'center',
   },
-  ctaText: {
-    fontSize: 18,
+  ctaTitle: {
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 26,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  ctaText: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
   },
   ctaButton: {
     flexDirection: 'row',
@@ -445,6 +620,51 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ctaButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  premiumSection: {
+    marginHorizontal: 20,
+    marginTop: 32,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  premiumTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  premiumSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  premiumFeatures: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  premiumFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  premiumFeatureText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  premiumButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  premiumButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
