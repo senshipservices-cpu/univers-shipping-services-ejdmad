@@ -4,117 +4,129 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Logo } from "@/components/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 
 interface PageHeaderProps {
-  title: string;
+  title?: string;
   showBackButton?: boolean;
-  showQuoteButton?: boolean;
-  showLanguageSwitcher?: boolean;
+  showHelpButton?: boolean;
+  showLogo?: boolean;
 }
 
 export function PageHeader({ 
   title, 
   showBackButton = true, 
-  showQuoteButton = true,
-  showLanguageSwitcher = true 
+  showHelpButton = true,
+  showLogo = true 
 }: PageHeaderProps) {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
 
   return (
-    <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
-      <View style={styles.topRow}>
-        {showBackButton ? (
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => router.back()}
-          >
-            <IconSymbol
-              ios_icon_name="chevron.left"
-              android_material_icon_name="chevron_left"
-              size={28}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 28 }} />
-        )}
-        
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]} numberOfLines={1}>
-          {title}
-        </Text>
-        
-        {showQuoteButton ? (
-          <TouchableOpacity
-            style={[styles.quoteButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/(tabs)/freight-quote')}
-          >
-            <IconSymbol
-              ios_icon_name="doc.text.fill"
-              android_material_icon_name="description"
-              size={18}
-              color="#ffffff"
-            />
-            <Text style={styles.quoteButtonText}>{t.home.requestQuote}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 28 }} />
-        )}
-      </View>
-      
-      {showLanguageSwitcher && (
-        <View style={styles.languageSwitcherRow}>
-          <LanguageSwitcher />
+    <View style={[
+      styles.header, 
+      { backgroundColor: colors.primary },
+      Platform.OS === 'android' && { paddingTop: 48 }
+    ]}>
+      <View style={styles.headerContent}>
+        {/* Left: Back Button */}
+        <View style={styles.leftSection}>
+          {showBackButton ? (
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <IconSymbol
+                ios_icon_name="chevron.left"
+                android_material_icon_name="arrow_back"
+                size={28}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
         </View>
-      )}
+        
+        {/* Center: Logo or Title */}
+        <View style={styles.centerSection}>
+          {showLogo ? (
+            <Logo width={120} showText={false} />
+          ) : title ? (
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : null}
+        </View>
+        
+        {/* Right: Help Button */}
+        <View style={styles.rightSection}>
+          {showHelpButton ? (
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() => router.push({
+                pathname: '/(tabs)/contact',
+                params: { subject: 'Demande d\'aide' }
+              })}
+              activeOpacity={0.7}
+            >
+              <IconSymbol
+                ios_icon_name="questionmark.circle.fill"
+                android_material_icon_name="help"
+                size={28}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.secondary,
+    boxShadow: '0px 2px 8px rgba(0, 44, 95, 0.15)',
+    elevation: 4,
   },
-  topRow: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 12,
+  },
+  leftSection: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  centerSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rightSection: {
+    width: 40,
+    alignItems: 'flex-end',
   },
   headerButton: {
+    padding: 4,
+  },
+  helpButton: {
     padding: 4,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    flex: 1,
+    color: colors.pureWhite,
     textAlign: 'center',
-  },
-  quoteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  quoteButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  languageSwitcherRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
   },
 });

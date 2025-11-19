@@ -1,0 +1,78 @@
+
+=================================================================
+UNIVERSAL SHIPPING SERVICES - LOGO PLACEMENT GUIDE
+=================================================================
+
+📍 REQUIRED FILE LOCATION:
+-----------------------------------------------------------------
+Place your official logo file here:
+    assets/images/uss-logo.png
+
+📐 LOGO SPECIFICATIONS:
+-----------------------------------------------------------------
+Format:         PNG with transparent background
+Size (App):     1024x1024 pixels (square)
+Size (Display): 512x307 pixels (5:3 ratio) recommended
+Background:     Transparent
+Content:        Centered logo with padding
+
+🎨 LOGO USAGE IN APP:
+-----------------------------------------------------------------
+
+1. GLOBAL HEADER (All Pages)
+   - Width: 120px
+   - Location: Center of header
+   - Background: Maritime Blue (#002C5F)
+   - Accompanies: Back button (left), Help button (right)
+
+2. HOME SCREEN
+   - Width: 180px
+   - Location: Top of page, centered
+   - Includes text below:
+     * "Universal Shipping Services"
+     * "Global Maritime & Logistics Solutions"
+
+3. APP ICON
+   - iOS: 1024x1024 pixels
+   - Android: 512x512 pixels
+   - Background: Maritime Blue (#002C5F)
+
+4. SPLASH SCREEN
+   - Width: 200px (centered)
+   - Background: Maritime Blue (#002C5F)
+   - Animation: 0.5s fade-in
+
+🔄 CURRENT STATUS:
+-----------------------------------------------------------------
+The app currently displays a placeholder logo with "USS" text.
+Once you add the official logo file, it will automatically
+replace the placeholder throughout the entire application.
+
+✅ AFTER ADDING LOGO:
+-----------------------------------------------------------------
+1. Place logo file at: assets/images/uss-logo.png
+2. Run command: npx expo prebuild --clean
+3. Restart the development server
+4. Logo will appear automatically in all locations
+
+📧 LOGO FILE CHECKLIST:
+-----------------------------------------------------------------
+☐ File name is exactly: uss-logo.png
+☐ File is in PNG format
+☐ Background is transparent
+☐ Logo is centered with padding
+☐ Resolution is high quality (1024x1024 or higher)
+☐ File is placed in: assets/images/ directory
+
+🎨 BRAND COLORS (For Reference):
+-----------------------------------------------------------------
+Maritime Blue (Primary):    #002C5F
+Ocean Blue (Secondary):     #0084FF
+Aqua Sky (Accent):          #00C2FF
+Pure White:                 #FFFFFF
+Light Grey:                 #F2F4F7
+
+=================================================================
+For detailed implementation information, see:
+docs/BRANDING_IMPLEMENTATION.md
+=================================================================
