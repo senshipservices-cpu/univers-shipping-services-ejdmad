@@ -74,42 +74,54 @@ export type Database = {
         Row: {
           id: string
           name: string
+          slug: string
           city: string | null
-          country: string | null
+          country: string
           region: Database["public"]["Enums"]["port_region"] | null
           services_available: Database["public"]["Enums"]["port_service"][] | null
           description_fr: string | null
           description_en: string | null
           is_hub: boolean
+          has_premium_agent: boolean
           status: Database["public"]["Enums"]["port_status"]
+          latitude: number | null
+          longitude: number | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           name: string
+          slug?: string
           city?: string | null
-          country?: string | null
+          country: string
           region?: Database["public"]["Enums"]["port_region"] | null
           services_available?: Database["public"]["Enums"]["port_service"][] | null
           description_fr?: string | null
           description_en?: string | null
           is_hub?: boolean
+          has_premium_agent?: boolean
           status?: Database["public"]["Enums"]["port_status"]
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           name?: string
+          slug?: string
           city?: string | null
-          country?: string | null
+          country?: string
           region?: Database["public"]["Enums"]["port_region"] | null
           services_available?: Database["public"]["Enums"]["port_service"][] | null
           description_fr?: string | null
           description_en?: string | null
           is_hub?: boolean
+          has_premium_agent?: boolean
           status?: Database["public"]["Enums"]["port_status"]
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -702,9 +714,9 @@ export type Database = {
     }
     Enums: {
       service_category: "maritime_shipping" | "logistics_port_handling" | "trade_consulting" | "digital_services"
-      port_region: "Afrique" | "Europe" | "Asie" | "Amériques" | "Océanie" | "Moyen-Orient"
+      port_region: "africa" | "europe" | "asia_me" | "americas" | "oceania"
       port_service: "consignation" | "chartering" | "customs" | "logistics" | "ship_supply" | "crew_support" | "warehousing" | "door_to_door"
-      port_status: "actif" | "en_preparation" | "futur"
+      port_status: "active" | "inactive" | "draft"
       agent_activity: "consignation" | "customs" | "freight_forwarding" | "ship_supply" | "warehousing" | "trucking" | "consulting"
       agent_status: "pending" | "validated" | "rejected"
       container_type: "FCL_20DC" | "FCL_40DC" | "FCL_40HC" | "LCL" | "BULK" | "RORO" | "OTHER"
@@ -833,12 +845,11 @@ export const Constants = {
         digital_services: "digital_services",
       },
       port_region: {
-        Afrique: "Afrique",
-        Europe: "Europe",
-        Asie: "Asie",
-        Amériques: "Amériques",
-        Océanie: "Océanie",
-        "Moyen-Orient": "Moyen-Orient",
+        africa: "africa",
+        europe: "europe",
+        asia_me: "asia_me",
+        americas: "americas",
+        oceania: "oceania",
       },
       port_service: {
         consignation: "consignation",
@@ -851,9 +862,9 @@ export const Constants = {
         door_to_door: "door_to_door",
       },
       port_status: {
-        actif: "actif",
-        en_preparation: "en_preparation",
-        futur: "futur",
+        active: "active",
+        inactive: "inactive",
+        draft: "draft",
       },
       agent_activity: {
         consignation: "consignation",
