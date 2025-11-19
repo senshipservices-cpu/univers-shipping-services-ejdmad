@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import { FAQSection, FAQItem } from "@/components/FAQSection";
+import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 
 interface Port {
   id: string;
@@ -656,6 +658,64 @@ export default function BecomeAgentScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* FAQ Section */}
+        <FAQSection
+          title={t.becomeAgentFaq.faqTitle}
+          items={[
+            {
+              question: t.becomeAgentFaq.faqQuestion1,
+              answer: t.becomeAgentFaq.faqAnswer1,
+            },
+            {
+              question: t.becomeAgentFaq.faqQuestion2,
+              answer: t.becomeAgentFaq.faqAnswer2,
+            },
+            {
+              question: t.becomeAgentFaq.faqQuestion3,
+              answer: t.becomeAgentFaq.faqAnswer3,
+            },
+            {
+              question: t.becomeAgentFaq.faqQuestion4,
+              answer: t.becomeAgentFaq.faqAnswer4,
+            },
+          ]}
+        />
+
+        {/* How It Works Section */}
+        <HowItWorksSection
+          title={t.becomeAgent.applicationForm}
+          steps={[
+            {
+              number: 1,
+              title: t.howItWorks.step1Title,
+              description: t.howItWorks.step1Desc,
+              icon: { ios: 'doc.text.fill', android: 'description' },
+              color: colors.primary,
+            },
+            {
+              number: 2,
+              title: t.howItWorks.step2Title,
+              description: t.howItWorks.step2Desc,
+              icon: { ios: 'person.fill.checkmark', android: 'verified_user' },
+              color: colors.secondary,
+            },
+            {
+              number: 3,
+              title: t.howItWorks.step3Title,
+              description: t.howItWorks.step3Desc,
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              color: colors.accent,
+            },
+            {
+              number: 4,
+              title: t.howItWorks.step4Title,
+              description: t.howItWorks.step4Desc,
+              icon: { ios: 'location.fill', android: 'my_location' },
+              color: colors.success,
+            },
+          ]}
+        />
       </ScrollView>
     </View>
   );

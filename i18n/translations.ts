@@ -243,6 +243,42 @@ export interface Translations {
     faqAnswer3: string;
     faqQuestion4: string;
     faqAnswer4: string;
+    howItWorksTitle: string;
+  };
+  freightQuote: {
+    faqTitle: string;
+    faqQuestion1: string;
+    faqAnswer1: string;
+    faqQuestion2: string;
+    faqAnswer2: string;
+    faqQuestion3: string;
+    faqAnswer3: string;
+    faqQuestion4: string;
+    faqAnswer4: string;
+    faqQuestion5: string;
+    faqAnswer5: string;
+    howItWorksTitle: string;
+  };
+  becomeAgentFaq: {
+    faqTitle: string;
+    faqQuestion1: string;
+    faqAnswer1: string;
+    faqQuestion2: string;
+    faqAnswer2: string;
+    faqQuestion3: string;
+    faqAnswer3: string;
+    faqQuestion4: string;
+    faqAnswer4: string;
+  };
+  howItWorks: {
+    step1Title: string;
+    step1Desc: string;
+    step2Title: string;
+    step2Desc: string;
+    step3Title: string;
+    step3Desc: string;
+    step4Title: string;
+    step4Desc: string;
   };
   digitalPortal: {
     title: string;
@@ -516,14 +552,50 @@ export const translations: Record<Language, Translations> = {
       agentFeature3: 'Badge "Premium Agent"',
       agentButton: 'Devenir agent',
       faqTitle: 'Questions Fréquentes',
-      faqQuestion1: 'Comment fonctionne la facturation ?',
-      faqAnswer1: 'La facturation est mensuelle ou annuelle selon le plan choisi. Vous recevrez une facture détaillée par email et pourrez gérer vos paiements depuis votre espace client.',
-      faqQuestion2: 'Puis-je changer de plan ?',
-      faqAnswer2: 'Oui, vous pouvez changer de plan à tout moment. Le changement prendra effet immédiatement et sera proratisé selon votre période de facturation.',
-      faqQuestion3: 'Proposez-vous des solutions sur mesure ?',
-      faqAnswer3: 'Absolument ! Pour les entreprises avec des besoins spécifiques, nous proposons des solutions personnalisées. Contactez notre équipe commerciale pour discuter de vos besoins.',
-      faqQuestion4: 'Y a-t-il un engagement de durée ?',
-      faqAnswer4: 'Non, tous nos plans sont sans engagement. Vous pouvez annuler à tout moment depuis votre espace client.',
+      faqQuestion1: 'Puis-je changer de plan à tout moment ?',
+      faqAnswer1: 'Oui, vous pouvez changer de plan à tout moment. Le changement prendra effet immédiatement et sera proratisé selon votre période de facturation.',
+      faqQuestion2: 'Les paiements sont-ils sécurisés ?',
+      faqAnswer2: 'Absolument. Nous utilisons des systèmes de paiement sécurisés conformes aux normes PCI-DSS. Toutes les transactions sont cryptées et vos données bancaires ne sont jamais stockées sur nos serveurs.',
+      faqQuestion3: 'Qu\'est-ce que le Digital Maritime Portal ?',
+      faqAnswer3: 'Le Digital Maritime Portal est une plateforme complète qui vous donne accès au tracking avancé, à la gestion documentaire, aux rapports personnalisés et à l\'intégration API pour automatiser vos opérations.',
+      faqQuestion4: 'Les plans incluent-ils l\'assistance 24/7 ?',
+      faqAnswer4: 'Le support 24/7 est inclus dans les plans Premium Tracking et Enterprise Logistics. Le plan Basic bénéficie d\'un support par email en heures ouvrables.',
+      howItWorksTitle: 'Comment ça marche ?',
+    },
+    freightQuote: {
+      faqTitle: 'Questions Fréquentes — Devis & Commandes',
+      faqQuestion1: 'Comment fonctionne la demande de devis ?',
+      faqAnswer1: 'Remplissez simplement le formulaire avec les détails de votre cargaison et vos ports d\'origine/destination. Notre équipe analyse votre demande et vous envoie un devis détaillé sous 24-48h.',
+      faqQuestion2: 'Combien de temps pour recevoir un devis ?',
+      faqAnswer2: 'Vous recevrez votre devis personnalisé sous 24 à 48 heures ouvrables. Pour les demandes urgentes, contactez-nous directement par téléphone ou WhatsApp.',
+      faqQuestion3: 'Puis-je accepter un devis directement en ligne ?',
+      faqAnswer3: 'Oui ! Une fois votre devis reçu, vous pouvez l\'accepter directement depuis votre espace client. Le processus de confirmation est simple et sécurisé.',
+      faqQuestion4: 'Quels ports sont supportés ?',
+      faqAnswer4: 'Nous couvrons plus de 150 ports dans le monde entier en Afrique, Europe, Asie, Amériques et Océanie. Consultez notre page "Couverture Portuaire" pour voir la liste complète.',
+      faqQuestion5: 'La demande est-elle gratuite ?',
+      faqAnswer5: 'Oui, la demande de devis est entièrement gratuite et sans engagement. Vous ne payez que si vous acceptez le devis proposé.',
+      howItWorksTitle: 'Comment ça marche ?',
+    },
+    becomeAgentFaq: {
+      faqTitle: 'Questions Fréquentes — Agents Internationaux',
+      faqQuestion1: 'Quels sont les critères pour devenir agent ?',
+      faqAnswer1: 'Vous devez être établi dans un port commercial, avoir au moins 2 ans d\'expérience dans les services maritimes ou logistiques, et disposer d\'une équipe opérationnelle dédiée.',
+      faqQuestion2: 'Quels avantages pour un agent 3S ?',
+      faqAnswer2: 'Visibilité internationale sur notre plateforme, recommandations de clients B2B qualifiés, collaboration sur des projets d\'affrètement et de logistique, et support opérationnel depuis notre siège.',
+      faqQuestion3: 'Combien de temps pour la validation ?',
+      faqAnswer3: 'Le processus de validation prend généralement 5 à 10 jours ouvrables. Notre équipe analyse votre profil, vérifie vos références et vous contacte pour finaliser votre inscription.',
+      faqQuestion4: 'Qu\'est-ce qu\'un Premium Agent Listing ?',
+      faqAnswer4: 'Le Premium Agent Listing vous donne une visibilité maximale sur notre plateforme avec un badge "Premium", une mise en avant sur la page Port Coverage, et un profil détaillé avec vos certifications et services.',
+    },
+    howItWorks: {
+      step1Title: 'Étape 1 — Soumettre la demande',
+      step1Desc: 'Sélection des ports, service et cargaison.',
+      step2Title: 'Étape 2 — Analyse expert',
+      step2Desc: 'Notre équipe étudie la demande et calcule un tarif.',
+      step3Title: 'Étape 3 — Validation & Paiement',
+      step3Desc: 'Le devis peut être accepté directement dans l\'app.',
+      step4Title: 'Étape 4 — Suivi en temps réel',
+      step4Desc: 'Accès au portail digital pour suivre chaque étape.',
     },
     digitalPortal: {
       title: 'Portail Digital Maritime',
@@ -795,14 +867,50 @@ export const translations: Record<Language, Translations> = {
       agentFeature3: '"Premium Agent" badge',
       agentButton: 'Become an agent',
       faqTitle: 'Frequently Asked Questions',
-      faqQuestion1: 'How does billing work?',
-      faqAnswer1: 'Billing is monthly or annual depending on the plan chosen. You will receive a detailed invoice by email and can manage your payments from your client space.',
-      faqQuestion2: 'Can I change plans?',
-      faqAnswer2: 'Yes, you can change plans at any time. The change will take effect immediately and will be prorated according to your billing period.',
-      faqQuestion3: 'Do you offer custom solutions?',
-      faqAnswer3: 'Absolutely! For businesses with specific needs, we offer customized solutions. Contact our sales team to discuss your requirements.',
-      faqQuestion4: 'Is there a commitment period?',
-      faqAnswer4: 'No, all our plans are commitment-free. You can cancel at any time from your client space.',
+      faqQuestion1: 'Can I change plans at any time?',
+      faqAnswer1: 'Yes, you can change plans at any time. The change will take effect immediately and will be prorated according to your billing period.',
+      faqQuestion2: 'Are payments secure?',
+      faqAnswer2: 'Absolutely. We use secure payment systems compliant with PCI-DSS standards. All transactions are encrypted and your banking data is never stored on our servers.',
+      faqQuestion3: 'What is the Digital Maritime Portal?',
+      faqAnswer3: 'The Digital Maritime Portal is a comprehensive platform that gives you access to advanced tracking, document management, custom reports, and API integration to automate your operations.',
+      faqQuestion4: 'Do plans include 24/7 support?',
+      faqAnswer4: '24/7 support is included in Premium Tracking and Enterprise Logistics plans. The Basic plan benefits from email support during business hours.',
+      howItWorksTitle: 'How it works?',
+    },
+    freightQuote: {
+      faqTitle: 'Frequently Asked Questions — Quotes & Orders',
+      faqQuestion1: 'How does the quote request work?',
+      faqAnswer1: 'Simply fill out the form with your cargo details and origin/destination ports. Our team analyzes your request and sends you a detailed quote within 24-48 hours.',
+      faqQuestion2: 'How long to receive a quote?',
+      faqAnswer2: 'You will receive your personalized quote within 24 to 48 business hours. For urgent requests, contact us directly by phone or WhatsApp.',
+      faqQuestion3: 'Can I accept a quote directly online?',
+      faqAnswer3: 'Yes! Once you receive your quote, you can accept it directly from your client space. The confirmation process is simple and secure.',
+      faqQuestion4: 'Which ports are supported?',
+      faqAnswer4: 'We cover over 150 ports worldwide in Africa, Europe, Asia, Americas, and Oceania. Check our "Port Coverage" page to see the complete list.',
+      faqQuestion5: 'Is the request free?',
+      faqAnswer5: 'Yes, the quote request is completely free and without commitment. You only pay if you accept the proposed quote.',
+      howItWorksTitle: 'How it works?',
+    },
+    becomeAgentFaq: {
+      faqTitle: 'Frequently Asked Questions — International Agents',
+      faqQuestion1: 'What are the criteria to become an agent?',
+      faqAnswer1: 'You must be established in a commercial port, have at least 2 years of experience in maritime or logistics services, and have a dedicated operational team.',
+      faqQuestion2: 'What are the benefits for a 3S agent?',
+      faqAnswer2: 'International visibility on our platform, qualified B2B client recommendations, collaboration on chartering and logistics projects, and operational support from our headquarters.',
+      faqQuestion3: 'How long does validation take?',
+      faqAnswer3: 'The validation process typically takes 5 to 10 business days. Our team analyzes your profile, verifies your references, and contacts you to finalize your registration.',
+      faqQuestion4: 'What is a Premium Agent Listing?',
+      faqAnswer4: 'Premium Agent Listing gives you maximum visibility on our platform with a "Premium" badge, featured placement on the Port Coverage page, and a detailed profile with your certifications and services.',
+    },
+    howItWorks: {
+      step1Title: 'Step 1 — Submit Request',
+      step1Desc: 'Select ports, service, and cargo.',
+      step2Title: 'Step 2 — Expert Analysis',
+      step2Desc: 'Our team studies the request and calculates a rate.',
+      step3Title: 'Step 3 — Validation & Payment',
+      step3Desc: 'The quote can be accepted directly in the app.',
+      step4Title: 'Step 4 — Real-time Tracking',
+      step4Desc: 'Access the digital portal to track every step.',
     },
     digitalPortal: {
       title: 'Digital Maritime Portal',
@@ -1074,14 +1182,50 @@ export const translations: Record<Language, Translations> = {
       agentFeature3: 'Insignia de "Agente Premium"',
       agentButton: 'Convertirse en agente',
       faqTitle: 'Preguntas Frecuentes',
-      faqQuestion1: '¿Cómo funciona la facturación?',
-      faqAnswer1: 'La facturación es mensual o anual según el plan elegido. Recibirá una factura detallada por correo electrónico y podrá gestionar sus pagos desde su espacio de cliente.',
-      faqQuestion2: '¿Puedo cambiar de plan?',
-      faqAnswer2: 'Sí, puede cambiar de plan en cualquier momento. El cambio tendrá efecto inmediato y se prorrateará según su período de facturación.',
-      faqQuestion3: '¿Ofrecen soluciones personalizadas?',
-      faqAnswer3: '¡Absolutamente! Para empresas con necesidades específicas, ofrecemos soluciones personalizadas. Póngase en contacto con nuestro equipo de ventas para discutir sus requisitos.',
-      faqQuestion4: '¿Hay un período de compromiso?',
-      faqAnswer4: 'No, todos nuestros planes son sin compromiso. Puede cancelar en cualquier momento desde su espacio de cliente.',
+      faqQuestion1: '¿Puedo cambiar de plan en cualquier momento?',
+      faqAnswer1: 'Sí, puede cambiar de plan en cualquier momento. El cambio tendrá efecto inmediato y se prorrateará según su período de facturación.',
+      faqQuestion2: '¿Son seguros los pagos?',
+      faqAnswer2: 'Absolutamente. Utilizamos sistemas de pago seguros conformes con los estándares PCI-DSS. Todas las transacciones están encriptadas y sus datos bancarios nunca se almacenan en nuestros servidores.',
+      faqQuestion3: '¿Qué es el Digital Maritime Portal?',
+      faqAnswer3: 'El Digital Maritime Portal es una plataforma completa que le da acceso a seguimiento avanzado, gestión de documentos, informes personalizados e integración API para automatizar sus operaciones.',
+      faqQuestion4: '¿Los planes incluyen soporte 24/7?',
+      faqAnswer4: 'El soporte 24/7 está incluido en los planes Premium Tracking y Enterprise Logistics. El plan Basic cuenta con soporte por correo electrónico en horario laboral.',
+      howItWorksTitle: '¿Cómo funciona?',
+    },
+    freightQuote: {
+      faqTitle: 'Preguntas Frecuentes — Cotizaciones y Pedidos',
+      faqQuestion1: '¿Cómo funciona la solicitud de cotización?',
+      faqAnswer1: 'Simplemente complete el formulario con los detalles de su carga y puertos de origen/destino. Nuestro equipo analiza su solicitud y le envía una cotización detallada en 24-48 horas.',
+      faqQuestion2: '¿Cuánto tiempo para recibir una cotización?',
+      faqAnswer2: 'Recibirá su cotización personalizada en 24 a 48 horas hábiles. Para solicitudes urgentes, contáctenos directamente por teléfono o WhatsApp.',
+      faqQuestion3: '¿Puedo aceptar una cotización directamente en línea?',
+      faqAnswer3: '¡Sí! Una vez que reciba su cotización, puede aceptarla directamente desde su espacio de cliente. El proceso de confirmación es simple y seguro.',
+      faqQuestion4: '¿Qué puertos están soportados?',
+      faqAnswer4: 'Cubrimos más de 150 puertos en todo el mundo en África, Europa, Asia, Américas y Oceanía. Consulte nuestra página "Cobertura Portuaria" para ver la lista completa.',
+      faqQuestion5: '¿La solicitud es gratuita?',
+      faqAnswer5: 'Sí, la solicitud de cotización es completamente gratuita y sin compromiso. Solo paga si acepta la cotización propuesta.',
+      howItWorksTitle: '¿Cómo funciona?',
+    },
+    becomeAgentFaq: {
+      faqTitle: 'Preguntas Frecuentes — Agentes Internacionales',
+      faqQuestion1: '¿Cuáles son los criterios para convertirse en agente?',
+      faqAnswer1: 'Debe estar establecido en un puerto comercial, tener al menos 2 años de experiencia en servicios marítimos o logísticos, y contar con un equipo operacional dedicado.',
+      faqQuestion2: '¿Cuáles son los beneficios para un agente 3S?',
+      faqAnswer2: 'Visibilidad internacional en nuestra plataforma, recomendaciones de clientes B2B calificados, colaboración en proyectos de fletamento y logística, y soporte operacional desde nuestra sede.',
+      faqQuestion3: '¿Cuánto tiempo tarda la validación?',
+      faqAnswer3: 'El proceso de validación generalmente toma de 5 a 10 días hábiles. Nuestro equipo analiza su perfil, verifica sus referencias y se comunica con usted para finalizar su registro.',
+      faqQuestion4: '¿Qué es un Premium Agent Listing?',
+      faqAnswer4: 'El Premium Agent Listing le brinda máxima visibilidad en nuestra plataforma con una insignia "Premium", ubicación destacada en la página de Cobertura Portuaria y un perfil detallado con sus certificaciones y servicios.',
+    },
+    howItWorks: {
+      step1Title: 'Paso 1 — Enviar Solicitud',
+      step1Desc: 'Seleccione puertos, servicio y carga.',
+      step2Title: 'Paso 2 — Análisis Experto',
+      step2Desc: 'Nuestro equipo estudia la solicitud y calcula una tarifa.',
+      step3Title: 'Paso 3 — Validación y Pago',
+      step3Desc: 'La cotización puede ser aceptada directamente en la app.',
+      step4Title: 'Paso 4 — Seguimiento en Tiempo Real',
+      step4Desc: 'Acceda al portal digital para seguir cada paso.',
     },
     digitalPortal: {
       title: 'Portal Digital Marítimo',
@@ -1353,14 +1497,50 @@ export const translations: Record<Language, Translations> = {
       agentFeature3: 'شارة "وكيل بريميوم"',
       agentButton: 'كن وكيلاً',
       faqTitle: 'الأسئلة الشائعة',
-      faqQuestion1: 'كيف تعمل الفوترة؟',
-      faqAnswer1: 'الفوترة شهرية أو سنوية حسب الخطة المختارة. ستتلقى فاتورة مفصلة عبر البريد الإلكتروني ويمكنك إدارة مدفوعاتك من مساحة العميل الخاصة بك.',
-      faqQuestion2: 'هل يمكنني تغيير الخطط؟',
-      faqAnswer2: 'نعم، يمكنك تغيير الخطط في أي وقت. سيدخل التغيير حيز التنفيذ على الفور وسيتم تقسيمه بالتناسب وفقًا لفترة الفوترة الخاصة بك.',
-      faqQuestion3: 'هل تقدمون حلولاً مخصصة؟',
-      faqAnswer3: 'بالتأكيد! للشركات ذات الاحتياجات الخاصة، نقدم حلولاً مخصصة. اتصل بفريق المبيعات لدينا لمناقشة متطلباتك.',
-      faqQuestion4: 'هل هناك فترة التزام؟',
-      faqAnswer4: 'لا، جميع خططنا بدون التزام. يمكنك الإلغاء في أي وقت من مساحة العميل الخاصة بك.',
+      faqQuestion1: 'هل يمكنني تغيير الخطة في أي وقت؟',
+      faqAnswer1: 'نعم، يمكنك تغيير الخطط في أي وقت. سيدخل التغيير حيز التنفيذ على الفور وسيتم تقسيمه بالتناسب وفقًا لفترة الفوترة الخاصة بك.',
+      faqQuestion2: 'هل المدفوعات آمنة؟',
+      faqAnswer2: 'بالتأكيد. نستخدم أنظمة دفع آمنة متوافقة مع معايير PCI-DSS. جميع المعاملات مشفرة ولا يتم تخزين بياناتك المصرفية على خوادمنا.',
+      faqQuestion3: 'ما هو البوابة الرقمية البحرية؟',
+      faqAnswer3: 'البوابة الرقمية البحرية هي منصة شاملة تمنحك الوصول إلى التتبع المتقدم وإدارة المستندات والتقارير المخصصة وتكامل API لأتمتة عملياتك.',
+      faqQuestion4: 'هل تتضمن الخطط دعم 24/7؟',
+      faqAnswer4: 'الدعم 24/7 مشمول في خطط Premium Tracking و Enterprise Logistics. تستفيد خطة Basic من دعم البريد الإلكتروني خلال ساعات العمل.',
+      howItWorksTitle: 'كيف يعمل؟',
+    },
+    freightQuote: {
+      faqTitle: 'الأسئلة الشائعة — عروض الأسعار والطلبات',
+      faqQuestion1: 'كيف يعمل طلب عرض الأسعار؟',
+      faqAnswer1: 'ما عليك سوى ملء النموذج بتفاصيل شحنتك وموانئ المنشأ/الوجهة. يقوم فريقنا بتحليل طلبك ويرسل لك عرض أسعار مفصل في غضون 24-48 ساعة.',
+      faqQuestion2: 'كم من الوقت لتلقي عرض أسعار؟',
+      faqAnswer2: 'ستتلقى عرض الأسعار المخصص الخاص بك في غضون 24 إلى 48 ساعة عمل. للطلبات العاجلة، اتصل بنا مباشرة عبر الهاتف أو WhatsApp.',
+      faqQuestion3: 'هل يمكنني قبول عرض أسعار مباشرة عبر الإنترنت؟',
+      faqAnswer3: 'نعم! بمجرد استلام عرض الأسعار الخاص بك، يمكنك قبوله مباشرة من مساحة العميل الخاصة بك. عملية التأكيد بسيطة وآمنة.',
+      faqQuestion4: 'ما هي الموانئ المدعومة؟',
+      faqAnswer4: 'نغطي أكثر من 150 ميناءً في جميع أنحاء العالم في أفريقيا وأوروبا وآسيا والأمريكتين وأوقيانوسيا. تحقق من صفحة "التغطية الميناء" لرؤية القائمة الكاملة.',
+      faqQuestion5: 'هل الطلب مجاني؟',
+      faqAnswer5: 'نعم، طلب عرض الأسعار مجاني تمامًا وبدون التزام. تدفع فقط إذا قبلت عرض الأسعار المقترح.',
+      howItWorksTitle: 'كيف يعمل؟',
+    },
+    becomeAgentFaq: {
+      faqTitle: 'الأسئلة الشائعة — الوكلاء الدوليون',
+      faqQuestion1: 'ما هي المعايير لتصبح وكيلاً؟',
+      faqAnswer1: 'يجب أن تكون مؤسسًا في ميناء تجاري، ولديك خبرة لا تقل عن سنتين في الخدمات البحرية أو اللوجستية، وأن يكون لديك فريق تشغيلي مخصص.',
+      faqQuestion2: 'ما هي الفوائد لوكيل 3S؟',
+      faqAnswer2: 'رؤية دولية على منصتنا، توصيات عملاء B2B مؤهلين، تعاون في مشاريع التأجير واللوجستيات، ودعم تشغيلي من مقرنا الرئيسي.',
+      faqQuestion3: 'كم من الوقت يستغرق التحقق؟',
+      faqAnswer3: 'تستغرق عملية التحقق عادةً من 5 إلى 10 أيام عمل. يقوم فريقنا بتحليل ملفك الشخصي والتحقق من مراجعك والاتصال بك لإنهاء تسجيلك.',
+      faqQuestion4: 'ما هو Premium Agent Listing؟',
+      faqAnswer4: 'يمنحك Premium Agent Listing أقصى قدر من الرؤية على منصتنا مع شارة "Premium"، ومكان مميز في صفحة التغطية الميناء، وملف تعريف مفصل مع شهاداتك وخدماتك.',
+    },
+    howItWorks: {
+      step1Title: 'الخطوة 1 — إرسال الطلب',
+      step1Desc: 'اختر الموانئ والخدمة والشحنة.',
+      step2Title: 'الخطوة 2 — تحليل الخبراء',
+      step2Desc: 'يدرس فريقنا الطلب ويحسب السعر.',
+      step3Title: 'الخطوة 3 — التحقق والدفع',
+      step3Desc: 'يمكن قبول عرض الأسعار مباشرة في التطبيق.',
+      step4Title: 'الخطوة 4 — التتبع في الوقت الفعلي',
+      step4Desc: 'الوصول إلى البوابة الرقمية لتتبع كل خطوة.',
     },
     digitalPortal: {
       title: 'البوابة الرقمية البحرية',

@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 
 interface Service {
   id: string;
@@ -367,6 +368,40 @@ export default function GlobalServicesScreen() {
             })}
           </View>
         )}
+        {/* How It Works Section */}
+        <HowItWorksSection
+          title={t.globalServices.requestOffer}
+          steps={[
+            {
+              number: 1,
+              title: t.howItWorks.step1Title,
+              description: t.howItWorks.step1Desc,
+              icon: { ios: 'doc.text.fill', android: 'description' },
+              color: colors.primary,
+            },
+            {
+              number: 2,
+              title: t.howItWorks.step2Title,
+              description: t.howItWorks.step2Desc,
+              icon: { ios: 'person.fill.checkmark', android: 'verified_user' },
+              color: colors.secondary,
+            },
+            {
+              number: 3,
+              title: t.howItWorks.step3Title,
+              description: t.howItWorks.step3Desc,
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              color: colors.accent,
+            },
+            {
+              number: 4,
+              title: t.howItWorks.step4Title,
+              description: t.howItWorks.step4Desc,
+              icon: { ios: 'location.fill', android: 'my_location' },
+              color: colors.success,
+            },
+          ]}
+        />
       </ScrollView>
     </View>
   );

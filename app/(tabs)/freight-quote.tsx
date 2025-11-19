@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { logEvent } from "@/utils/eventLogger";
+import { FAQSection, FAQItem } from "@/components/FAQSection";
+import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 
 export default function FreightQuoteScreen() {
   const router = useRouter();
@@ -372,6 +374,68 @@ export default function FreightQuoteScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* FAQ Section */}
+        <FAQSection
+          title={t.freightQuote.faqTitle}
+          items={[
+            {
+              question: t.freightQuote.faqQuestion1,
+              answer: t.freightQuote.faqAnswer1,
+            },
+            {
+              question: t.freightQuote.faqQuestion2,
+              answer: t.freightQuote.faqAnswer2,
+            },
+            {
+              question: t.freightQuote.faqQuestion3,
+              answer: t.freightQuote.faqAnswer3,
+            },
+            {
+              question: t.freightQuote.faqQuestion4,
+              answer: t.freightQuote.faqAnswer4,
+            },
+            {
+              question: t.freightQuote.faqQuestion5,
+              answer: t.freightQuote.faqAnswer5,
+            },
+          ]}
+        />
+
+        {/* How It Works Section */}
+        <HowItWorksSection
+          title={t.freightQuote.howItWorksTitle}
+          steps={[
+            {
+              number: 1,
+              title: t.howItWorks.step1Title,
+              description: t.howItWorks.step1Desc,
+              icon: { ios: 'doc.text.fill', android: 'description' },
+              color: colors.primary,
+            },
+            {
+              number: 2,
+              title: t.howItWorks.step2Title,
+              description: t.howItWorks.step2Desc,
+              icon: { ios: 'person.fill.checkmark', android: 'verified_user' },
+              color: colors.secondary,
+            },
+            {
+              number: 3,
+              title: t.howItWorks.step3Title,
+              description: t.howItWorks.step3Desc,
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              color: colors.accent,
+            },
+            {
+              number: 4,
+              title: t.howItWorks.step4Title,
+              description: t.howItWorks.step4Desc,
+              icon: { ios: 'location.fill', android: 'my_location' },
+              color: colors.success,
+            },
+          ]}
+        />
       </ScrollView>
     </View>
   );
