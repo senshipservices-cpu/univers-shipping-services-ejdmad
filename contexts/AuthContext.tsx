@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Tables } from '@/app/integrations/supabase/types';
@@ -30,7 +30,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const { setLanguage } = useLanguage();
 
   // Fetch client record for the current user
-  const fetchClient = async (userId: string) => {
+  const fetchClient = useCallback(async (userId: string) => {
     try {
       console.log('Fetching client record for user:', userId);
       const { data, error } = await supabase
@@ -58,13 +58,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       console.error('Exception fetching client:', error);
       setClient(null);
     }
-  };
+  }, [setLanguage]);
 
-  const refreshClient = async () => {
+  const refreshClient = useCallback(async () => {
     if (user?.id) {
       await fetchClient(user.id);
     }
-  };
+  }, [user?.id, fetchClient]);
 
   useEffect(() => {
     // Get initial session
@@ -96,7 +96,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchClient]);
 
   const signIn = async (email: string, password: string) => {
     try {

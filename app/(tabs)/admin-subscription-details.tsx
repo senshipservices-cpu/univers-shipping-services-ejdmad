@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -66,13 +66,7 @@ export default function AdminSubscriptionDetailsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  useEffect(() => {
-    if (isAdmin && subscriptionId) {
-      loadSubscriptionDetails();
-    }
-  }, [isAdmin, subscriptionId]);
-
-  const loadSubscriptionDetails = async () => {
+  const loadSubscriptionDetails = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -98,7 +92,13 @@ export default function AdminSubscriptionDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [subscriptionId, router]);
+
+  useEffect(() => {
+    if (isAdmin && subscriptionId) {
+      loadSubscriptionDetails();
+    }
+  }, [isAdmin, subscriptionId, loadSubscriptionDetails]);
 
   const openEditModal = (field: string, currentValue: string | boolean) => {
     setEditField(field);

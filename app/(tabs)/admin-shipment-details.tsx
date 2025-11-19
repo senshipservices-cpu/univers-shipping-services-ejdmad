@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -71,14 +71,7 @@ export default function AdminShipmentDetailsScreen() {
   const [notesType, setNotesType] = useState<'internal' | 'client'>('internal');
   const [notesValue, setNotesValue] = useState('');
 
-  useEffect(() => {
-    if (isAdmin && shipmentId) {
-      loadShipmentDetails();
-      loadDocuments();
-    }
-  }, [isAdmin, shipmentId]);
-
-  const loadShipmentDetails = async () => {
+  const loadShipmentDetails = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -106,9 +99,9 @@ export default function AdminShipmentDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [shipmentId, router]);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('shipment_documents')
@@ -124,7 +117,14 @@ export default function AdminShipmentDetailsScreen() {
     } catch (error) {
       console.error('Exception loading documents:', error);
     }
-  };
+  }, [shipmentId]);
+
+  useEffect(() => {
+    if (isAdmin && shipmentId) {
+      loadShipmentDetails();
+      loadDocuments();
+    }
+  }, [isAdmin, shipmentId, loadShipmentDetails, loadDocuments]);
 
   const openEditModal = () => {
     if (!shipment) return;

@@ -29,7 +29,7 @@ interface KPIData {
   conversionRate: number;
 
   // Section 3.3: Service Performance
-  topServices: Array<{
+  topServices: {
     id: string;
     name: string;
     views: number;
@@ -37,10 +37,10 @@ interface KPIData {
     quotesCreated: number;
     quotesAccepted: number;
     shipmentsCreated: number;
-  }>;
+  }[];
 
   // Section 3.4: Port Analysis
-  portAnalysis: Array<{
+  portAnalysis: {
     id: string;
     name: string;
     city: string;
@@ -48,25 +48,25 @@ interface KPIData {
     shipmentsOrigin: number;
     shipmentsDestination: number;
     validatedAgents: number;
-  }>;
+  }[];
 
   // Section 3.5: Subscriptions
   activeSubscriptions: number;
-  plansByType: Array<{
+  plansByType: {
     planType: string;
     count: number;
-  }>;
+  }[];
   expiringThisWeek: number;
 
   // Section 3.6: Client Activity
-  clientActivity: Array<{
+  clientActivity: {
     id: string;
     name: string;
     company: string;
     quotesCreated: number;
     shipmentsCreated: number;
     portalAccess: number;
-  }>;
+  }[];
 }
 
 type TabType = 'commercial' | 'funnel' | 'services' | 'ports' | 'subscriptions' | 'clients';
