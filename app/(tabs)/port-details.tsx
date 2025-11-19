@@ -21,15 +21,20 @@ interface Port {
   services_available: string[];
 }
 
-interface Service {
+interface PortService {
   id: string;
-  name_fr: string;
-  name_en: string;
-  short_desc_fr: string;
-  short_desc_en: string;
-  slug: string;
-  category: string;
-  is_premium: boolean;
+  service: {
+    id: string;
+    name_fr: string;
+    name_en: string;
+    short_desc_fr: string;
+    short_desc_en: string;
+    slug: string;
+    category: string;
+    is_premium: boolean;
+  };
+  is_available: boolean;
+  notes: string | null;
 }
 
 interface Agent {
@@ -51,7 +56,7 @@ export default function PortDetailsScreen() {
   const { port_id } = useLocalSearchParams<{ port_id: string }>();
 
   const [port, setPort] = useState<Port | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
+  const [portServices, setPortServices] = useState<PortService[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,18 +86,32 @@ export default function PortDetailsScreen() {
 
       setPort(portData);
 
-      // Load services available in this port
+      // Load services available in this port from port_services table
       const { data: servicesData, error: servicesError } = await supabase
-        .from('services_global')
-        .select('*')
-        .contains('available_in_ports', [port_id])
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .from('port_services')
+        .select(`
+          id,
+          is_available,
+          notes,
+          service:services_global (
+            id,
+            name_fr,
+            name_en,
+            short_desc_fr,
+            short_desc_en,
+            slug,
+            category,
+            is_premium
+          )
+        `)
+        .eq('port', port_id)
+        .eq('is_available', true)
+        .order('service(name_en)', { ascending: true });
 
       if (servicesError) {
         console.error('Error loading services:', servicesError);
       } else {
-        setServices(servicesData || []);
+        setPortServices(servicesData || []);
       }
 
       // Load premium agents in this port
@@ -115,12 +134,24 @@ export default function PortDetailsScreen() {
     }
   };
 
-  const getServiceName = (service: Service) => {
+  const getServiceName = (service: PortService['service']) => {
     return language === 'en' && service.name_en ? service.name_en : service.name_fr;
   };
 
-  const getServiceDescription = (service: Service) => {
+  const getServiceDescription = (service: PortService['service']) => {
     return language === 'en' && service.short_desc_en ? service.short_desc_en : service.short_desc_fr;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const categoryLabels: Record<string, { fr: string; en: string }> = {
+      maritime_shipping: { fr: 'Maritime & Shipping', en: 'Maritime & Shipping' },
+      logistics_port_handling: { fr: 'Logistique & Manutention', en: 'Logistics & Port Handling' },
+      trade_consulting: { fr: 'Commerce & Consulting', en: 'Trade & Consulting' },
+      digital_services: { fr: 'Services Digitaux', en: 'Digital Services' },
+    };
+
+    const label = categoryLabels[category];
+    return label ? (language === 'en' ? label.en : label.fr) : category;
   };
 
   const getPortDescription = () => {
@@ -251,15 +282,17 @@ export default function PortDetailsScreen() {
             {t.portDetails.availableServices}
           </Text>
 
-          {services.length === 0 ? (
+          {portServices.length === 0 ? (
             <View style={styles.emptyServicesContainer}>
               <Text style={[styles.emptyServicesText, { color: colors.textSecondary }]}>
-                {t.portDetails.noServices}
+                {language === 'fr' 
+                  ? 'Les services pour ce port seront ajoutés prochainement.' 
+                  : 'Services for this port will be added soon.'}
               </Text>
             </View>
           ) : (
             <View style={styles.servicesGrid}>
-              {services.map((service, index) => (
+              {portServices.map((portService, index) => (
                 <React.Fragment key={index}>
                   <View style={[styles.serviceCard, { backgroundColor: theme.colors.card }]}>
                     <View style={styles.serviceHeader}>
@@ -269,26 +302,23 @@ export default function PortDetailsScreen() {
                         size={24}
                         color={colors.primary}
                       />
-                      {service.is_premium && (
+                      {portService.service.is_premium && (
                         <View style={[styles.premiumBadge, { backgroundColor: colors.accent }]}>
                           <Text style={styles.premiumBadgeText}>{t.portCoverage.premium}</Text>
                         </View>
                       )}
                     </View>
                     <Text style={[styles.serviceName, { color: theme.colors.text }]}>
-                      {getServiceName(service)}
+                      {getServiceName(portService.service)}
                     </Text>
-                    <Text style={[styles.serviceDescription, { color: colors.textSecondary }]} numberOfLines={2}>
-                      {getServiceDescription(service)}
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.serviceButton, { backgroundColor: colors.primary }]}
-                      onPress={handleRequestQuote}
-                    >
-                      <Text style={styles.serviceButtonText}>
-                        {t.portDetails.requestQuoteForPort}
+                    <View style={[styles.categoryBadge, { backgroundColor: colors.highlight }]}>
+                      <Text style={[styles.categoryBadgeText, { color: colors.primary }]}>
+                        {getCategoryLabel(portService.service.category)}
                       </Text>
-                    </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.serviceDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+                      {getServiceDescription(portService.service)}
+                    </Text>
                   </View>
                 </React.Fragment>
               ))}
@@ -371,6 +401,37 @@ export default function PortDetailsScreen() {
             </View>
           </View>
         )}
+
+        {/* Request Service Button */}
+        <View style={styles.requestServiceSection}>
+          <TouchableOpacity
+            style={[styles.requestServiceButton, { backgroundColor: colors.primary }]}
+            onPress={handleRequestQuote}
+          >
+            <IconSymbol
+              ios_icon_name="doc.text.fill"
+              android_material_icon_name="description"
+              size={20}
+              color="#ffffff"
+            />
+            <Text style={styles.requestServiceButtonText}>
+              {language === 'fr' 
+                ? 'Demander un service dans ce port' 
+                : 'Request a service in this port'}
+            </Text>
+            <IconSymbol
+              ios_icon_name="arrow.right"
+              android_material_icon_name="arrow_forward"
+              size={18}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+          <Text style={[styles.requestServiceHint, { color: colors.textSecondary }]}>
+            {language === 'fr'
+              ? 'Remplissez une demande de devis pour ce port'
+              : 'Fill out a quote request for this port'}
+          </Text>
+        </View>
 
         {/* Final CTA */}
         <View style={[styles.finalCtaSection, { backgroundColor: colors.primary }]}>
@@ -514,21 +575,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
   },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   serviceDescription: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 16,
-  },
-  serviceButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  serviceButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
   },
   agentsContainer: {
     gap: 16,
@@ -602,6 +662,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  requestServiceSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  requestServiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 12,
+    width: '100%',
+    marginBottom: 8,
+  },
+  requestServiceButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  requestServiceHint: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   finalCtaSection: {
     marginHorizontal: 20,
