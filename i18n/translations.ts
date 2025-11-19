@@ -89,6 +89,8 @@ export interface Translations {
     finalCtaSubtitle: string;
     finalCtaContactExpert: string;
     finalCtaViewPricing: string;
+    mainCta: string;
+    mainCtaMicrocopy: string;
   };
   regions: {
     africa: string;
@@ -121,6 +123,10 @@ export interface Translations {
     viewPricing: string;
     consultExpert: string;
     accessPortal: string;
+    ctaQuote: string;
+    ctaPricing: string;
+    ctaExpert: string;
+    ctaPortal: string;
   };
   portCoverage: {
     title: string;
@@ -190,6 +196,8 @@ export interface Translations {
     requiredField: string;
     invalidEmail: string;
     selectAtLeastOne: string;
+    ctaButton: string;
+    ctaMicrocopy: string;
   };
   clientSpace: {
     title: string;
@@ -220,6 +228,7 @@ export interface Translations {
     premiumFeature2: string;
     premiumFeature3: string;
     premiumButton: string;
+    premiumButtonMicrocopy: string;
     enterpriseTitle: string;
     enterprisePrice: string;
     enterpriseDesc: string;
@@ -296,6 +305,18 @@ export interface Translations {
     item3: string;
     item4: string;
   };
+  microCopies: {
+    fastResponse: string;
+    noCommitment: string;
+    secureOperations: string;
+    dataProtected: string;
+  };
+  feedbackMessages: {
+    quoteSubmitted: string;
+    agentApplicationSubmitted: string;
+    subscriptionActivated: string;
+    documentAdded: string;
+  };
   digitalPortal: {
     title: string;
     welcomeTitle: string;
@@ -330,6 +351,7 @@ export interface Translations {
     save: string;
     loading: string;
     close: string;
+    error: string;
   };
 }
 
@@ -422,6 +444,8 @@ export const translations: Record<Language, Translations> = {
       finalCtaSubtitle: 'Nos experts sont à votre disposition pour analyser vos besoins et vous proposer une solution sur mesure.',
       finalCtaContactExpert: 'Contacter un expert',
       finalCtaViewPricing: 'Voir nos tarifs',
+      mainCta: 'Obtenir un devis en moins de 3 minutes',
+      mainCtaMicrocopy: 'Réponse rapide garantie',
     },
     regions: {
       africa: 'Afrique',
@@ -454,6 +478,10 @@ export const translations: Record<Language, Translations> = {
       viewPricing: 'Voir tarifs',
       consultExpert: 'Consulter un expert',
       accessPortal: 'Accéder au portail',
+      ctaQuote: 'Demander un devis immédiat',
+      ctaPricing: 'Voir nos tarifs',
+      ctaExpert: 'Parler à un expert',
+      ctaPortal: 'Accéder au portail digital',
     },
     portCoverage: {
       title: 'Nos ports partenaires',
@@ -523,6 +551,8 @@ export const translations: Record<Language, Translations> = {
       requiredField: 'Ce champ est requis',
       invalidEmail: 'Email invalide',
       selectAtLeastOne: 'Sélectionnez au moins une activité',
+      ctaButton: 'Soumettre ma candidature d\'agent',
+      ctaMicrocopy: 'Réponse sous 24–48h',
     },
     clientSpace: {
       title: 'Espace Client',
@@ -552,7 +582,8 @@ export const translations: Record<Language, Translations> = {
       premiumFeature1: 'Accès complet au tracking des shipments',
       premiumFeature2: 'Notifications email sur les changements de statut',
       premiumFeature3: 'Support prioritaire',
-      premiumButton: 'Souscrire',
+      premiumButton: 'Activer ce plan maintenant',
+      premiumButtonMicrocopy: 'Sans engagement',
       enterpriseTitle: 'Enterprise Logistics',
       enterprisePrice: '99 € / mois',
       enterpriseDesc: 'Solution logistique globale pour les entreprises avec volumes récurrents.',
@@ -629,6 +660,18 @@ export const translations: Record<Language, Translations> = {
       item3: 'Accès immédiat après activation',
       item4: 'Données chiffrées et protégées',
     },
+    microCopies: {
+      fastResponse: 'Réponse rapide garantie',
+      noCommitment: 'Sans engagement',
+      secureOperations: 'Opérations sécurisées',
+      dataProtected: 'Données protégées',
+    },
+    feedbackMessages: {
+      quoteSubmitted: 'Votre demande a été envoyée. Un expert va vous répondre rapidement.',
+      agentApplicationSubmitted: 'Votre candidature a été transmise. Réponse sous 24–48h.',
+      subscriptionActivated: 'Merci ! Votre abonnement est en cours d\'activation.',
+      documentAdded: 'Document ajouté avec succès.',
+    },
     digitalPortal: {
       title: 'Portail Digital Maritime',
       welcomeTitle: 'Bienvenue sur votre Portail Digital',
@@ -663,6 +706,7 @@ export const translations: Record<Language, Translations> = {
       save: 'Enregistrer',
       loading: 'Chargement...',
       close: 'Fermer',
+      error: 'Erreur',
     },
   },
   en: {
@@ -753,6 +797,8 @@ export const translations: Record<Language, Translations> = {
       finalCtaSubtitle: 'Our experts are at your disposal to analyze your needs and propose a tailor-made solution.',
       finalCtaContactExpert: 'Contact an expert',
       finalCtaViewPricing: 'View our pricing',
+      mainCta: 'Get a quote in less than 3 minutes',
+      mainCtaMicrocopy: 'Fast response guaranteed',
     },
     regions: {
       africa: 'Africa',
@@ -785,6 +831,10 @@ export const translations: Record<Language, Translations> = {
       viewPricing: 'View pricing',
       consultExpert: 'Consult an expert',
       accessPortal: 'Access portal',
+      ctaQuote: 'Request an immediate quote',
+      ctaPricing: 'View our pricing',
+      ctaExpert: 'Talk to an expert',
+      ctaPortal: 'Access the digital portal',
     },
     portCoverage: {
       title: 'Our Partner Ports',
@@ -854,6 +904,8 @@ export const translations: Record<Language, Translations> = {
       requiredField: 'This field is required',
       invalidEmail: 'Invalid email',
       selectAtLeastOne: 'Select at least one activity',
+      ctaButton: 'Submit my agent application',
+      ctaMicrocopy: 'Response within 24–48h',
     },
     clientSpace: {
       title: 'Client Space',
@@ -883,7 +935,8 @@ export const translations: Record<Language, Translations> = {
       premiumFeature1: 'Full access to shipment tracking',
       premiumFeature2: 'Email notifications on status changes',
       premiumFeature3: 'Priority support',
-      premiumButton: 'Subscribe',
+      premiumButton: 'Activate this plan now',
+      premiumButtonMicrocopy: 'No commitment',
       enterpriseTitle: 'Enterprise Logistics',
       enterprisePrice: '€99 / month',
       enterpriseDesc: 'Global logistics solution for businesses with recurring volumes.',
@@ -960,6 +1013,18 @@ export const translations: Record<Language, Translations> = {
       item3: 'Immediate access after activation',
       item4: 'Encrypted and protected data',
     },
+    microCopies: {
+      fastResponse: 'Fast response guaranteed',
+      noCommitment: 'No commitment',
+      secureOperations: 'Secure operations',
+      dataProtected: 'Data protected',
+    },
+    feedbackMessages: {
+      quoteSubmitted: 'Your request has been sent. An expert will respond to you quickly.',
+      agentApplicationSubmitted: 'Your application has been submitted. Response within 24–48h.',
+      subscriptionActivated: 'Thank you! Your subscription is being activated.',
+      documentAdded: 'Document added successfully.',
+    },
     digitalPortal: {
       title: 'Digital Maritime Portal',
       welcomeTitle: 'Welcome to Your Digital Portal',
@@ -994,6 +1059,7 @@ export const translations: Record<Language, Translations> = {
       save: 'Save',
       loading: 'Loading...',
       close: 'Close',
+      error: 'Error',
     },
   },
   es: {
@@ -1084,6 +1150,8 @@ export const translations: Record<Language, Translations> = {
       finalCtaSubtitle: 'Nuestros expertos están a su disposición para analizar sus necesidades y proponer una solución a medida.',
       finalCtaContactExpert: 'Contactar a un experto',
       finalCtaViewPricing: 'Ver nuestros precios',
+      mainCta: 'Obtener una cotización en menos de 3 minutos',
+      mainCtaMicrocopy: 'Respuesta rápida garantizada',
     },
     regions: {
       africa: 'África',
@@ -1116,6 +1184,10 @@ export const translations: Record<Language, Translations> = {
       viewPricing: 'Ver precios',
       consultExpert: 'Consultar un experto',
       accessPortal: 'Acceder al portal',
+      ctaQuote: 'Solicitar una cotización inmediata',
+      ctaPricing: 'Ver nuestros precios',
+      ctaExpert: 'Hablar con un experto',
+      ctaPortal: 'Acceder al portal digital',
     },
     portCoverage: {
       title: 'Nuestros Puertos Asociados',
@@ -1185,6 +1257,8 @@ export const translations: Record<Language, Translations> = {
       requiredField: 'Este campo es obligatorio',
       invalidEmail: 'Correo electrónico inválido',
       selectAtLeastOne: 'Seleccione al menos una actividad',
+      ctaButton: 'Enviar mi solicitud de agente',
+      ctaMicrocopy: 'Respuesta en 24–48h',
     },
     clientSpace: {
       title: 'Espacio Cliente',
@@ -1214,7 +1288,8 @@ export const translations: Record<Language, Translations> = {
       premiumFeature1: 'Acceso completo al seguimiento de envíos',
       premiumFeature2: 'Notificaciones por correo electrónico sobre cambios de estado',
       premiumFeature3: 'Soporte prioritario',
-      premiumButton: 'Suscribirse',
+      premiumButton: 'Activar este plan ahora',
+      premiumButtonMicrocopy: 'Sin compromiso',
       enterpriseTitle: 'Enterprise Logistics',
       enterprisePrice: '€99 / mes',
       enterpriseDesc: 'Solución logística global para empresas con volúmenes recurrentes.',
@@ -1291,6 +1366,18 @@ export const translations: Record<Language, Translations> = {
       item3: 'Acceso inmediato después de la activación',
       item4: 'Datos cifrados y protegidos',
     },
+    microCopies: {
+      fastResponse: 'Respuesta rápida garantizada',
+      noCommitment: 'Sin compromiso',
+      secureOperations: 'Operaciones seguras',
+      dataProtected: 'Datos protegidos',
+    },
+    feedbackMessages: {
+      quoteSubmitted: 'Su solicitud ha sido enviada. Un experto le responderá rápidamente.',
+      agentApplicationSubmitted: 'Su solicitud ha sido enviada. Respuesta en 24–48h.',
+      subscriptionActivated: '¡Gracias! Su suscripción está siendo activada.',
+      documentAdded: 'Documento agregado con éxito.',
+    },
     digitalPortal: {
       title: 'Portal Digital Marítimo',
       welcomeTitle: 'Bienvenido a su Portal Digital',
@@ -1325,6 +1412,7 @@ export const translations: Record<Language, Translations> = {
       save: 'Guardar',
       loading: 'Cargando...',
       close: 'Cerrar',
+      error: 'Error',
     },
   },
   ar: {
@@ -1415,6 +1503,8 @@ export const translations: Record<Language, Translations> = {
       finalCtaSubtitle: 'خبراؤنا تحت تصرفك لتحليل احتياجاتك واقتراح حل مصمم خصيصًا.',
       finalCtaContactExpert: 'اتصل بخبير',
       finalCtaViewPricing: 'عرض أسعارنا',
+      mainCta: 'احصل على عرض أسعار في أقل من 3 دقائق',
+      mainCtaMicrocopy: 'استجابة سريعة مضمونة',
     },
     regions: {
       africa: 'أفريقيا',
@@ -1447,6 +1537,10 @@ export const translations: Record<Language, Translations> = {
       viewPricing: 'عرض الأسعار',
       consultExpert: 'استشارة خبير',
       accessPortal: 'الوصول إلى البوابة',
+      ctaQuote: 'طلب عرض أسعار فوري',
+      ctaPricing: 'عرض أسعارنا',
+      ctaExpert: 'تحدث إلى خبير',
+      ctaPortal: 'الوصول إلى البوابة الرقمية',
     },
     portCoverage: {
       title: 'موانئنا الشريكة',
@@ -1516,6 +1610,8 @@ export const translations: Record<Language, Translations> = {
       requiredField: 'هذا الحقل مطلوب',
       invalidEmail: 'بريد إلكتروني غير صالح',
       selectAtLeastOne: 'اختر نشاطاً واحداً على الأقل',
+      ctaButton: 'إرسال طلب الوكيل الخاص بي',
+      ctaMicrocopy: 'الرد في غضون 24-48 ساعة',
     },
     clientSpace: {
       title: 'مساحة العميل',
@@ -1545,7 +1641,8 @@ export const translations: Record<Language, Translations> = {
       premiumFeature1: 'وصول كامل لتتبع الشحنات',
       premiumFeature2: 'إشعارات البريد الإلكتروني عند تغيير الحالة',
       premiumFeature3: 'دعم ذو أولوية',
-      premiumButton: 'اشترك',
+      premiumButton: 'تفعيل هذه الخطة الآن',
+      premiumButtonMicrocopy: 'بدون التزام',
       enterpriseTitle: 'Enterprise Logistics',
       enterprisePrice: '€99 / شهر',
       enterpriseDesc: 'حل لوجستي عالمي للشركات ذات الأحجام المتكررة.',
@@ -1622,6 +1719,18 @@ export const translations: Record<Language, Translations> = {
       item3: 'وصول فوري بعد التفعيل',
       item4: 'بيانات مشفرة ومحمية',
     },
+    microCopies: {
+      fastResponse: 'استجابة سريعة مضمونة',
+      noCommitment: 'بدون التزام',
+      secureOperations: 'عمليات آمنة',
+      dataProtected: 'بيانات محمية',
+    },
+    feedbackMessages: {
+      quoteSubmitted: 'تم إرسال طلبك. سيرد عليك خبير بسرعة.',
+      agentApplicationSubmitted: 'تم إرسال طلبك. الرد في غضون 24-48 ساعة.',
+      subscriptionActivated: 'شكراً! يتم تفعيل اشتراكك.',
+      documentAdded: 'تمت إضافة المستند بنجاح.',
+    },
     digitalPortal: {
       title: 'البوابة الرقمية البحرية',
       welcomeTitle: 'مرحبًا بك في بوابتك الرقمية',
@@ -1656,6 +1765,7 @@ export const translations: Record<Language, Translations> = {
       save: 'حفظ',
       loading: 'جار التحميل...',
       close: 'إغلاق',
+      error: 'خطأ',
     },
   },
 };

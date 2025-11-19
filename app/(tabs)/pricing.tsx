@@ -11,6 +11,7 @@ import { supabase } from "@/app/integrations/supabase/client";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { TrustBar } from "@/components/TrustBar";
+import { MicroCopy } from "@/components/MicroCopy";
 
 interface PricingPlan {
   id: string;
@@ -333,23 +334,37 @@ export default function PricingScreen() {
                   ))}
                 </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.selectButton,
-                    { 
-                      backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : plan.color,
-                    },
-                  ]}
-                  onPress={() => handlePlanAction(plan.action)}
-                >
-                  <Text style={styles.selectButtonText}>{plan.buttonText}</Text>
-                  <IconSymbol
-                    ios_icon_name="arrow.right"
-                    android_material_icon_name="arrow_forward"
-                    size={18}
-                    color="#ffffff"
-                  />
-                </TouchableOpacity>
+                <View>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectButton,
+                      { 
+                        backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : plan.color,
+                      },
+                    ]}
+                    onPress={() => handlePlanAction(plan.action)}
+                  >
+                    <Text style={styles.selectButtonText}>{plan.buttonText}</Text>
+                    <IconSymbol
+                      ios_icon_name="arrow.right"
+                      android_material_icon_name="arrow_forward"
+                      size={18}
+                      color="#ffffff"
+                    />
+                  </TouchableOpacity>
+                  {plan.id === 'premium' && (
+                    <MicroCopy
+                      text={t.pricing.premiumButtonMicrocopy}
+                      icon={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
+                    />
+                  )}
+                  {plan.id === 'digital_portal' && (
+                    <MicroCopy
+                      text={t.microCopies.dataProtected}
+                      icon={{ ios: 'lock.shield.fill', android: 'security' }}
+                    />
+                  )}
+                </View>
               </View>
             </React.Fragment>
           ))}

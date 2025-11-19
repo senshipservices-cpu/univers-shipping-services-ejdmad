@@ -11,6 +11,7 @@ import { supabase } from "@/app/integrations/supabase/client";
 import { FAQSection, FAQItem } from "@/components/FAQSection";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 import { TrustBar } from "@/components/TrustBar";
+import { MicroCopy } from "@/components/MicroCopy";
 
 interface Port {
   id: string;
@@ -203,7 +204,7 @@ export default function BecomeAgentScreen() {
           </Text>
           
           <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
-            {t.becomeAgent.successMessage}
+            {t.feedbackMessages.agentApplicationSubmitted}
           </Text>
 
           <TouchableOpacity
@@ -668,18 +669,24 @@ export default function BecomeAgentScreen() {
         </View>
 
         <View style={styles.ctaSection}>
-          <TouchableOpacity
-            style={[styles.applyButton, { backgroundColor: colors.accent }]}
-            onPress={() => setShowForm(true)}
-          >
-            <Text style={styles.applyButtonText}>{t.becomeAgent.apply}</Text>
-            <IconSymbol
-              ios_icon_name="arrow.right"
-              android_material_icon_name="arrow_forward"
-              size={20}
-              color="#ffffff"
+          <View>
+            <TouchableOpacity
+              style={[styles.applyButton, { backgroundColor: colors.accent }]}
+              onPress={() => setShowForm(true)}
+            >
+              <Text style={styles.applyButtonText}>{t.becomeAgent.ctaButton}</Text>
+              <IconSymbol
+                ios_icon_name="arrow.right"
+                android_material_icon_name="arrow_forward"
+                size={20}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
+            <MicroCopy
+              text={t.becomeAgent.ctaMicrocopy}
+              icon={{ ios: 'clock.fill', android: 'schedule' }}
             />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* FAQ Section */}

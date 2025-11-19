@@ -11,6 +11,7 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
 import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
+import { MicroCopy } from "@/components/MicroCopy";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -212,19 +213,26 @@ export default function HomeScreen() {
             <Text style={styles.heroSubtitle}>{t.home.heroSubtitle}</Text>
             
             <View style={styles.heroButtons}>
-              <TouchableOpacity
-                style={[styles.heroButton, styles.heroButtonPrimary]}
-                onPress={() => router.push("/(tabs)/freight-quote")}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.heroButtonTextPrimary}>{t.home.requestGlobalQuote}</Text>
-                <IconSymbol
-                  ios_icon_name="arrow.right"
-                  android_material_icon_name="arrow_forward"
-                  size={20}
+              <View>
+                <TouchableOpacity
+                  style={[styles.heroButton, styles.heroButtonPrimary]}
+                  onPress={() => router.push("/(tabs)/freight-quote")}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.heroButtonTextPrimary}>{t.home.mainCta}</Text>
+                  <IconSymbol
+                    ios_icon_name="arrow.right"
+                    android_material_icon_name="arrow_forward"
+                    size={20}
+                    color="#ffffff"
+                  />
+                </TouchableOpacity>
+                <MicroCopy
+                  text={t.home.mainCtaMicrocopy}
+                  icon={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
                   color="#ffffff"
                 />
-              </TouchableOpacity>
+              </View>
               
               <TouchableOpacity
                 style={[styles.heroButton, styles.heroButtonSecondary]}

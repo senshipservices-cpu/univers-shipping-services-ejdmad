@@ -12,6 +12,7 @@ import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
+import { MicroCopy } from "@/components/MicroCopy";
 
 interface Service {
   id: string;
@@ -163,13 +164,13 @@ export default function GlobalServicesScreen() {
   const getButtonText = (ctaType: string | null) => {
     switch (ctaType) {
       case 'quote':
-        return t.globalServices.requestQuote;
+        return t.globalServices.ctaQuote;
       case 'pricing':
-        return t.globalServices.viewPricing;
+        return t.globalServices.ctaPricing;
       case 'expert':
-        return t.globalServices.consultExpert;
+        return t.globalServices.ctaExpert;
       case 'portal':
-        return t.globalServices.accessPortal;
+        return t.globalServices.ctaPortal;
       default:
         return t.globalServices.details;
     }
@@ -349,20 +350,34 @@ export default function GlobalServicesScreen() {
                       </View>
                     )}
 
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                      onPress={() => handleServiceAction(service)}
-                    >
-                      <IconSymbol
-                        ios_icon_name={buttonIcon.ios}
-                        android_material_icon_name={buttonIcon.android}
-                        size={18}
-                        color="#ffffff"
-                      />
-                      <Text style={styles.actionButtonText}>
-                        {getButtonText(service.cta_type)}
-                      </Text>
-                    </TouchableOpacity>
+                    <View>
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                        onPress={() => handleServiceAction(service)}
+                      >
+                        <IconSymbol
+                          ios_icon_name={buttonIcon.ios}
+                          android_material_icon_name={buttonIcon.android}
+                          size={18}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.actionButtonText}>
+                          {getButtonText(service.cta_type)}
+                        </Text>
+                      </TouchableOpacity>
+                      {service.cta_type === 'quote' && (
+                        <MicroCopy
+                          text={t.microCopies.fastResponse}
+                          icon={{ ios: 'clock.fill', android: 'schedule' }}
+                        />
+                      )}
+                      {service.cta_type === 'portal' && (
+                        <MicroCopy
+                          text={t.microCopies.secureOperations}
+                          icon={{ ios: 'lock.shield.fill', android: 'security' }}
+                        />
+                      )}
+                    </View>
                   </View>
                 </React.Fragment>
               );

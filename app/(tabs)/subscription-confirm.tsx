@@ -219,7 +219,7 @@ export default function SubscriptionConfirmScreen() {
       // Show success message
       Alert.alert(
         'Merci !',
-        'Votre abonnement est en cours d\'activation.',
+        t.feedbackMessages.subscriptionActivated,
         [
           {
             text: 'OK',

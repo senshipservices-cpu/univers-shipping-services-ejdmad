@@ -153,7 +153,7 @@ export default function FreightQuoteScreen() {
 
       Alert.alert(
         "Demande envoyée !",
-        "Votre demande de devis a été envoyée avec succès. Notre équipe vous contactera dans les plus brefs délais.",
+        t.feedbackMessages.quoteSubmitted,
         [
           {
             text: "OK",
