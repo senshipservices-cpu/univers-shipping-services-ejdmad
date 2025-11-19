@@ -9,7 +9,7 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-// Global admin emails list
+// Global admin emails list - Must match across all admin-related components
 const ADMIN_EMAILS = [
   'cheikh@uss.com',
   'admin@uss.com',

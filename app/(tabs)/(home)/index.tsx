@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
 import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
 import { colors } from "@/styles/commonStyles";
@@ -31,21 +32,12 @@ interface WhyChooseUsAdvantage {
   icon: string;
 }
 
-// Admin email whitelist - Must match the one in kpi-dashboard.tsx
-const ADMIN_EMAILS = [
-  'admin@3sglobal.com',
-  'admin_email@gmail.com', // As specified in the requirement
-  'your-email@example.com', // Replace with actual admin emails
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
   const { user } = useAuth();
-
-  // Check if user is admin
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin } = useAdmin();
 
   const quickAccessCards: ServiceCard[] = [
     {
@@ -168,12 +160,12 @@ export default function HomeScreen() {
           {isAdmin && (
             <TouchableOpacity
               style={[styles.adminButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/(tabs)/kpi-dashboard')}
+              onPress={() => router.push('/(tabs)/admin-dashboard')}
               activeOpacity={0.7}
             >
               <IconSymbol
-                ios_icon_name="chart.bar.fill"
-                android_material_icon_name="analytics"
+                ios_icon_name="shield.lefthalf.filled"
+                android_material_icon_name="admin_panel_settings"
                 size={20}
                 color="#ffffff"
               />
