@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -56,13 +56,7 @@ export default function AdminAgentDetailsScreen() {
   const [editField, setEditField] = useState<string>('');
   const [editValue, setEditValue] = useState<string | boolean>('');
 
-  useEffect(() => {
-    if (isAdmin && agentId) {
-      loadAgentDetails();
-    }
-  }, [isAdmin, agentId]);
-
-  const loadAgentDetails = async () => {
+  const loadAgentDetails = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -88,7 +82,13 @@ export default function AdminAgentDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId, router]);
+
+  useEffect(() => {
+    if (isAdmin && agentId) {
+      loadAgentDetails();
+    }
+  }, [isAdmin, agentId, loadAgentDetails]);
 
   const openEditModal = (field: string, currentValue: string | boolean) => {
     setEditField(field);

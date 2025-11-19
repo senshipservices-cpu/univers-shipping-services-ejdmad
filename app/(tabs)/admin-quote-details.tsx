@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -64,13 +64,7 @@ export default function AdminQuoteDetailsScreen() {
   const [editField, setEditField] = useState<string>('');
   const [editValue, setEditValue] = useState<string>('');
 
-  useEffect(() => {
-    if (isAdmin && quoteId) {
-      loadQuoteDetails();
-    }
-  }, [isAdmin, quoteId]);
-
-  const loadQuoteDetails = async () => {
+  const loadQuoteDetails = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -99,7 +93,13 @@ export default function AdminQuoteDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quoteId, router]);
+
+  useEffect(() => {
+    if (isAdmin && quoteId) {
+      loadQuoteDetails();
+    }
+  }, [isAdmin, quoteId, loadQuoteDetails]);
 
   const openEditModal = (field: string, currentValue: string | number | null) => {
     setEditField(field);
