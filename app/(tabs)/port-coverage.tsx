@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Image, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import { PortsMap } from "@/components/PortsMap";
 
 interface Port {
   id: string;
@@ -104,6 +105,20 @@ export default function PortCoverageScreen() {
     }
   };
 
+  const handlePortPress = (portId: string) => {
+    router.push(`/port-details?port_id=${portId}`);
+  };
+
+  // Get ports with valid coordinates for the map
+  const portsWithCoordinates = ports.filter(p => p.lat !== null && p.lng !== null).map(p => ({
+    id: p.id,
+    name: p.name,
+    lat: p.lat!,
+    lng: p.lng!,
+    is_hub: p.is_hub,
+    country: p.country,
+  }));
+
   const renderPortsByRegion = (region: 'africa' | 'europe' | 'asia' | 'americas') => {
     const regionPorts = portsByRegion[region];
     
@@ -170,23 +185,6 @@ export default function PortCoverageScreen() {
               ? 'Strategic presence across major global maritime hubs.' 
               : 'Une présence stratégique dans les principaux hubs maritimes mondiaux.'}
           </Text>
-          <TouchableOpacity
-            style={[styles.heroButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              // Scroll to the first region section
-              console.log('View nearby ports');
-            }}
-          >
-            <Text style={styles.heroButtonText}>
-              {language === 'en' ? 'View ports near you' : 'Voir les ports près de chez vous'}
-            </Text>
-            <IconSymbol
-              ios_icon_name="arrow.down"
-              android_material_icon_name="arrow_downward"
-              size={16}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Interactive Map Section */}
@@ -195,57 +193,33 @@ export default function PortCoverageScreen() {
             {language === 'en' ? 'Global Port Network' : 'Réseau Portuaire Mondial'}
           </Text>
           
-          <View style={[styles.mapContainer, { backgroundColor: colors.highlight }]}>
-            {/* World Map Background */}
-            <View style={styles.mapPlaceholder}>
-              <IconSymbol
-                ios_icon_name="map.fill"
-                android_material_icon_name="map"
-                size={80}
-                color={colors.primary}
-              />
+          {loading ? (
+            <View style={[styles.mapPlaceholder, { backgroundColor: colors.highlight }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={[styles.mapPlaceholderText, { color: colors.textSecondary }]}>
-                {language === 'en' 
-                  ? `${ports.length} active ports worldwide` 
-                  : `${ports.length} ports actifs dans le monde`}
+                {t.portCoverage.loading}
               </Text>
             </View>
-
-            {/* Port Markers (simplified visualization) */}
-            {ports.filter(p => p.lat && p.lng).slice(0, 20).map((port, index) => (
-              <React.Fragment key={index}>
-                <TouchableOpacity
-                  style={[
-                    styles.portMarker,
-                    {
-                      // Simple positioning based on lat/lng
-                      // This is a simplified Mercator projection
-                      left: `${((port.lng! + 180) / 360) * 100}%`,
-                      top: `${((90 - port.lat!) / 180) * 100}%`,
-                    },
-                  ]}
-                  onPress={() => router.push(`/port-details?port_id=${port.id}`)}
-                >
-                  <View style={[styles.markerDot, { backgroundColor: port.is_hub ? colors.accent : colors.primary }]} />
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
-
-          <View style={styles.mapLegend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                {language === 'en' ? 'Active Port' : 'Port Actif'}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                {language === 'en' ? 'Hub Port' : 'Port Hub'}
-              </Text>
-            </View>
-          </View>
+          ) : (
+            <>
+              <PortsMap ports={portsWithCoordinates} onPortPress={handlePortPress} />
+              
+              <View style={styles.mapLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                    {language === 'en' ? 'Active Port' : 'Port Actif'}
+                  </Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                    {language === 'en' ? 'Hub Port' : 'Port Hub'}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Search Bar */}
@@ -427,19 +401,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 24,
   },
-  heroButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-  heroButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
   mapSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
@@ -449,14 +410,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 16,
   },
-  mapContainer: {
-    height: 300,
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
-  },
   mapPlaceholder: {
-    flex: 1,
+    height: 400,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
@@ -464,20 +420,6 @@ const styles = StyleSheet.create({
   mapPlaceholderText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  portMarker: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  markerDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#ffffff',
   },
   mapLegend: {
     flexDirection: 'row',
