@@ -125,7 +125,7 @@ export default function PortCoverageScreen() {
             <React.Fragment key={index}>
               <TouchableOpacity
                 style={[styles.portMiniCard, { backgroundColor: theme.colors.card }]}
-                onPress={() => router.push(`/port-detail?id=${port.id}`)}
+                onPress={() => router.push(`/port-details?port_id=${port.id}`)}
               >
                 {port.is_hub && (
                   <View style={[styles.hubBadgeMini, { backgroundColor: colors.accent }]}>
@@ -224,7 +224,7 @@ export default function PortCoverageScreen() {
                       top: `${((90 - port.lat!) / 180) * 100}%`,
                     },
                   ]}
-                  onPress={() => router.push(`/port-detail?id=${port.id}`)}
+                  onPress={() => router.push(`/port-details?port_id=${port.id}`)}
                 >
                   <View style={[styles.markerDot, { backgroundColor: port.is_hub ? colors.accent : colors.primary }]} />
                 </TouchableOpacity>
@@ -300,32 +300,26 @@ export default function PortCoverageScreen() {
           </>
         )}
 
-        {/* CTA: Port Not Listed */}
-        <View style={[styles.ctaSection, { backgroundColor: colors.highlight }]}>
-          <IconSymbol
-            ios_icon_name="plus.circle.fill"
-            android_material_icon_name="add_circle"
-            size={48}
-            color={colors.primary}
-          />
-          <Text style={[styles.ctaTitle, { color: theme.colors.text }]}>
-            {language === 'en' 
-              ? 'Port not listed?' 
-              : 'Port non listé ?'}
+        {/* CTA: Port Not Listed - Dark Blue Block */}
+        <View style={[styles.portNotListedSection, { backgroundColor: '#1e3a5f' }]}>
+          <Text style={styles.portNotListedTitle}>
+            {t.portCoverage.portNotListedTitle}
           </Text>
-          <Text style={[styles.ctaText, { color: colors.textSecondary }]}>
-            {t.portCoverage.ctaText}
+          <Text style={styles.portNotListedText}>
+            {t.portCoverage.portNotListedText}
           </Text>
           <TouchableOpacity
-            style={[styles.ctaButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/become-agent')}
+            style={[styles.portNotListedButton, { backgroundColor: '#ffffff' }]}
+            onPress={() => router.push('/contact?subject=port_request')}
           >
-            <Text style={styles.ctaButtonText}>{t.portCoverage.ctaButton}</Text>
+            <Text style={[styles.portNotListedButtonText, { color: '#1e3a5f' }]}>
+              {t.portCoverage.portNotListedButton}
+            </Text>
             <IconSymbol
               ios_icon_name="arrow.right"
               android_material_icon_name="arrow_forward"
               size={18}
-              color="#ffffff"
+              color="#1e3a5f"
             />
           </TouchableOpacity>
         </View>
@@ -591,27 +585,29 @@ const styles = StyleSheet.create({
   portMiniCountry: {
     fontSize: 13,
   },
-  ctaSection: {
+  portNotListedSection: {
     marginHorizontal: 20,
     marginTop: 32,
     padding: 32,
     borderRadius: 16,
     alignItems: 'center',
   },
-  ctaTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+  portNotListedTitle: {
+    fontSize: 24,
+    fontWeight: '800',
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#ffffff',
+    marginBottom: 16,
   },
-  ctaText: {
-    fontSize: 15,
+  portNotListedText: {
+    fontSize: 16,
     textAlign: 'center',
+    color: '#ffffff',
     marginBottom: 24,
-    lineHeight: 22,
+    lineHeight: 24,
+    opacity: 0.9,
   },
-  ctaButton: {
+  portNotListedButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
@@ -619,10 +615,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  ctaButtonText: {
+  portNotListedButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
   },
   premiumSection: {
     marginHorizontal: 20,

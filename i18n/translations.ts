@@ -148,6 +148,21 @@ export interface Translations {
     ctaButton: string;
     noPorts: string;
     loading: string;
+    portNotListedTitle: string;
+    portNotListedText: string;
+    portNotListedButton: string;
+  };
+  portDetails: {
+    title: string;
+    description: string;
+    availableServices: string;
+    requestQuoteForPort: string;
+    premiumAgents: string;
+    contactAgent: string;
+    finalCta: string;
+    noServices: string;
+    loading: string;
+    notFound: string;
   };
   becomeAgent: {
     title: string;
@@ -503,6 +518,21 @@ export const translations: Record<Language, Translations> = {
       ctaButton: 'Devenir agent partenaire',
       noPorts: 'Aucun port trouvé pour cette région.',
       loading: 'Chargement des ports...',
+      portNotListedTitle: 'Votre port n\'est pas listé ?',
+      portNotListedText: 'Nous travaillons avec un réseau mondial de partenaires.\nContactez-nous pour toute demande spécifique.',
+      portNotListedButton: 'Nous contacter',
+    },
+    portDetails: {
+      title: 'Détails du port',
+      description: 'Description',
+      availableServices: 'Services disponibles dans ce port',
+      requestQuoteForPort: 'Demander un devis pour ce port',
+      premiumAgents: 'Agents Premium dans ce port',
+      contactAgent: 'Contacter l\'agent',
+      finalCta: 'Demander un devis depuis ce port',
+      noServices: 'Aucun service disponible pour ce port.',
+      loading: 'Chargement...',
+      notFound: 'Port non trouvé',
     },
     becomeAgent: {
       title: 'Devenir agent partenaire UNIVERSAL SHIPPING SERVICES',
@@ -856,6 +886,21 @@ export const translations: Record<Language, Translations> = {
       ctaButton: 'Become a partner agent',
       noPorts: 'No ports found for this region.',
       loading: 'Loading ports...',
+      portNotListedTitle: 'Your port is not listed?',
+      portNotListedText: 'We work with a global network of partners.\nContact us for any specific request.',
+      portNotListedButton: 'Contact us',
+    },
+    portDetails: {
+      title: 'Port Details',
+      description: 'Description',
+      availableServices: 'Available services in this port',
+      requestQuoteForPort: 'Request a quote for this port',
+      premiumAgents: 'Premium Agents in this port',
+      contactAgent: 'Contact agent',
+      finalCta: 'Request a quote from this port',
+      noServices: 'No services available for this port.',
+      loading: 'Loading...',
+      notFound: 'Port not found',
     },
     becomeAgent: {
       title: 'Become a UNIVERSAL SHIPPING SERVICES Partner Agent',
@@ -1209,6 +1254,21 @@ export const translations: Record<Language, Translations> = {
       ctaButton: 'Conviértete en agente asociado',
       noPorts: 'No se encontraron puertos para esta región.',
       loading: 'Cargando puertos...',
+      portNotListedTitle: '¿Su puerto no está listado?',
+      portNotListedText: 'Trabajamos con una red global de socios.\nContáctenos para cualquier solicitud específica.',
+      portNotListedButton: 'Contáctenos',
+    },
+    portDetails: {
+      title: 'Detalles del Puerto',
+      description: 'Descripción',
+      availableServices: 'Servicios disponibles en este puerto',
+      requestQuoteForPort: 'Solicitar cotización para este puerto',
+      premiumAgents: 'Agentes Premium en este puerto',
+      contactAgent: 'Contactar agente',
+      finalCta: 'Solicitar cotización desde este puerto',
+      noServices: 'No hay servicios disponibles para este puerto.',
+      loading: 'Cargando...',
+      notFound: 'Puerto no encontrado',
     },
     becomeAgent: {
       title: 'Conviértete en Agente Asociado UNIVERSAL SHIPPING SERVICES',
@@ -1562,6 +1622,21 @@ export const translations: Record<Language, Translations> = {
       ctaButton: 'كن وكيلاً شريكاً',
       noPorts: 'لم يتم العثور على موانئ لهذه المنطقة.',
       loading: 'جار تحميل الموانئ...',
+      portNotListedTitle: 'ميناءك غير مدرج؟',
+      portNotListedText: 'نحن نعمل مع شبكة عالمية من الشركاء.\nاتصل بنا لأي طلب محدد.',
+      portNotListedButton: 'اتصل بنا',
+    },
+    portDetails: {
+      title: 'تفاصيل الميناء',
+      description: 'الوصف',
+      availableServices: 'الخدمات المتاحة في هذا الميناء',
+      requestQuoteForPort: 'طلب عرض أسعار لهذا الميناء',
+      premiumAgents: 'الوكلاء المميزون في هذا الميناء',
+      contactAgent: 'اتصل بالوكيل',
+      finalCta: 'طلب عرض أسعار من هذا الميناء',
+      noServices: 'لا توجد خدمات متاحة لهذا الميناء.',
+      loading: 'جار التحميل...',
+      notFound: 'الميناء غير موجود',
     },
     becomeAgent: {
       title: 'كن وكيلاً شريكاً UNIVERSAL SHIPPING SERVICES',
