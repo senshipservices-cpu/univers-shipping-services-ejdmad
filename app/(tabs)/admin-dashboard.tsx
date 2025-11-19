@@ -52,6 +52,7 @@ interface Shipment {
   id: string;
   tracking_number: string;
   current_status: string;
+  cargo_type: string | null;
   origin_port: { name: string } | null;
   destination_port: { name: string } | null;
   client: { company_name: string } | null;
@@ -975,12 +976,13 @@ export default function AdminDashboardScreen() {
               </View>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                onPress={() => openShipmentStatusModal(shipment)}
+                onPress={() => router.push(`/(tabs)/admin-shipment-details?shipment_id=${shipment.id}`)}
               >
+                <Text style={[styles.manageButtonText, { color: '#FFFFFF' }]}>Gérer</Text>
                 <IconSymbol
-                  ios_icon_name="pencil"
-                  android_material_icon_name="edit"
-                  size={16}
+                  ios_icon_name="arrow.right.circle.fill"
+                  android_material_icon_name="open_in_new"
+                  size={18}
                   color="#FFFFFF"
                 />
               </TouchableOpacity>
@@ -1010,6 +1012,20 @@ export default function AdminDashboardScreen() {
                   {shipment.origin_port?.name || 'N/A'} → {shipment.destination_port?.name || 'N/A'}
                 </Text>
               </View>
+
+              {shipment.cargo_type && (
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    ios_icon_name="shippingbox"
+                    android_material_icon_name="inventory"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    {shipment.cargo_type}
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.infoRow}>
                 <IconSymbol
@@ -1301,8 +1317,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButton: {
-    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
+  },
+  manageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   cardContent: {
     gap: 8,
