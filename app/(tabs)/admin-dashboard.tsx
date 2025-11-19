@@ -20,9 +20,12 @@ interface FreightQuote {
   quote_amount: number | null;
   quote_currency: string | null;
   payment_status: string | null;
+  client_decision: string | null;
+  cargo_type: string | null;
   created_at: string;
   origin_port: { name: string } | null;
   destination_port: { name: string } | null;
+  service: { name_fr: string; name_en: string } | null;
 }
 
 interface GlobalAgent {
@@ -137,7 +140,8 @@ export default function AdminDashboardScreen() {
       .select(`
         *,
         origin_port:ports!freight_quotes_origin_port_fkey(name),
-        destination_port:ports!freight_quotes_destination_port_fkey(name)
+        destination_port:ports!freight_quotes_destination_port_fkey(name),
+        service:services_global(name_fr, name_en)
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -563,9 +567,34 @@ export default function AdminDashboardScreen() {
                   </Text>
                 </View>
               </View>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                onPress={() => router.push(`/(tabs)/admin-quote-details?quote_id=${quote.id}`)}
+              >
+                <IconSymbol
+                  ios_icon_name="arrow.right.circle.fill"
+                  android_material_icon_name="open_in_new"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.cardContent}>
+              {quote.service && (
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    ios_icon_name="briefcase"
+                    android_material_icon_name="work"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    {quote.service.name_fr}
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.infoRow}>
                 <IconSymbol
                   ios_icon_name="envelope"
@@ -590,6 +619,20 @@ export default function AdminDashboardScreen() {
                 </Text>
               </View>
 
+              {quote.cargo_type && (
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    ios_icon_name="shippingbox"
+                    android_material_icon_name="inventory"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    {quote.cargo_type}
+                  </Text>
+                </View>
+              )}
+
               {quote.quote_amount && (
                 <View style={styles.infoRow}>
                   <IconSymbol
@@ -600,6 +643,20 @@ export default function AdminDashboardScreen() {
                   />
                   <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                     {quote.quote_amount} {quote.quote_currency || 'EUR'}
+                  </Text>
+                </View>
+              )}
+
+              {quote.client_decision && (
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    ios_icon_name="checkmark.circle"
+                    android_material_icon_name="check_circle"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Décision: {formatStatus(quote.client_decision)}
                   </Text>
                 </View>
               )}
