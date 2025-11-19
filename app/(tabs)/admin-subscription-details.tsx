@@ -80,7 +80,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
       if (error) {
         console.error('Error loading subscription details:', error);
-        Alert.alert('Erreur', 'Impossible de charger les détails de l\'abonnement.');
+        Alert.alert('Erreur', "Impossible de charger les détails de l'abonnement.");
         router.back();
       } else {
         setSubscription(data);
@@ -144,7 +144,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
       if (error) {
         console.error('Error updating subscription:', error);
-        Alert.alert('Erreur', 'Impossible de mettre à jour l\'abonnement.');
+        Alert.alert('Erreur', "Impossible de mettre à jour l'abonnement.");
       } else {
         // Log event
         await supabase.from('events_log').insert({
@@ -190,7 +190,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
               if (error) {
                 console.error('Error activating subscription:', error);
-                Alert.alert('Erreur', 'Impossible d\'activer l\'abonnement.');
+                Alert.alert('Erreur', "Impossible d'activer l'abonnement.");
               } else {
                 // Log event
                 await supabase.from('events_log').insert({
@@ -219,7 +219,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
                 await supabase.from('email_notifications').insert(emailData);
 
-                Alert.alert('Succès', 'L\'abonnement a été activé avec succès. Un email de confirmation a été envoyé.');
+                Alert.alert('Succès', "L'abonnement a été activé avec succès. Un email de confirmation a été envoyé.");
                 loadSubscriptionDetails();
               }
             } catch (error) {
@@ -238,7 +238,7 @@ export default function AdminSubscriptionDetailsScreen() {
     if (!subscription) return;
 
     Alert.alert(
-      'Désactiver l\'abonnement',
+      "Désactiver l'abonnement",
       `Êtes-vous sûr de vouloir désactiver l'abonnement pour ${subscription.client_data?.company_name} ?`,
       [
         { text: 'Annuler', style: 'cancel' },
@@ -260,7 +260,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
               if (error) {
                 console.error('Error deactivating subscription:', error);
-                Alert.alert('Erreur', 'Impossible de désactiver l\'abonnement.');
+                Alert.alert('Erreur', "Impossible de désactiver l'abonnement.");
               } else {
                 // Log event
                 await supabase.from('events_log').insert({
@@ -289,7 +289,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
                 await supabase.from('email_notifications').insert(emailData);
 
-                Alert.alert('Succès', 'L\'abonnement a été désactivé. Un email de notification a été envoyé.');
+                Alert.alert('Succès', "L'abonnement a été désactivé. Un email de notification a été envoyé.");
                 loadSubscriptionDetails();
               }
             } catch (error) {
@@ -308,8 +308,8 @@ export default function AdminSubscriptionDetailsScreen() {
     if (!subscription) return;
 
     Alert.alert(
-      'Prolonger l\'abonnement',
-      'De combien de mois souhaitez-vous prolonger l\'abonnement ?',
+      "Prolonger l'abonnement",
+      "De combien de mois souhaitez-vous prolonger l'abonnement ?",
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -352,7 +352,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
       if (error) {
         console.error('Error extending subscription:', error);
-        Alert.alert('Erreur', 'Impossible de prolonger l\'abonnement.');
+        Alert.alert('Erreur', "Impossible de prolonger l'abonnement.");
       } else {
         // Log event
         await supabase.from('events_log').insert({
@@ -382,7 +382,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
         await supabase.from('email_notifications').insert(emailData);
 
-        Alert.alert('Succès', `L\'abonnement a été prolongé de ${months} mois. Un email de confirmation a été envoyé.`);
+        Alert.alert('Succès', `L'abonnement a été prolongé de ${months} mois. Un email de confirmation a été envoyé.`);
         loadSubscriptionDetails();
       }
     } catch (error) {
@@ -427,7 +427,7 @@ export default function AdminSubscriptionDetailsScreen() {
 
               if (error) {
                 console.error('Error sending email:', error);
-                Alert.alert('Erreur', 'Impossible d\'envoyer l\'email.');
+                Alert.alert('Erreur', "Impossible d'envoyer l'email.");
               } else {
                 // Log event
                 await supabase.from('events_log').insert({
@@ -437,7 +437,7 @@ export default function AdminSubscriptionDetailsScreen() {
                   details: `Email sent to client for subscription ${subscription.id}`,
                 });
 
-                Alert.alert('Succès', 'L\'email a été envoyé avec succès.');
+                Alert.alert('Succès', "L'email a été envoyé avec succès.");
               }
             } catch (error) {
               console.error('Exception sending email:', error);
@@ -837,7 +837,7 @@ export default function AdminSubscriptionDetailsScreen() {
           <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-                {editField === 'status' ? 'Modifier le statut' : 'Modifier l\'état d\'activation'}
+                {editField === 'status' ? 'Modifier le statut' : "Modifier l'état d'activation"}
               </Text>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <IconSymbol
