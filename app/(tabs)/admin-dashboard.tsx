@@ -36,6 +36,7 @@ interface GlobalAgent {
   port: { name: string; country: string } | null;
   activities: string[];
   created_at: string;
+  is_premium_listing: boolean;
 }
 
 interface Subscription {
@@ -833,12 +834,37 @@ export default function AdminDashboardScreen() {
                 <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
                   {subscription.client?.company_name || 'Client inconnu'}
                 </Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(subscription.status) + '20' }]}>
-                  <Text style={[styles.statusText, { color: getStatusColor(subscription.status) }]}>
-                    {formatStatus(subscription.status)}
-                  </Text>
+                <View style={styles.statusBadgeRow}>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(subscription.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(subscription.status) }]}>
+                      {formatStatus(subscription.status)}
+                    </Text>
+                  </View>
+                  {subscription.is_active && (
+                    <View style={[styles.activeBadgeSmall, { backgroundColor: '#10b981' + '20' }]}>
+                      <IconSymbol
+                        ios_icon_name="checkmark.circle.fill"
+                        android_material_icon_name="check_circle"
+                        size={12}
+                        color="#10b981"
+                      />
+                      <Text style={[styles.activeTextSmall, { color: '#10b981' }]}>Actif</Text>
+                    </View>
+                  )}
                 </View>
               </View>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                onPress={() => router.push(`/(tabs)/admin-subscription-details?subscription_id=${subscription.id}`)}
+              >
+                <Text style={[styles.manageButtonText, { color: '#FFFFFF' }]}>Modifier</Text>
+                <IconSymbol
+                  ios_icon_name="arrow.right.circle.fill"
+                  android_material_icon_name="open_in_new"
+                  size={18}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.cardContent}>
@@ -891,18 +917,6 @@ export default function AdminDashboardScreen() {
                   </Text>
                 </View>
               )}
-
-              <View style={styles.infoRow}>
-                <IconSymbol
-                  ios_icon_name={subscription.is_active ? "checkmark.circle.fill" : "xmark.circle.fill"}
-                  android_material_icon_name={subscription.is_active ? "check_circle" : "cancel"}
-                  size={16}
-                  color={subscription.is_active ? '#10b981' : '#ef4444'}
-                />
-                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                  {subscription.is_active ? 'Actif' : 'Inactif'}
-                </Text>
-              </View>
             </View>
           </View>
         ))
@@ -1296,6 +1310,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   premiumTextSmall: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  activeBadgeSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  activeTextSmall: {
     fontSize: 10,
     fontWeight: '600',
   },
