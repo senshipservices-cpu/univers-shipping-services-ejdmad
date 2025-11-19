@@ -5,32 +5,24 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-
-// Admin email whitelist - Must match the one in kpi-dashboard.tsx
-const ADMIN_EMAILS = [
-  'admin@3sglobal.com',
-  'admin_email@gmail.com', // As specified in the requirement
-  'your-email@example.com', // Replace with actual admin emails
-];
+import { useAdmin } from "@/contexts/AdminContext";
 
 export function HeaderRightButton() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-
-  // Check if user is admin
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin } = useAdmin();
 
   // If admin, show Admin Dashboard button
   if (isAdmin) {
     return (
       <Pressable
-        onPress={() => router.push('/(tabs)/kpi-dashboard')}
+        onPress={() => router.push('/(tabs)/admin-dashboard')}
         style={styles.headerButtonContainer}
       >
         <IconSymbol 
-          ios_icon_name="chart.bar.fill" 
-          android_material_icon_name="analytics" 
+          ios_icon_name="shield.lefthalf.filled" 
+          android_material_icon_name="admin_panel_settings" 
           color={theme.colors.primary} 
         />
       </Pressable>

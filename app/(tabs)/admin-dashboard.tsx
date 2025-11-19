@@ -1,13 +1,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl, ActivityIndicator, Alert, TextInput, Modal } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl, ActivityIndicator, Alert, Modal, TextInput, Dimensions } from "react-native";
 import { useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
+
+const { width } = Dimensions.get('window');
 
 interface FreightQuote {
   id: string;
@@ -52,13 +55,23 @@ interface Shipment {
   created_at: string;
 }
 
-type TabType = 'quotes' | 'agents' | 'subscriptions' | 'shipments';
+interface KPIData {
+  totalQuotes: number;
+  acceptedQuotes: number;
+  ordersCreated: number;
+  estimatedRevenue: number;
+  activeSubscriptions: number;
+  validatedAgents: number;
+}
+
+type TabType = 'quotes' | 'shipments' | 'agents' | 'subscriptions' | 'analytics';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, client } = useAuth();
+  const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('quotes');
@@ -68,14 +81,19 @@ export default function AdminDashboardScreen() {
   const [globalAgents, setGlobalAgents] = useState<GlobalAgent[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [kpiData, setKpiData] = useState<KPIData>({
+    totalQuotes: 0,
+    acceptedQuotes: 0,
+    ordersCreated: 0,
+    estimatedRevenue: 0,
+    activeSubscriptions: 0,
+    validatedAgents: 0,
+  });
   
   // Modal states
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [editValue, setEditValue] = useState('');
-
-  // Check if user is admin
-  const isAdmin = client?.is_super_admin === true || client?.admin_option === true;
 
   // Load data based on active tab
   const loadData = useCallback(async () => {
@@ -99,6 +117,9 @@ export default function AdminDashboardScreen() {
           break;
         case 'shipments':
           await loadShipments();
+          break;
+        case 'analytics':
+          await loadKPIData();
           break;
       }
     } catch (error) {
@@ -179,6 +200,54 @@ export default function AdminDashboardScreen() {
     } else {
       setShipments(data || []);
     }
+  };
+
+  const loadKPIData = async () => {
+    // Total quotes
+    const { count: totalQuotes } = await supabase
+      .from('freight_quotes')
+      .select('*', { count: 'exact', head: true });
+
+    // Accepted quotes
+    const { count: acceptedQuotes } = await supabase
+      .from('freight_quotes')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_decision', 'accepted');
+
+    // Orders created (shipments)
+    const { count: ordersCreated } = await supabase
+      .from('shipments')
+      .select('*', { count: 'exact', head: true });
+
+    // Estimated revenue
+    const { data: revenueData } = await supabase
+      .from('freight_quotes')
+      .select('quote_amount')
+      .eq('payment_status', 'paid')
+      .not('quote_amount', 'is', null);
+
+    const estimatedRevenue = revenueData?.reduce((sum, quote) => sum + (Number(quote.quote_amount) || 0), 0) || 0;
+
+    // Active subscriptions
+    const { count: activeSubscriptions } = await supabase
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+
+    // Validated agents
+    const { count: validatedAgents } = await supabase
+      .from('global_agents')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'validated');
+
+    setKpiData({
+      totalQuotes: totalQuotes || 0,
+      acceptedQuotes: acceptedQuotes || 0,
+      ordersCreated: ordersCreated || 0,
+      estimatedRevenue,
+      activeSubscriptions: activeSubscriptions || 0,
+      validatedAgents: validatedAgents || 0,
+    });
   };
 
   useEffect(() => {
@@ -280,23 +349,30 @@ export default function AdminDashboardScreen() {
     });
   };
 
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('fr-FR').format(num);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+  };
+
   const getStatusColor = (status: string) => {
     const statusColors: Record<string, string> = {
-      // Freight quote statuses
       'received': colors.textSecondary,
       'in_progress': colors.primary,
       'sent_to_client': '#f59e0b',
       'accepted': '#10b981',
       'refused': '#ef4444',
-      // Agent statuses
       'pending': colors.textSecondary,
       'validated': '#10b981',
       'rejected': '#ef4444',
-      // Subscription statuses
       'active': '#10b981',
       'cancelled': '#ef4444',
       'expired': colors.textSecondary,
-      // Shipment statuses
       'draft': colors.textSecondary,
       'quote_pending': '#f59e0b',
       'confirmed': colors.primary,
@@ -304,7 +380,6 @@ export default function AdminDashboardScreen() {
       'at_port': '#f59e0b',
       'delivered': '#10b981',
       'on_hold': '#ef4444',
-      'cancelled': '#ef4444',
     };
     return statusColors[status] || colors.textSecondary;
   };
@@ -334,6 +409,21 @@ export default function AdminDashboardScreen() {
           />
           <Text style={[styles.tabButtonText, { color: activeTab === 'quotes' ? '#FFFFFF' : theme.colors.text }]}>
             Devis
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'shipments' && { backgroundColor: colors.primary }]}
+          onPress={() => setActiveTab('shipments')}
+        >
+          <IconSymbol
+            ios_icon_name="shippingbox"
+            android_material_icon_name="inventory_2"
+            size={20}
+            color={activeTab === 'shipments' ? '#FFFFFF' : theme.colors.text}
+          />
+          <Text style={[styles.tabButtonText, { color: activeTab === 'shipments' ? '#FFFFFF' : theme.colors.text }]}>
+            Expéditions
           </Text>
         </TouchableOpacity>
 
@@ -368,20 +458,79 @@ export default function AdminDashboardScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'shipments' && { backgroundColor: colors.primary }]}
-          onPress={() => setActiveTab('shipments')}
+          style={[styles.tabButton, activeTab === 'analytics' && { backgroundColor: colors.primary }]}
+          onPress={() => setActiveTab('analytics')}
         >
           <IconSymbol
-            ios_icon_name="shippingbox"
-            android_material_icon_name="inventory_2"
+            ios_icon_name="chart.bar.fill"
+            android_material_icon_name="analytics"
             size={20}
-            color={activeTab === 'shipments' ? '#FFFFFF' : theme.colors.text}
+            color={activeTab === 'analytics' ? '#FFFFFF' : theme.colors.text}
           />
-          <Text style={[styles.tabButtonText, { color: activeTab === 'shipments' ? '#FFFFFF' : theme.colors.text }]}>
-            Expéditions
+          <Text style={[styles.tabButtonText, { color: activeTab === 'analytics' ? '#FFFFFF' : theme.colors.text }]}>
+            KPI Globaux
           </Text>
         </TouchableOpacity>
       </ScrollView>
+    </View>
+  );
+
+  // Render KPI card
+  const renderKPICard = (
+    title: string,
+    value: string | number,
+    icon: string,
+    androidIcon: string,
+    color: string
+  ) => (
+    <View style={[styles.kpiCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+      <View style={[styles.kpiIconContainer, { backgroundColor: color + '20' }]}>
+        <IconSymbol ios_icon_name={icon} android_material_icon_name={androidIcon} size={28} color={color} />
+      </View>
+      <View style={styles.kpiContent}>
+        <Text style={[styles.kpiValue, { color: theme.colors.text }]}>{value}</Text>
+        <Text style={[styles.kpiTitle, { color: colors.textSecondary }]}>{title}</Text>
+      </View>
+    </View>
+  );
+
+  // Render analytics tab
+  const renderAnalytics = () => (
+    <View style={styles.listContainer}>
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>KPI Globaux</Text>
+      <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+        Vue d&apos;ensemble des performances
+      </Text>
+
+      <View style={styles.kpiGrid}>
+        {renderKPICard('Total Devis', formatNumber(kpiData.totalQuotes), 'doc.text', 'description', colors.primary)}
+        {renderKPICard('Devis Acceptés', formatNumber(kpiData.acceptedQuotes), 'checkmark.circle', 'check_circle', '#10b981')}
+        {renderKPICard('Commandes Créées', formatNumber(kpiData.ordersCreated), 'shippingbox', 'inventory_2', '#f59e0b')}
+        {renderKPICard('Revenus Estimés', formatCurrency(kpiData.estimatedRevenue), 'dollarsign.circle', 'payments', '#06b6d4')}
+        {renderKPICard('Abonnements Actifs', formatNumber(kpiData.activeSubscriptions), 'star.fill', 'star', '#8b5cf6')}
+        {renderKPICard('Agents Validés', formatNumber(kpiData.validatedAgents), 'person.2.fill', 'groups', '#ec4899')}
+      </View>
+
+      <TouchableOpacity
+        style={[styles.detailedAnalyticsButton, { backgroundColor: colors.primary }]}
+        onPress={() => router.push('/(tabs)/kpi-dashboard')}
+      >
+        <IconSymbol
+          ios_icon_name="chart.bar.fill"
+          android_material_icon_name="analytics"
+          size={24}
+          color="#FFFFFF"
+        />
+        <Text style={styles.detailedAnalyticsText}>
+          Voir les analyses détaillées
+        </Text>
+        <IconSymbol
+          ios_icon_name="arrow.right"
+          android_material_icon_name="arrow_forward"
+          size={20}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
     </View>
   );
 
@@ -939,24 +1088,14 @@ export default function AdminDashboardScreen() {
             Admin Dashboard
           </Text>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/kpi-dashboard')} style={styles.kpiButton}>
-            <IconSymbol
-              ios_icon_name="chart.bar.fill"
-              android_material_icon_name="analytics"
-              size={24}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()}>
-            <IconSymbol
-              ios_icon_name="xmark.circle.fill"
-              android_material_icon_name="close"
-              size={28}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => router.back()}>
+          <IconSymbol
+            ios_icon_name="xmark.circle.fill"
+            android_material_icon_name="close"
+            size={28}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Tab Navigation */}
@@ -983,6 +1122,7 @@ export default function AdminDashboardScreen() {
           {activeTab === 'agents' && renderGlobalAgents()}
           {activeTab === 'subscriptions' && renderSubscriptions()}
           {activeTab === 'shipments' && renderShipments()}
+          {activeTab === 'analytics' && renderAnalytics()}
         </ScrollView>
       )}
 
@@ -1009,16 +1149,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  kpiButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: colors.primary + '20',
   },
   headerTitle: {
     fontSize: 24,
@@ -1064,6 +1194,15 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     gap: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginBottom: 12,
   },
   emptyState: {
     padding: 40,
@@ -1147,6 +1286,51 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  kpiCard: {
+    width: (width - 52) / 2,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  kpiIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kpiContent: {
+    gap: 4,
+  },
+  kpiValue: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  kpiTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  detailedAnalyticsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  detailedAnalyticsText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,

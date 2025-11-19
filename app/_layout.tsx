@@ -1,47 +1,53 @@
 
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
-import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
-
-SplashScreen.preventAutoHideAsync();
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { AdminProvider } from '@/contexts/AdminContext';
+import { WidgetProvider } from '@/contexts/WidgetContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <LanguageProvider>
-        <AuthProvider>
-          <Stack>
-            <Stack.Screen name="language-selection" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="transparent-modal" options={{ presentation: 'transparentModal' }} />
-            <Stack.Screen name="formsheet" options={{ presentation: 'formSheet' }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <LanguageProvider>
+          <AuthProvider>
+            <AdminProvider>
+              <WidgetProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="language-selection" />
+                  <Stack.Screen 
+                    name="modal" 
+                    options={{
+                      presentation: 'modal',
+                      animation: 'slide_from_bottom',
+                    }}
+                  />
+                  <Stack.Screen 
+                    name="transparent-modal" 
+                    options={{
+                      presentation: 'transparentModal',
+                      animation: 'fade',
+                    }}
+                  />
+                  <Stack.Screen 
+                    name="formsheet" 
+                    options={{
+                      presentation: 'formSheet',
+                      animation: 'slide_from_bottom',
+                    }}
+                  />
+                </Stack>
+              </WidgetProvider>
+            </AdminProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

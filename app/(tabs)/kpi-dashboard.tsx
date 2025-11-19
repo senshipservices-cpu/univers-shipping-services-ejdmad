@@ -6,17 +6,11 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 
 const { width } = Dimensions.get('window');
-
-// Admin email whitelist - Add authorized admin emails here
-const ADMIN_EMAILS = [
-  'admin@3sglobal.com',
-  'admin_email@gmail.com', // As specified in the requirement
-  'your-email@example.com', // Replace with actual admin emails
-];
 
 interface KPIData {
   // Section 3.1: Global Commercial Performance
@@ -81,7 +75,8 @@ export default function KPIDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, client } = useAuth();
+  const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('commercial');
@@ -104,9 +99,6 @@ export default function KPIDashboardScreen() {
     expiringThisWeek: 0,
     clientActivity: [],
   });
-
-  // Check if user is admin by email whitelist
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
   // Load all KPI data
   const loadKPIData = useCallback(async () => {
