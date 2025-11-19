@@ -280,6 +280,22 @@ export interface Translations {
     step4Title: string;
     step4Desc: string;
   };
+  confidenceBanner: {
+    block1Title: string;
+    block1Desc: string;
+    block2Title: string;
+    block2Desc: string;
+    block3Title: string;
+    block3Desc: string;
+    block4Title: string;
+    block4Desc: string;
+  };
+  trustBar: {
+    item1: string;
+    item2: string;
+    item3: string;
+    item4: string;
+  };
   digitalPortal: {
     title: string;
     welcomeTitle: string;
@@ -597,6 +613,22 @@ export const translations: Record<Language, Translations> = {
       step4Title: 'Étape 4 — Suivi en temps réel',
       step4Desc: 'Accès au portail digital pour suivre chaque étape.',
     },
+    confidenceBanner: {
+      block1Title: 'Support 24/7',
+      block1Desc: 'Assistance opérationnelle maritime & logistique.',
+      block2Title: 'Experts certifiés',
+      block2Desc: '15 ans d\'expérience internationale.',
+      block3Title: 'Sécurité & conformité',
+      block3Desc: 'Standards ISPS – Douanes – IMO.',
+      block4Title: 'Traitement prioritaire',
+      block4Desc: 'Pour les clients Premium et Enterprise.',
+    },
+    trustBar: {
+      item1: 'Paiement 100% sécurisé',
+      item2: 'Validation sous 24–48h',
+      item3: 'Accès immédiat après activation',
+      item4: 'Données chiffrées et protégées',
+    },
     digitalPortal: {
       title: 'Portail Digital Maritime',
       welcomeTitle: 'Bienvenue sur votre Portail Digital',
@@ -911,6 +943,22 @@ export const translations: Record<Language, Translations> = {
       step3Desc: 'The quote can be accepted directly in the app.',
       step4Title: 'Step 4 — Real-time Tracking',
       step4Desc: 'Access the digital portal to track every step.',
+    },
+    confidenceBanner: {
+      block1Title: '24/7 Support',
+      block1Desc: 'Maritime & logistics operational assistance.',
+      block2Title: 'Certified Experts',
+      block2Desc: '15 years of international experience.',
+      block3Title: 'Security & Compliance',
+      block3Desc: 'ISPS – Customs – IMO standards.',
+      block4Title: 'Priority Processing',
+      block4Desc: 'For Premium and Enterprise clients.',
+    },
+    trustBar: {
+      item1: '100% Secure Payment',
+      item2: 'Validation within 24–48h',
+      item3: 'Immediate access after activation',
+      item4: 'Encrypted and protected data',
     },
     digitalPortal: {
       title: 'Digital Maritime Portal',
@@ -1227,6 +1275,22 @@ export const translations: Record<Language, Translations> = {
       step4Title: 'Paso 4 — Seguimiento en Tiempo Real',
       step4Desc: 'Acceda al portal digital para seguir cada paso.',
     },
+    confidenceBanner: {
+      block1Title: 'Soporte 24/7',
+      block1Desc: 'Asistencia operacional marítima y logística.',
+      block2Title: 'Expertos certificados',
+      block2Desc: '15 años de experiencia internacional.',
+      block3Title: 'Seguridad y cumplimiento',
+      block3Desc: 'Estándares ISPS – Aduanas – IMO.',
+      block4Title: 'Procesamiento prioritario',
+      block4Desc: 'Para clientes Premium y Enterprise.',
+    },
+    trustBar: {
+      item1: 'Pago 100% seguro',
+      item2: 'Validación en 24–48h',
+      item3: 'Acceso inmediato después de la activación',
+      item4: 'Datos cifrados y protegidos',
+    },
     digitalPortal: {
       title: 'Portal Digital Marítimo',
       welcomeTitle: 'Bienvenido a su Portal Digital',
@@ -1541,6 +1605,22 @@ export const translations: Record<Language, Translations> = {
       step3Desc: 'يمكن قبول عرض الأسعار مباشرة في التطبيق.',
       step4Title: 'الخطوة 4 — التتبع في الوقت الفعلي',
       step4Desc: 'الوصول إلى البوابة الرقمية لتتبع كل خطوة.',
+    },
+    confidenceBanner: {
+      block1Title: 'دعم 24/7',
+      block1Desc: 'مساعدة تشغيلية بحرية ولوجستية.',
+      block2Title: 'خبراء معتمدون',
+      block2Desc: '15 سنة من الخبرة الدولية.',
+      block3Title: 'الأمن والامتثال',
+      block3Desc: 'معايير ISPS – الجمارك – IMO.',
+      block4Title: 'معالجة ذات أولوية',
+      block4Desc: 'لعملاء Premium و Enterprise.',
+    },
+    trustBar: {
+      item1: 'دفع آمن 100%',
+      item2: 'التحقق في غضون 24-48 ساعة',
+      item3: 'وصول فوري بعد التفعيل',
+      item4: 'بيانات مشفرة ومحمية',
     },
     digitalPortal: {
       title: 'البوابة الرقمية البحرية',

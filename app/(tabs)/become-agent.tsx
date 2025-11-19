@@ -10,6 +10,7 @@ import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { FAQSection, FAQItem } from "@/components/FAQSection";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
+import { TrustBar } from "@/components/TrustBar";
 
 interface Port {
   id: string;
@@ -561,6 +562,28 @@ export default function BecomeAgentScreen() {
             {t.becomeAgent.introduction}
           </Text>
         </View>
+
+        {/* Trust Bar */}
+        <TrustBar
+          items={[
+            {
+              icon: { ios: 'lock.shield.fill', android: 'lock' },
+              text: t.trustBar.item1,
+            },
+            {
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              text: t.trustBar.item2,
+            },
+            {
+              icon: { ios: 'bolt.fill', android: 'flash_on' },
+              text: t.trustBar.item3,
+            },
+            {
+              icon: { ios: 'shield.checkered', android: 'security' },
+              text: t.trustBar.item4,
+            },
+          ]}
+        />
 
         <View style={styles.conditionsSection}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>

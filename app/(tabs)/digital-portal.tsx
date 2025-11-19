@@ -13,6 +13,7 @@ import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 import { logPortalAccess, logPortalDenied } from "@/utils/eventLogger";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
+import { TrustBar } from "@/components/TrustBar";
 
 interface Port {
   id: string;
@@ -465,6 +466,28 @@ export default function DigitalPortalScreen() {
             )}
           </View>
         </LinearGradient>
+
+        {/* Trust Bar */}
+        <TrustBar
+          items={[
+            {
+              icon: { ios: 'lock.shield.fill', android: 'lock' },
+              text: t.trustBar.item1,
+            },
+            {
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              text: t.trustBar.item2,
+            },
+            {
+              icon: { ios: 'bolt.fill', android: 'flash_on' },
+              text: t.trustBar.item3,
+            },
+            {
+              icon: { ios: 'shield.checkered', android: 'security' },
+              text: t.trustBar.item4,
+            },
+          ]}
+        />
 
         {/* MODULE 1 - Tracking avancé (données de shipments) */}
         <View style={styles.section}>

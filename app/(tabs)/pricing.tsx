@@ -9,6 +9,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
+import { ConfidenceBanner } from "@/components/ConfidenceBanner";
+import { TrustBar } from "@/components/TrustBar";
 
 interface PricingPlan {
   id: string;
@@ -228,6 +230,28 @@ export default function PricingScreen() {
           </Text>
         </View>
 
+        {/* Trust Bar */}
+        <TrustBar
+          items={[
+            {
+              icon: { ios: 'lock.shield.fill', android: 'lock' },
+              text: t.trustBar.item1,
+            },
+            {
+              icon: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+              text: t.trustBar.item2,
+            },
+            {
+              icon: { ios: 'bolt.fill', android: 'flash_on' },
+              text: t.trustBar.item3,
+            },
+            {
+              icon: { ios: 'shield.checkered', android: 'security' },
+              text: t.trustBar.item4,
+            },
+          ]}
+        />
+
         <View style={styles.plansContainer}>
           {plans.map((plan, index) => (
             <React.Fragment key={index}>
@@ -369,6 +393,36 @@ export default function PricingScreen() {
             ))}
           </View>
         </View>
+
+        {/* Confidence Banner */}
+        <ConfidenceBanner
+          blocks={[
+            {
+              icon: { ios: 'headphones', android: 'support_agent' },
+              title: t.confidenceBanner.block1Title,
+              description: t.confidenceBanner.block1Desc,
+              color: colors.primary,
+            },
+            {
+              icon: { ios: 'checkmark.seal.fill', android: 'verified_user' },
+              title: t.confidenceBanner.block2Title,
+              description: t.confidenceBanner.block2Desc,
+              color: colors.secondary,
+            },
+            {
+              icon: { ios: 'shield.checkered', android: 'security' },
+              title: t.confidenceBanner.block3Title,
+              description: t.confidenceBanner.block3Desc,
+              color: colors.accent,
+            },
+            {
+              icon: { ios: 'star.fill', android: 'star' },
+              title: t.confidenceBanner.block4Title,
+              description: t.confidenceBanner.block4Desc,
+              color: colors.success,
+            },
+          ]}
+        />
 
         {/* How It Works Section */}
         <HowItWorksSection

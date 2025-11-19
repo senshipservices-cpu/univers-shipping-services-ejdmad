@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { FeaturedServices } from "@/components/FeaturedServices";
 import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
+import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -250,6 +251,36 @@ export default function HomeScreen() {
 
         {/* Client Profile Solutions Section - NEW */}
         <ClientProfileSolutions />
+
+        {/* Confidence Banner */}
+        <ConfidenceBanner
+          blocks={[
+            {
+              icon: { ios: 'headphones', android: 'support_agent' },
+              title: t.confidenceBanner.block1Title,
+              description: t.confidenceBanner.block1Desc,
+              color: colors.primary,
+            },
+            {
+              icon: { ios: 'checkmark.seal.fill', android: 'verified_user' },
+              title: t.confidenceBanner.block2Title,
+              description: t.confidenceBanner.block2Desc,
+              color: colors.secondary,
+            },
+            {
+              icon: { ios: 'shield.checkered', android: 'security' },
+              title: t.confidenceBanner.block3Title,
+              description: t.confidenceBanner.block3Desc,
+              color: colors.accent,
+            },
+            {
+              icon: { ios: 'star.fill', android: 'star' },
+              title: t.confidenceBanner.block4Title,
+              description: t.confidenceBanner.block4Desc,
+              color: colors.success,
+            },
+          ]}
+        />
 
         {/* Why Choose Us Section - NEW */}
         <View style={[styles.section, styles.whyChooseUsSection]}>
