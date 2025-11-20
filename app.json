@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "3S Global",
@@ -44,5 +43,6 @@
     "extra": {
       "router": {}
     }
-  }
+  },
+  "scheme": "3S Global"
 }

@@ -56,6 +56,26 @@ interface FreightQuote {
   payment_status: string | null;
 }
 
+interface Subscription {
+  id: string;
+  plan_code: string | null;
+  status: string;
+  start_date: string;
+  end_date: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface PaymentItem {
+  id: string;
+  type: 'quote' | 'subscription';
+  amount: number | null;
+  currency: string;
+  status: string;
+  date: string;
+  description: string;
+}
+
 export default function ClientDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -68,6 +88,8 @@ export default function ClientDashboardScreen() {
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [quotes, setQuotes] = useState<FreightQuote[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [quotesCount, setQuotesCount] = useState(0);
   const [shipmentsCount, setShipmentsCount] = useState(0);
 
@@ -154,6 +176,58 @@ export default function ClientDashboardScreen() {
         } else {
           setShipments(shipmentsData || []);
         }
+
+        // Load subscriptions for this user
+        const { data: subscriptionsData, error: subscriptionsError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (subscriptionsError) {
+          console.error('Error loading subscriptions:', subscriptionsError);
+        } else {
+          setSubscriptions(subscriptionsData || []);
+        }
+
+        // Build payments list from quotes and subscriptions
+        const paymentsList: PaymentItem[] = [];
+
+        // Add paid quotes
+        if (quotesData) {
+          quotesData.forEach(quote => {
+            if (quote.payment_status && quote.payment_status !== 'pending') {
+              paymentsList.push({
+                id: quote.id,
+                type: 'quote',
+                amount: quote.quote_amount,
+                currency: quote.quote_currency || 'EUR',
+                status: quote.payment_status,
+                date: quote.created_at,
+                description: `Devis ${quote.origin_port?.name || 'N/A'} → ${quote.destination_port?.name || 'N/A'}`,
+              });
+            }
+          });
+        }
+
+        // Add subscriptions
+        if (subscriptionsData) {
+          subscriptionsData.forEach(sub => {
+            paymentsList.push({
+              id: sub.id,
+              type: 'subscription',
+              amount: null,
+              currency: 'EUR',
+              status: sub.status,
+              date: sub.created_at,
+              description: `Abonnement ${sub.plan_code || 'Plan'}`,
+            });
+          });
+        }
+
+        // Sort by date (most recent first)
+        paymentsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setPayments(paymentsList.slice(0, 10)); // Keep only 10 most recent
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -212,6 +286,7 @@ export default function ClientDashboardScreen() {
       case 'delivered':
       case 'accepted':
       case 'paid':
+      case 'active':
         return '#10b981';
       case 'in_transit':
       case 'confirmed':
@@ -226,6 +301,7 @@ export default function ClientDashboardScreen() {
       case 'cancelled':
       case 'refused':
       case 'failed':
+      case 'expired':
         return '#ef4444';
       case 'draft':
       case 'quote_pending':
@@ -238,12 +314,23 @@ export default function ClientDashboardScreen() {
   }, []);
 
   const formatStatus = useCallback((status: string) => {
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const statusMap: { [key: string]: string } = {
+      'paid': 'Payé',
+      'unpaid': 'Non payé',
+      'processing': 'En cours',
+      'failed': 'Échoué',
+      'refunded': 'Remboursé',
+      'active': 'Actif',
+      'pending': 'En attente',
+      'cancelled': 'Annulé',
+      'expired': 'Expiré',
+    };
+    return statusMap[status] || status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }, []);
 
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { 
+    return date.toLocaleDateString('fr-FR', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
@@ -274,6 +361,15 @@ export default function ClientDashboardScreen() {
 
   const handleQuoteClick = useCallback((quoteId: string) => {
     router.push(`/(tabs)/quote-details?id=${quoteId}`);
+  }, [router]);
+
+  const handlePaymentClick = useCallback((payment: PaymentItem) => {
+    if (payment.type === 'quote') {
+      router.push(`/(tabs)/quote-details?id=${payment.id}`);
+    } else {
+      // Navigate to subscription details or pricing page
+      router.push('/(tabs)/pricing');
+    }
   }, [router]);
 
   // Redirect if not authenticated
@@ -569,6 +665,59 @@ export default function ClientDashboardScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Facturation / Paiements Section */}
+        {payments.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Facturation / Paiements
+              </Text>
+            </View>
+
+            <View style={styles.paymentsContainer}>
+              {payments.map((payment, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.paymentCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                  onPress={() => handlePaymentClick(payment)}
+                >
+                  <View style={styles.paymentHeader}>
+                    <View style={styles.paymentIconContainer}>
+                      <IconSymbol
+                        ios_icon_name={payment.type === 'quote' ? 'doc.text.fill' : 'star.fill'}
+                        android_material_icon_name={payment.type === 'quote' ? 'description' : 'star'}
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={styles.paymentInfo}>
+                      <Text style={[styles.paymentDescription, { color: theme.colors.text }]}>
+                        {payment.description}
+                      </Text>
+                      <Text style={[styles.paymentDate, { color: colors.textSecondary }]}>
+                        {formatDate(payment.date)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.paymentFooter}>
+                    {payment.amount && (
+                      <Text style={[styles.paymentAmount, { color: theme.colors.text }]}>
+                        {payment.amount.toFixed(2)} {payment.currency}
+                      </Text>
+                    )}
+                    <View style={[styles.paymentStatusBadge, { backgroundColor: getStatusColor(payment.status) + '20' }]}>
+                      <Text style={[styles.paymentStatusText, { color: getStatusColor(payment.status) }]}>
+                        {formatStatus(payment.status)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Recent Quotes Section */}
         {quotes.length > 0 && (
@@ -904,6 +1053,57 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  paymentsContainer: {
+    gap: 12,
+  },
+  paymentCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  paymentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  paymentDescription: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  paymentDate: {
+    fontSize: 13,
+  },
+  paymentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  paymentAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   quotesContainer: {
     gap: 12,
   },
@@ -945,15 +1145,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
-  },
-  paymentStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  paymentStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
   },
   shipmentsContainer: {
     gap: 12,
