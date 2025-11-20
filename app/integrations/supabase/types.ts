@@ -10,6 +10,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      pricing_plans: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          description: string | null
+          price_eur: number
+          currency: string
+          billing_period: 'one_time' | 'monthly' | 'yearly'
+          stripe_price_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          code: string
+          description?: string | null
+          price_eur: number
+          currency?: string
+          billing_period: 'one_time' | 'monthly' | 'yearly'
+          stripe_price_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          code?: string
+          description?: string | null
+          price_eur?: number
+          currency?: string
+          billing_period?: 'one_time' | 'monthly' | 'yearly'
+          stripe_price_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       services_global: {
         Row: {
           id: string
@@ -144,7 +186,6 @@ export type Database = {
           admin_option: boolean
           created_at: string
           updated_at: string
-          // Legacy fields for backward compatibility
           company_name: string
           contact_name: string | null
         }
@@ -373,8 +414,11 @@ export type Database = {
       subscriptions: {
         Row: {
           id: string
+          user_id: string | null
           client: string
+          plan_code: string | null
           plan_type: Database["public"]["Enums"]["plan_type"]
+          stripe_subscription_id: string | null
           start_date: string
           end_date: string | null
           is_active: boolean
@@ -387,8 +431,11 @@ export type Database = {
         }
         Insert: {
           id?: string
+          user_id?: string | null
           client: string
+          plan_code?: string | null
           plan_type: Database["public"]["Enums"]["plan_type"]
+          stripe_subscription_id?: string | null
           start_date: string
           end_date?: string | null
           is_active?: boolean
@@ -401,8 +448,11 @@ export type Database = {
         }
         Update: {
           id?: string
+          user_id?: string | null
           client?: string
+          plan_code?: string | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
+          stripe_subscription_id?: string | null
           start_date?: string
           end_date?: string | null
           is_active?: boolean
@@ -419,6 +469,13 @@ export type Database = {
             columns: ["client"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           }
         ]
@@ -708,6 +765,108 @@ export type Database = {
             columns: ["port_id"]
             isOneToOne: false
             referencedRelation: "ports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      contact_messages: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          client_id: string | null
+          user_id: string | null
+          status: string
+          admin_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          client_id?: string | null
+          user_id?: string | null
+          status?: string
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          subject?: string
+          message?: string
+          client_id?: string | null
+          user_id?: string | null
+          status?: string
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      port_services: {
+        Row: {
+          id: string
+          port: string
+          service: string
+          is_available: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          port: string
+          service: string
+          is_available?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          port?: string
+          service?: string
+          is_available?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "port_services_port_fkey"
+            columns: ["port"]
+            isOneToOne: false
+            referencedRelation: "ports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_services_service_fkey"
+            columns: ["service"]
+            isOneToOne: false
+            referencedRelation: "services_global"
             referencedColumns: ["id"]
           }
         ]
