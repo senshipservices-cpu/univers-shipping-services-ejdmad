@@ -9,13 +9,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Client = Tables<'clients'>;
 
+interface SignUpMetadata {
+  full_name?: string;
+  company?: string;
+  phone?: string;
+  preferred_language?: string;
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   client: Client | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, metadata?: { companyName?: string; contactName?: string }) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshClient: () => Promise<void>;
 }
@@ -51,7 +58,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       // Load user's preferred language if available
       if (data.preferred_language) {
         console.log('Loading user preferred language:', data.preferred_language);
-        await setLanguage(data.preferred_language as 'fr' | 'en');
+        await setLanguage(data.preferred_language as 'fr' | 'en' | 'es' | 'ar');
         await AsyncStorage.setItem('lang', data.preferred_language);
       }
     } catch (error) {
@@ -136,7 +143,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const signUp = async (
     email: string, 
     password: string, 
-    metadata?: { companyName?: string; contactName?: string }
+    metadata?: SignUpMetadata
   ) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -145,8 +152,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         options: {
           emailRedirectTo: 'https://natively.dev/email-confirmed',
           data: {
-            company_name: metadata?.companyName || 'À renseigner',
-            contact_name: metadata?.contactName,
+            full_name: metadata?.full_name || '',
+            company: metadata?.company || 'À renseigner',
+            phone: metadata?.phone || '',
+            preferred_language: metadata?.preferred_language || 'fr',
           },
         },
       });
@@ -159,7 +168,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       console.log('Sign up successful:', data);
       
       // Note: The client record will be created automatically by the database trigger
-      // We'll fetch it after the user confirms their email and signs in
+      // after the user confirms their email
       
       return { error: null };
     } catch (error) {

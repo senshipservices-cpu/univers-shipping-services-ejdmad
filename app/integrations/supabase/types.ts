@@ -131,53 +131,60 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          company_name: string
-          contact_name: string | null
+          full_name: string | null
+          company: string | null
           phone: string | null
           email: string | null
           country: string | null
           city: string | null
           sector: string | null
-          preferred_language: string | null
+          preferred_language: string
           is_verified: boolean
           is_super_admin: boolean
           admin_option: boolean
           created_at: string
           updated_at: string
+          // Legacy fields for backward compatibility
+          company_name: string
+          contact_name: string | null
         }
         Insert: {
           id?: string
           user_id: string
-          company_name: string
-          contact_name?: string | null
+          full_name?: string | null
+          company?: string | null
           phone?: string | null
           email?: string | null
           country?: string | null
           city?: string | null
           sector?: string | null
-          preferred_language?: string | null
+          preferred_language?: string
           is_verified?: boolean
           is_super_admin?: boolean
           admin_option?: boolean
           created_at?: string
           updated_at?: string
+          company_name?: string
+          contact_name?: string | null
         }
         Update: {
           id?: string
           user_id?: string
-          company_name?: string
-          contact_name?: string | null
+          full_name?: string | null
+          company?: string | null
           phone?: string | null
           email?: string | null
           country?: string | null
           city?: string | null
           sector?: string | null
-          preferred_language?: string | null
+          preferred_language?: string
           is_verified?: boolean
           is_super_admin?: boolean
           admin_option?: boolean
           created_at?: string
           updated_at?: string
+          company_name?: string
+          contact_name?: string | null
         }
         Relationships: [
           {
