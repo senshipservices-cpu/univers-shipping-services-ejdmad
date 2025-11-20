@@ -1,27 +1,31 @@
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
-import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { TrustBar } from "@/components/TrustBar";
 import { MicroCopy } from "@/components/MicroCopy";
+import { formatPrice, getBillingPeriodLabel } from "@/utils/stripe";
+import * as Linking from 'expo-linking';
 
 interface PricingPlan {
   id: string;
-  title: string;
-  price: string;
-  description: string;
-  features: string[];
-  buttonText: string;
-  color: string;
-  action: 'basic' | 'premium' | 'enterprise' | 'agent' | 'digital_portal';
+  name: string;
+  code: string;
+  description: string | null;
+  price_eur: string;
+  currency: string;
+  billing_period: string;
+  stripe_price_id: string | null;
+  is_active: boolean;
 }
 
 interface FAQItem {
@@ -33,13 +37,16 @@ export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
+  const { user, session } = useAuth();
   const params = useLocalSearchParams();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [highlightedPlan, setHighlightedPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAuthStatus();
+    fetchPlans();
     
     // Check for highlight parameter
     if (params.highlight) {
@@ -48,87 +55,105 @@ export default function PricingScreen() {
     }
   }, [params.highlight]);
 
-  const checkAuthStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setIsAuthenticated(!!session);
-    console.log('Auth status:', !!session);
+  const fetchPlans = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('pricing_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('price_eur', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching plans:', error);
+        Alert.alert('Erreur', 'Impossible de charger les plans tarifaires.');
+        return;
+      }
+
+      console.log('Fetched plans:', data);
+      setPlans(data || []);
+    } catch (error) {
+      console.error('Exception fetching plans:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors du chargement des plans.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const plans: PricingPlan[] = [
-    {
-      id: 'basic',
-      title: t.pricing.basicTitle,
-      price: t.pricing.basicPrice,
-      description: t.pricing.basicDesc,
-      features: [
-        t.pricing.basicFeature1,
-        t.pricing.basicFeature2,
-        t.pricing.basicFeature3,
-      ],
-      buttonText: t.pricing.basicButton,
-      color: colors.textSecondary,
-      action: 'basic',
-    },
-    {
-      id: 'premium',
-      title: t.pricing.premiumTitle,
-      price: t.pricing.premiumPrice,
-      description: t.pricing.premiumDesc,
-      features: [
-        t.pricing.premiumFeature1,
-        t.pricing.premiumFeature2,
-        t.pricing.premiumFeature3,
-      ],
-      buttonText: t.pricing.premiumButton,
-      color: colors.primary,
-      action: 'premium',
-    },
-    {
-      id: 'enterprise',
-      title: t.pricing.enterpriseTitle,
-      price: t.pricing.enterprisePrice,
-      description: t.pricing.enterpriseDesc,
-      features: [
-        t.pricing.enterpriseFeature1,
-        t.pricing.enterpriseFeature2,
-        t.pricing.enterpriseFeature3,
-      ],
-      buttonText: t.pricing.enterpriseButton,
-      color: colors.secondary,
-      action: 'enterprise',
-    },
-    {
-      id: 'digital_portal',
-      title: 'Digital Maritime Portal',
-      price: '149 € / mois',
-      description: 'Portail complet : tracking avancé, reporting, documentation en ligne, API intégration.',
-      features: [
-        'Tracking avancé en temps réel',
-        'Reporting automatisé et personnalisé',
-        'Documentation API complète',
-        'Intégration API REST',
-        'Support technique prioritaire',
-        'Accès au portail digital complet',
-      ],
-      buttonText: 'S\'abonner',
-      color: '#9C27B0',
-      action: 'digital_portal',
-    },
-    {
-      id: 'agent',
-      title: t.pricing.agentTitle,
-      price: t.pricing.agentPrice,
-      description: t.pricing.agentDesc,
-      features: [
-        t.pricing.agentFeature1,
-        t.pricing.agentFeature2,
-        t.pricing.agentFeature3,
-      ],
-      buttonText: t.pricing.agentButton,
-      color: colors.accent,
-      action: 'agent',
-    },
-  ];
+  const handleSelectPlan = async (plan: PricingPlan) => {
+    console.log('Plan selected:', plan.code, 'User:', user?.id);
+
+    // Check if user is authenticated
+    if (!user || !session) {
+      Alert.alert(
+        'Connexion requise',
+        'Veuillez vous connecter pour souscrire à un plan.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { 
+            text: 'Se connecter', 
+            onPress: () => router.push('/login')
+          }
+        ]
+      );
+      return;
+    }
+
+    try {
+      setProcessingPlan(plan.code);
+
+      // Call the Edge Function to create a Stripe Checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          plan_code: plan.code,
+        },
+      });
+
+      if (error) {
+        console.error('Error creating checkout session:', error);
+        Alert.alert(
+          'Erreur',
+          'Impossible de créer la session de paiement. Veuillez réessayer.'
+        );
+        return;
+      }
+
+      console.log('Checkout session created:', data);
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        const supported = await Linking.canOpenURL(data.url);
+        if (supported) {
+          await Linking.openURL(data.url);
+        } else {
+          Alert.alert('Erreur', 'Impossible d\'ouvrir la page de paiement.');
+        }
+      } else {
+        Alert.alert('Erreur', 'URL de paiement non disponible.');
+      }
+    } catch (error) {
+      console.error('Exception handling plan selection:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setProcessingPlan(null);
+    }
+  };
+
+  const getPlanColor = (code: string): string => {
+    if (code.includes('BASIC')) return colors.textSecondary;
+    if (code.includes('PRO')) return colors.primary;
+    if (code.includes('ENTERPRISE')) return colors.secondary;
+    if (code.includes('DIGITAL_PORTAL')) return '#9C27B0';
+    return colors.accent;
+  };
+
+  const isPlanPopular = (code: string): boolean => {
+    return code.includes('PRO') && !code.includes('YEARLY');
+  };
+
+  const toggleFAQ = (index: number) => {
+    setExpandedFAQ(expandedFAQ === index ? null : index);
+  };
 
   const faqItems: FAQItem[] = [
     {
@@ -149,47 +174,19 @@ export default function PricingScreen() {
     },
   ];
 
-  const handlePlanAction = (action: string) => {
-    console.log('Plan action:', action, 'Authenticated:', isAuthenticated);
-
-    switch (action) {
-      case 'basic':
-        // Basic plan - redirect to client space or dashboard
-        if (isAuthenticated) {
-          router.push('/client-dashboard');
-        } else {
-          router.push('/client-space');
-        }
-        break;
-
-      case 'premium':
-        // Premium Tracking - redirect to subscription confirmation
-        router.push('/subscription-confirm?plan=premium_tracking');
-        break;
-
-      case 'enterprise':
-        // Enterprise Logistics - redirect to contact page
-        router.push('/contact');
-        break;
-
-      case 'digital_portal':
-        // Digital Portal - redirect to subscription confirmation
-        router.push('/subscription-confirm?plan_type=digital_portal');
-        break;
-
-      case 'agent':
-        // Agent Listing - redirect to become-agent page
-        router.push('/become-agent');
-        break;
-
-      default:
-        console.log('Unknown action:', action);
-    }
-  };
-
-  const toggleFAQ = (index: number) => {
-    setExpandedFAQ(expandedFAQ === index ? null : index);
-  };
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <PageHeader title={t.pricing.title} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+            Chargement des plans...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -254,120 +251,91 @@ export default function PricingScreen() {
         />
 
         <View style={styles.plansContainer}>
-          {plans.map((plan, index) => (
-            <React.Fragment key={index}>
-              <View
-                style={[
-                  styles.planCard,
-                  { backgroundColor: theme.colors.card },
-                  plan.id === 'premium' && styles.popularPlan,
-                  plan.id === 'agent' && styles.agentPlan,
-                  plan.id === 'digital_portal' && styles.digitalPortalPlan,
-                  highlightedPlan === 'digital_portal' && (plan.id === 'premium' || plan.id === 'enterprise' || plan.id === 'digital_portal') && styles.highlightedPlan,
-                ]}
-              >
-                {plan.id === 'premium' && (
-                  <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
-                    <IconSymbol
-                      ios_icon_name="star.fill"
-                      android_material_icon_name="star"
-                      size={14}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.popularBadgeText}>Populaire</Text>
-                  </View>
-                )}
+          {plans.map((plan, index) => {
+            const planColor = getPlanColor(plan.code);
+            const isPopular = isPlanPopular(plan.code);
+            const isProcessing = processingPlan === plan.code;
 
-                {plan.id === 'agent' && (
-                  <View style={[styles.agentBadge, { backgroundColor: colors.accent }]}>
-                    <IconSymbol
-                      ios_icon_name="handshake"
-                      android_material_icon_name="handshake"
-                      size={14}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.agentBadgeText}>Partner Program</Text>
-                  </View>
-                )}
-
-                {plan.id === 'digital_portal' && (
-                  <View style={[styles.digitalPortalBadge, { backgroundColor: '#9C27B0' }]}>
-                    <IconSymbol
-                      ios_icon_name="globe"
-                      android_material_icon_name="language"
-                      size={14}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.digitalPortalBadgeText}>Digital Portal</Text>
-                  </View>
-                )}
-                
-                <Text style={[styles.planName, { color: plan.color }]}>
-                  {plan.title}
-                </Text>
-                
-                <Text style={[styles.planPrice, { color: theme.colors.text }]}>
-                  {plan.price}
-                </Text>
-                
-                <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
-                  {plan.description}
-                </Text>
-
-                <View style={styles.divider} />
-
-                <View style={styles.featuresContainer}>
-                  {plan.features.map((feature, featureIndex) => (
-                    <React.Fragment key={featureIndex}>
-                      <View style={styles.featureItem}>
-                        <IconSymbol
-                          ios_icon_name="checkmark.circle.fill"
-                          android_material_icon_name="check_circle"
-                          size={20}
-                          color={plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : colors.success}
-                        />
-                        <Text style={[styles.featureText, { color: theme.colors.text }]}>
-                          {feature}
-                        </Text>
-                      </View>
-                    </React.Fragment>
-                  ))}
-                </View>
-
-                <View>
-                  <TouchableOpacity
-                    style={[
-                      styles.selectButton,
-                      { 
-                        backgroundColor: plan.id === 'premium' ? colors.primary : plan.id === 'agent' ? colors.accent : plan.id === 'digital_portal' ? '#9C27B0' : plan.color,
-                      },
-                    ]}
-                    onPress={() => handlePlanAction(plan.action)}
-                  >
-                    <Text style={styles.selectButtonText}>{plan.buttonText}</Text>
-                    <IconSymbol
-                      ios_icon_name="arrow.right"
-                      android_material_icon_name="arrow_forward"
-                      size={18}
-                      color="#ffffff"
-                    />
-                  </TouchableOpacity>
-                  {plan.id === 'premium' && (
-                    <MicroCopy
-                      text={t.pricing.premiumButtonMicrocopy}
-                      icon={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
-                    />
+            return (
+              <React.Fragment key={index}>
+                <View
+                  style={[
+                    styles.planCard,
+                    { backgroundColor: theme.colors.card },
+                    isPopular && styles.popularPlan,
+                    highlightedPlan && plan.code.includes(highlightedPlan.toUpperCase()) && styles.highlightedPlan,
+                  ]}
+                >
+                  {isPopular && (
+                    <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
+                      <IconSymbol
+                        ios_icon_name="star.fill"
+                        android_material_icon_name="star"
+                        size={14}
+                        color="#ffffff"
+                      />
+                      <Text style={styles.popularBadgeText}>Populaire</Text>
+                    </View>
                   )}
-                  {plan.id === 'digital_portal' && (
-                    <MicroCopy
-                      text={t.microCopies.dataProtected}
-                      icon={{ ios: 'lock.shield.fill', android: 'security' }}
-                    />
+                  
+                  <Text style={[styles.planName, { color: planColor }]}>
+                    {plan.name}
+                  </Text>
+                  
+                  <View style={styles.priceContainer}>
+                    <Text style={[styles.planPrice, { color: theme.colors.text }]}>
+                      {formatPrice(parseFloat(plan.price_eur), plan.currency)}
+                    </Text>
+                    <Text style={[styles.billingPeriod, { color: colors.textSecondary }]}>
+                      {getBillingPeriodLabel(plan.billing_period, 'fr')}
+                    </Text>
+                  </View>
+                  
+                  {plan.description && (
+                    <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
+                      {plan.description}
+                    </Text>
                   )}
+
+                  <View style={styles.divider} />
+
+                  <View>
+                    <TouchableOpacity
+                      style={[
+                        styles.selectButton,
+                        { backgroundColor: planColor },
+                        isProcessing && styles.selectButtonDisabled,
+                      ]}
+                      onPress={() => handleSelectPlan(plan)}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <>
+                          <Text style={styles.selectButtonText}>
+                            {plan.billing_period === 'one_time' ? 'Acheter maintenant' : 'Choisir ce plan'}
+                          </Text>
+                          <IconSymbol
+                            ios_icon_name="arrow.right"
+                            android_material_icon_name="arrow_forward"
+                            size={18}
+                            color="#ffffff"
+                          />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    {isPopular && (
+                      <MicroCopy
+                        text="Paiement sécurisé par Stripe"
+                        icon={{ ios: 'lock.shield.fill', android: 'security' }}
+                      />
+                    )}
+                  </View>
                 </View>
-              </View>
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            );
+          })}
         </View>
 
         <View style={styles.faqSection}>
@@ -482,6 +450,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   scrollView: {
     flex: 1,
   },
@@ -543,18 +521,6 @@ const styles = StyleSheet.create({
     boxShadow: '0px 6px 16px rgba(3, 169, 244, 0.2)',
     elevation: 6,
   },
-  agentPlan: {
-    borderWidth: 2,
-    borderColor: colors.accent,
-    boxShadow: '0px 6px 16px rgba(255, 152, 0, 0.2)',
-    elevation: 6,
-  },
-  digitalPortalPlan: {
-    borderWidth: 2,
-    borderColor: '#9C27B0',
-    boxShadow: '0px 6px 16px rgba(156, 39, 176, 0.2)',
-    elevation: 6,
-  },
   popularBadge: {
     position: 'absolute',
     top: -12,
@@ -571,38 +537,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
-  agentBadge: {
-    position: 'absolute',
-    top: -12,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-  },
-  agentBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  digitalPortalBadge: {
-    position: 'absolute',
-    top: -12,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-  },
-  digitalPortalBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
   highlightedPlan: {
     borderWidth: 3,
     borderColor: colors.accent,
@@ -614,10 +548,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 8,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 12,
+  },
   planPrice: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  billingPeriod: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   planDescription: {
     fontSize: 15,
@@ -627,21 +570,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginBottom: 16,
-  },
-  featuresContainer: {
-    gap: 12,
     marginBottom: 20,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  featureText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
   },
   selectButton: {
     flexDirection: 'row',
@@ -650,6 +579,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 10,
     gap: 8,
+  },
+  selectButtonDisabled: {
+    opacity: 0.6,
   },
   selectButtonText: {
     fontSize: 16,
