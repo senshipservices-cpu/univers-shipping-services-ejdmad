@@ -1,6 +1,5 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 interface StripeContextType {
@@ -35,7 +34,7 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
                 process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     
     if (key) {
-      console.log('Stripe publishable key loaded (Fallback)');
+      console.log('Stripe publishable key loaded (Web)');
       setPublishableKey(key);
       setIsReady(true);
     } else {
@@ -49,8 +48,8 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
     isReady,
   };
 
-  // Fallback implementation - just provide context without native Stripe
-  console.warn('Using fallback StripeContext - platform-specific file not found');
+  // On web, we don't use the native Stripe provider
+  // Instead, we'll use Stripe.js in components that need it
   return (
     <StripeContext.Provider value={value}>
       {children}

@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { StripeProvider as StripeProviderNative } from '@stripe/stripe-react-native';
 
 interface StripeContextType {
   publishableKey: string | null;
@@ -35,7 +35,7 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
                 process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     
     if (key) {
-      console.log('Stripe publishable key loaded (Fallback)');
+      console.log('Stripe publishable key loaded (Native)');
       setPublishableKey(key);
       setIsReady(true);
     } else {
@@ -49,11 +49,23 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
     isReady,
   };
 
-  // Fallback implementation - just provide context without native Stripe
-  console.warn('Using fallback StripeContext - platform-specific file not found');
+  // If no publishable key, render children without Stripe provider
+  if (!publishableKey) {
+    return (
+      <StripeContext.Provider value={value}>
+        {children}
+      </StripeContext.Provider>
+    );
+  }
+
   return (
     <StripeContext.Provider value={value}>
-      {children}
+      <StripeProviderNative
+        publishableKey={publishableKey}
+        merchantIdentifier="merchant.com.universalshipping.3sglobal"
+      >
+        {children}
+      </StripeProviderNative>
     </StripeContext.Provider>
   );
 };
