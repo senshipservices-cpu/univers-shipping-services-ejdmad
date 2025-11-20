@@ -173,7 +173,7 @@ export default function EmailAuditScreen() {
                   <Text style={styles.statIcon}>{getStatusIcon(stat.status)}</Text>
                   <View style={styles.statInfo}>
                     <Text style={styles.statType}>{stat.email_type}</Text>
-                    <Text style={styles.statStatus} style={{ color: getStatusColor(stat.status) }}>
+                    <Text style={[styles.statStatus, { color: getStatusColor(stat.status) }]}>
                       {stat.status}
                     </Text>
                   </View>

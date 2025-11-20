@@ -32,7 +32,7 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
     longitudeDelta: 80,
   });
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [nearbyPorts, setNearbyPorts] = useState<Array<Port & { distance: number }>>([]);
+  const [nearbyPorts, setNearbyPorts] = useState<(Port & { distance: number })[]>([]);
 
   // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = (

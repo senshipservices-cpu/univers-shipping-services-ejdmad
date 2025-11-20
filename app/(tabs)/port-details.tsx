@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -60,13 +60,7 @@ export default function PortDetailsScreen() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (port_id) {
-      loadPortDetails();
-    }
-  }, [port_id]);
-
-  const loadPortDetails = async () => {
+  const loadPortDetails = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -132,7 +126,13 @@ export default function PortDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [port_id, router, t.common.error, t.portDetails.notFound]);
+
+  useEffect(() => {
+    if (port_id) {
+      loadPortDetails();
+    }
+  }, [port_id, loadPortDetails]);
 
   const getServiceName = (service: PortService['service']) => {
     return language === 'en' && service.name_en ? service.name_en : service.name_fr;
