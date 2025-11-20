@@ -56,16 +56,6 @@ export default function ClientDashboardScreen() {
   // Check if user is admin
   const isAdmin = authClient?.is_super_admin === true || authClient?.admin_option === true;
 
-  // Redirect if not authenticated
-  if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
-  }
-
-  // Redirect if email is not verified
-  if (!isEmailVerified()) {
-    return <Redirect href="/(tabs)/verify-email" />;
-  }
-
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     if (!user?.id) {
@@ -210,7 +200,7 @@ export default function ClientDashboardScreen() {
     });
   }, []);
 
-  const handleShipmentClick = (shipmentId: string) => {
+  const handleShipmentClick = useCallback((shipmentId: string) => {
     // Check if user has access to full tracking
     if (!subscriptionAccess.hasFullTrackingAccess) {
       Alert.alert(
@@ -231,7 +221,17 @@ export default function ClientDashboardScreen() {
     }
 
     router.push(`/(tabs)/shipment-detail?id=${shipmentId}`);
-  };
+  }, [subscriptionAccess.hasFullTrackingAccess, router]);
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
+
+  // Redirect if email is not verified
+  if (!isEmailVerified()) {
+    return <Redirect href="/(tabs)/verify-email" />;
+  }
 
   // Loading state
   if (loading) {
