@@ -12,7 +12,6 @@ interface LogoProps {
 export function Logo({ width = 120, showText = false, textSize = 'medium' }: LogoProps) {
   // Note: The logo image should be placed at assets/images/uss-logo.png
   // For now, we'll show a placeholder with the company initials
-  const logoSource = require('@/assets/images/uss-logo.png');
   
   const textSizes = {
     small: { title: 14, subtitle: 10 },
@@ -22,7 +21,7 @@ export function Logo({ width = 120, showText = false, textSize = 'medium' }: Log
 
   return (
     <View style={styles.container}>
-      {/* Logo Image - Replace with actual logo when available */}
+      {/* Logo Placeholder - Replace with actual logo when available */}
       <View style={[styles.logoPlaceholder, { width, height: width * 0.6 }]}>
         <Text style={[styles.logoText, { fontSize: width * 0.25 }]}>USS</Text>
       </View>
