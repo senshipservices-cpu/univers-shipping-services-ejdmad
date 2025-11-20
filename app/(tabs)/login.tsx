@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,20 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function LoginScreen() {
-  const { signIn, loading: authLoading } = useAuth();
+  const { signIn, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Redirect to client dashboard if already logged in
+  useEffect(() => {
+    if (user) {
+      console.log('User already logged in, redirecting to client dashboard');
+      router.replace('/(tabs)/client-dashboard');
+    }
+  }, [user, router]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -68,11 +76,7 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Mot de passe oublié',
-      'Veuillez contacter le support à contact@universalshipping.com pour réinitialiser votre mot de passe.',
-      [{ text: 'OK' }]
-    );
+    router.push('/(tabs)/forgot_password');
   };
 
   const handleSignUp = () => {

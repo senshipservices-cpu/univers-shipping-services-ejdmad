@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function SignupScreen() {
-  const { signUp, loading: authLoading } = useAuth();
+  const { signUp, loading: authLoading, user } = useAuth();
   const { language } = useLanguage();
   const router = useRouter();
   
@@ -26,29 +26,41 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [company, setCompany] = useState('');
-  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Redirect to client dashboard if already logged in
+  useEffect(() => {
+    if (user) {
+      console.log('User already logged in, redirecting to client dashboard');
+      router.replace('/(tabs)/client-dashboard');
+    }
+  }, [user, router]);
+
   const validateForm = () => {
+    // Full name validation
+    if (!fullName || fullName.trim().length === 0) {
+      Alert.alert('Erreur', 'Veuillez entrer votre nom complet');
+      return false;
+    }
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
       return false;
     }
 
     // Password validation
     if (!password || password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
 
     // Confirm password
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
       return false;
     }
 
@@ -65,9 +77,7 @@ export default function SignupScreen() {
     // Prepare metadata to be stored with the user
     // Use current app language, defaulting to 'en' if not set
     const metadata = {
-      full_name: fullName.trim() || '',
-      company: company.trim() || 'To be specified',
-      phone: phone.trim() || '',
+      full_name: fullName.trim(),
       preferred_language: language || 'en',
     };
 
@@ -84,26 +94,26 @@ export default function SignupScreen() {
     if (error) {
       console.error('Signup error:', error);
       
-      let errorMessage = 'An error occurred during registration';
+      let errorMessage = 'Une erreur est survenue lors de l\'inscription';
       
       if (error.message) {
         if (error.message.includes('User already registered')) {
-          errorMessage = 'An account already exists with this email';
+          errorMessage = 'Un compte existe déjà avec cet email';
         } else if (error.message.includes('Password should be at least')) {
-          errorMessage = 'Password must be at least 6 characters long';
+          errorMessage = 'Le mot de passe doit contenir au moins 6 caractères';
         } else if (error.message.includes('Invalid email')) {
-          errorMessage = 'Invalid email address';
+          errorMessage = 'Adresse email invalide';
         } else {
           errorMessage = error.message;
         }
       }
       
-      Alert.alert('Registration Error', errorMessage);
+      Alert.alert('Erreur d\'inscription', errorMessage);
     } else {
       // Success
       Alert.alert(
-        'Registration Successful!',
-        'A verification email has been sent to your address.\n\nPlease check your inbox and click the confirmation link before logging in.',
+        'Inscription réussie !',
+        'Un email de confirmation vous a été envoyé. Veuillez vérifier votre adresse avant de vous connecter.',
         [
           {
             text: 'OK',
@@ -121,15 +131,15 @@ export default function SignupScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
-        <Text style={styles.title}>Create an Account</Text>
+        <Text style={styles.title}>Créer un compte</Text>
         <Text style={styles.subtitle}>
-          Join Universal Shipping Services and access all our services
+          Rejoignez Universal Shipping Services et accédez à tous nos services
         </Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>Nom complet *</Text>
           <View style={styles.inputWrapper}>
             <IconSymbol
               ios_icon_name="person.fill"
@@ -142,53 +152,9 @@ export default function SignupScreen() {
               style={styles.input}
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Your full name"
+              placeholder="Votre nom complet"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="words"
-              editable={!loading}
-            />
-          </View>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Company (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <IconSymbol
-              ios_icon_name="building.2.fill"
-              android_material_icon_name="business"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              value={company}
-              onChangeText={setCompany}
-              placeholder="Your company name"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="words"
-              editable={!loading}
-            />
-          </View>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Phone (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <IconSymbol
-              ios_icon_name="phone.fill"
-              android_material_icon_name="phone"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+1 234 567 8900"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="phone-pad"
               editable={!loading}
             />
           </View>
@@ -208,7 +174,7 @@ export default function SignupScreen() {
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="your@email.com"
+              placeholder="votre@email.com"
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -219,7 +185,7 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password *</Text>
+          <Text style={styles.label}>Mot de passe *</Text>
           <View style={styles.inputWrapper}>
             <IconSymbol
               ios_icon_name="lock.fill"
@@ -232,7 +198,7 @@ export default function SignupScreen() {
               style={[styles.input, styles.passwordInput]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Minimum 6 characters"
+              placeholder="Minimum 6 caractères"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
@@ -254,7 +220,7 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Confirm Password *</Text>
+          <Text style={styles.label}>Confirmation mot de passe *</Text>
           <View style={styles.inputWrapper}>
             <IconSymbol
               ios_icon_name="lock.fill"
@@ -267,7 +233,7 @@ export default function SignupScreen() {
               style={[styles.input, styles.passwordInput]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Confirm your password"
+              placeholder="Confirmez votre mot de passe"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
@@ -296,13 +262,13 @@ export default function SignupScreen() {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.buttonText}>Create My Account</Text>
+            <Text style={styles.buttonText}>Créer mon compte</Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
+          <Text style={styles.dividerText}>OU</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -311,7 +277,7 @@ export default function SignupScreen() {
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text style={styles.loginButtonText}>I Already Have an Account</Text>
+          <Text style={styles.loginButtonText}>Déjà un compte ? Se connecter</Text>
         </TouchableOpacity>
       </View>
 
@@ -324,17 +290,11 @@ export default function SignupScreen() {
           style={styles.infoIcon}
         />
         <View style={styles.infoTextContainer}>
-          <Text style={styles.infoTitle}>Email Verification Required</Text>
+          <Text style={styles.infoTitle}>Vérification email requise</Text>
           <Text style={styles.infoText}>
-            After registration, you will receive a verification email. You must click the confirmation link before you can log in.
+            Après inscription, vous recevrez un email de vérification. Vous devez cliquer sur le lien de confirmation avant de pouvoir vous connecter.
           </Text>
         </View>
-      </View>
-
-      <View style={styles.termsBox}>
-        <Text style={styles.termsText}>
-          By creating an account, you agree to our terms of use and privacy policy.
-        </Text>
       </View>
     </ScrollView>
   );
@@ -472,16 +432,6 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  termsBox: {
-    marginTop: 16,
-    paddingHorizontal: 8,
-  },
-  termsText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
     lineHeight: 18,
   },
 });
