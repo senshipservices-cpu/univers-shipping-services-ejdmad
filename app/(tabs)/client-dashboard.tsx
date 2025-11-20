@@ -6,6 +6,7 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
@@ -19,6 +20,7 @@ interface ClientProfile {
   country: string | null;
   city: string | null;
   is_verified: boolean;
+  preferred_language: string | null;
 }
 
 interface Port {
@@ -42,19 +44,29 @@ interface Shipment {
   last_update: string | null;
 }
 
+interface FreightQuote {
+  id: string;
+  status: string;
+  cargo_type: string | null;
+  created_at: string;
+  origin_port: Port | null;
+  destination_port: Port | null;
+}
+
 export default function ClientDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
   const { user, client: authClient, signOut, isEmailVerified } = useAuth();
+  const { isAdmin } = useAdmin();
   const subscriptionAccess = useSubscriptionAccess();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  
-  // Check if user is admin
-  const isAdmin = authClient?.is_super_admin === true || authClient?.admin_option === true;
+  const [quotes, setQuotes] = useState<FreightQuote[]>([]);
+  const [quotesCount, setQuotesCount] = useState(0);
+  const [shipmentsCount, setShipmentsCount] = useState(0);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -66,7 +78,7 @@ export default function ClientDashboardScreen() {
     try {
       setLoading(true);
 
-      // Load client profile
+      // Load client profile linked to user_id
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -84,6 +96,44 @@ export default function ClientDashboardScreen() {
       } else {
         setClientProfile(clientData);
 
+        // Load freight quotes count for this client
+        const { count: quotesCountData, error: quotesCountError } = await supabase
+          .from('freight_quotes')
+          .select('*', { count: 'exact', head: true })
+          .eq('client', clientData.id);
+
+        if (!quotesCountError) {
+          setQuotesCount(quotesCountData || 0);
+        }
+
+        // Load recent freight quotes
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('freight_quotes')
+          .select(`
+            *,
+            origin_port:ports!freight_quotes_origin_port_fkey(id, name, city, country),
+            destination_port:ports!freight_quotes_destination_port_fkey(id, name, city, country)
+          `)
+          .eq('client', clientData.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (quotesError) {
+          console.error('Error loading quotes:', quotesError);
+        } else {
+          setQuotes(quotesData || []);
+        }
+
+        // Load shipments count for this client
+        const { count: shipmentsCountData, error: shipmentsCountError } = await supabase
+          .from('shipments')
+          .select('*', { count: 'exact', head: true })
+          .eq('client', clientData.id);
+
+        if (!shipmentsCountError) {
+          setShipmentsCount(shipmentsCountData || 0);
+        }
+
         // Load shipments for this client
         const { data: shipmentsData, error: shipmentsError } = await supabase
           .from('shipments')
@@ -94,7 +144,7 @@ export default function ClientDashboardScreen() {
           `)
           .eq('client', clientData.id)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(5);
 
         if (shipmentsError) {
           console.error('Error loading shipments:', shipmentsError);
@@ -148,10 +198,8 @@ export default function ClientDashboardScreen() {
     console.log('Digital Portal Access - hasDigitalPortalAccess:', subscriptionAccess.hasDigitalPortalAccess);
     
     if (subscriptionAccess.hasDigitalPortalAccess) {
-      // User has active subscription with digital portal access
       router.push('/(tabs)/digital-portal');
     } else {
-      // User doesn't have access, redirect to pricing with highlight
       router.push('/(tabs)/pricing?highlight=digital_portal');
     }
   }, [subscriptionAccess.hasDigitalPortalAccess, router]);
@@ -159,17 +207,22 @@ export default function ClientDashboardScreen() {
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'delivered':
+      case 'accepted':
         return '#10b981';
       case 'in_transit':
       case 'confirmed':
+      case 'in_progress':
         return colors.primary;
       case 'at_port':
+      case 'sent_to_client':
         return '#f59e0b';
       case 'on_hold':
       case 'cancelled':
+      case 'refused':
         return '#ef4444';
       case 'draft':
       case 'quote_pending':
+      case 'received':
         return colors.textSecondary;
       default:
         return colors.textSecondary;
@@ -178,17 +231,6 @@ export default function ClientDashboardScreen() {
 
   const formatStatus = useCallback((status: string) => {
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  }, []);
-
-  const formatPlanType = useCallback((planType: string) => {
-    const planNames: Record<string, string> = {
-      'basic': 'Basic',
-      'premium_tracking': 'Premium Tracking',
-      'enterprise_logistics': 'Enterprise Logistics',
-      'agent_listing': 'Agent Listing',
-      'digital_portal': 'Digital Portal',
-    };
-    return planNames[planType] || planType;
   }, []);
 
   const formatDate = useCallback((dateString: string) => {
@@ -201,7 +243,6 @@ export default function ClientDashboardScreen() {
   }, []);
 
   const handleShipmentClick = useCallback((shipmentId: string) => {
-    // Check if user has access to full tracking
     if (!subscriptionAccess.hasFullTrackingAccess) {
       Alert.alert(
         'Accès limité',
@@ -225,7 +266,7 @@ export default function ClientDashboardScreen() {
 
   // Redirect if not authenticated
   if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
+    return <Redirect href="/(tabs)/login" />;
   }
 
   // Redirect if email is not verified
@@ -239,7 +280,7 @@ export default function ClientDashboardScreen() {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            {t('clientSpace.dashboard')}
+            Mon compte
           </Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <IconSymbol
@@ -266,7 +307,7 @@ export default function ClientDashboardScreen() {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            {t('clientSpace.dashboard')}
+            Mon compte
           </Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <IconSymbol
@@ -306,7 +347,7 @@ export default function ClientDashboardScreen() {
       {/* Header */}
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          {t('clientSpace.dashboard')}
+          Mon compte
         </Text>
         <View style={styles.headerActions}>
           {isAdmin && (
@@ -348,7 +389,7 @@ export default function ClientDashboardScreen() {
           </Text>
           <View style={styles.nameRow}>
             <Text style={[styles.nameText, { color: theme.colors.text }]}>
-              {clientProfile.contact_name || clientProfile.email || 'Client'}
+              {clientProfile.contact_name || user.email || 'Client'}
             </Text>
             {isAdmin && (
               <View style={[styles.adminBadge, { backgroundColor: colors.primary + '20' }]}>
@@ -363,208 +404,215 @@ export default function ClientDashboardScreen() {
             )}
           </View>
           
-          <View style={styles.infoRow}>
-            <IconSymbol
-              ios_icon_name="building.2"
-              android_material_icon_name="business"
-              size={16}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              Entreprise : {clientProfile.company_name}
-            </Text>
-          </View>
-
-          {clientProfile.country && (
+          {/* User Information Display */}
+          <View style={[styles.infoCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
             <View style={styles.infoRow}>
               <IconSymbol
-                ios_icon_name="globe"
-                android_material_icon_name="public"
+                ios_icon_name="envelope.fill"
+                android_material_icon_name="email"
                 size={16}
                 color={colors.textSecondary}
               />
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                Pays : {clientProfile.country}
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email :</Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                {user.email}
               </Text>
             </View>
-          )}
+
+            <View style={styles.infoRow}>
+              <IconSymbol
+                ios_icon_name="building.2"
+                android_material_icon_name="business"
+                size={16}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Société :</Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                {clientProfile.company_name}
+              </Text>
+            </View>
+
+            {clientProfile.country && (
+              <View style={styles.infoRow}>
+                <IconSymbol
+                  ios_icon_name="globe"
+                  android_material_icon_name="public"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Pays :</Text>
+                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                  {clientProfile.country}
+                </Text>
+              </View>
+            )}
+
+            {clientProfile.preferred_language && (
+              <View style={styles.infoRow}>
+                <IconSymbol
+                  ios_icon_name="globe.badge.chevron.backward"
+                  android_material_icon_name="language"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Langue :</Text>
+                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                  {clientProfile.preferred_language.toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Statistics Cards */}
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <IconSymbol
+                ios_icon_name="doc.text.fill"
+                android_material_icon_name="description"
+                size={32}
+                color={colors.primary}
+              />
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>{quotesCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Devis envoyés</Text>
+            </View>
+
+            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <IconSymbol
+                ios_icon_name="shippingbox.fill"
+                android_material_icon_name="inventory_2"
+                size={32}
+                color={colors.secondary}
+              />
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>{shipmentsCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Expéditions</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(tabs)/freight-quote')}
+          >
+            <IconSymbol
+              ios_icon_name="doc.text"
+              android_material_icon_name="description"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.actionButtonText}>Mes devis</Text>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.updateProfileButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+            style={[styles.actionButton, { backgroundColor: colors.secondary }]}
+            onPress={() => {
+              if (shipmentsCount === 0) {
+                Alert.alert('Aucune expédition', 'Vous n\'avez pas encore d\'expéditions.');
+              } else {
+                // Navigate to shipments list (you can create this page later)
+                Alert.alert('Mes commandes / shipments', 'Liste des expéditions à venir');
+              }
+            }}
+          >
+            <IconSymbol
+              ios_icon_name="shippingbox"
+              android_material_icon_name="inventory_2"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.actionButtonText}>Mes commandes / shipments</Text>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.colors.card, borderColor: colors.border, borderWidth: 2 }]}
             onPress={() => router.push('/(tabs)/client-profile')}
           >
             <IconSymbol
               ios_icon_name="person.circle"
               android_material_icon_name="person"
-              size={20}
+              size={24}
               color={colors.primary}
             />
-            <Text style={[styles.updateProfileText, { color: colors.primary }]}>
+            <Text style={[styles.actionButtonTextSecondary, { color: colors.primary }]}>
               Mettre à jour mon profil
             </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Digital Portal Access Button */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.digitalPortalButton, { backgroundColor: colors.primary }]}
-            onPress={handleDigitalPortalAccess}
-          >
-            <View style={styles.digitalPortalContent}>
-              <IconSymbol
-                ios_icon_name="globe.badge.chevron.backward"
-                android_material_icon_name="language"
-                size={32}
-                color="#FFFFFF"
-              />
-              <View style={styles.digitalPortalText}>
-                <Text style={styles.digitalPortalTitle}>
-                  Accéder au Portail Digital
-                </Text>
-                <Text style={styles.digitalPortalSubtitle}>
-                  {subscriptionAccess.hasDigitalPortalAccess 
-                    ? 'Tracking avancé, reporting, documentation et API'
-                    : 'Découvrez nos solutions digitales complètes'}
-                </Text>
-              </View>
-            </View>
             <IconSymbol
               ios_icon_name="chevron.right"
               android_material_icon_name="chevron_right"
-              size={24}
-              color="#FFFFFF"
+              size={20}
+              color={colors.primary}
             />
           </TouchableOpacity>
         </View>
 
-        {/* Subscription Status Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Mon abonnement
-          </Text>
-          
-          {subscriptionAccess.loading ? (
-            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.emptyCardText, { color: theme.colors.text }]}>
-                Chargement...
+        {/* Recent Quotes Section */}
+        {quotes.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Devis récents
               </Text>
-            </View>
-          ) : subscriptionAccess.hasActiveSubscription && subscriptionAccess.subscription ? (
-            <View style={[styles.subscriptionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <View style={styles.subscriptionHeader}>
-                <View style={[styles.planBadge, { backgroundColor: colors.primary + '20' }]}>
-                  <IconSymbol
-                    ios_icon_name="star.fill"
-                    android_material_icon_name="star"
-                    size={16}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.planType, { color: colors.primary }]}>
-                    {formatPlanType(subscriptionAccess.subscription.plan_type)}
-                  </Text>
-                </View>
-                <View style={[styles.activeBadge, { backgroundColor: '#10b981' + '20' }]}>
-                  <Text style={[styles.activeText, { color: '#10b981' }]}>Actif</Text>
-                </View>
-              </View>
-              <View style={styles.subscriptionDates}>
-                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  Début : {formatDate(subscriptionAccess.subscription.start_date)}
-                </Text>
-                {subscriptionAccess.subscription.end_date && (
-                  <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                    Fin : {formatDate(subscriptionAccess.subscription.end_date)}
-                  </Text>
-                )}
-              </View>
-              
-              {/* Access Features */}
-              <View style={styles.accessFeatures}>
-                {subscriptionAccess.hasDigitalPortalAccess && (
-                  <View style={styles.accessFeature}>
-                    <IconSymbol
-                      ios_icon_name="checkmark.circle.fill"
-                      android_material_icon_name="check_circle"
-                      size={16}
-                      color={colors.success}
-                    />
-                    <Text style={[styles.accessFeatureText, { color: theme.colors.text }]}>
-                      Accès au portail digital
-                    </Text>
-                  </View>
-                )}
-                {subscriptionAccess.hasFullTrackingAccess && (
-                  <View style={styles.accessFeature}>
-                    <IconSymbol
-                      ios_icon_name="checkmark.circle.fill"
-                      android_material_icon_name="check_circle"
-                      size={16}
-                      color={colors.success}
-                    />
-                    <Text style={[styles.accessFeatureText, { color: theme.colors.text }]}>
-                      Suivi complet des expéditions
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <IconSymbol
-                ios_icon_name="star.circle"
-                android_material_icon_name="star_border"
-                size={40}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.emptyCardText, { color: theme.colors.text }]}>
-                Mode Basic - Accès limité
-              </Text>
-              <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>
-                Passez à Premium Tracking ou Enterprise Logistics pour un accès complet au tracking et au portail digital.
-              </Text>
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: colors.primary }]}
-                onPress={() => router.push('/(tabs)/pricing')}
-              >
-                <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
-                  Voir les plans
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* My Shipments Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Mes dossiers logistiques
-            </Text>
-            {shipments.length > 0 && (
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/freight-quote')}>
                 <Text style={[styles.seeAllText, { color: colors.primary }]}>Tout voir</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
 
-          {shipments.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <IconSymbol
-                ios_icon_name="shippingbox"
-                android_material_icon_name="inventory_2"
-                size={40}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.emptyCardText, { color: theme.colors.text }]}>
-                Vous n&apos;avez pas encore de dossier logistique en cours.
-              </Text>
-              <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>
-                Contactez-nous pour créer votre première expédition.
+            <View style={styles.quotesContainer}>
+              {quotes.map((quote, index) => (
+                <View
+                  key={index}
+                  style={[styles.quoteCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                >
+                  <View style={styles.quoteHeader}>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(quote.status) + '20' }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(quote.status) }]}>
+                        {formatStatus(quote.status)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.quoteDate, { color: colors.textSecondary }]}>
+                      {formatDate(quote.created_at)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.quoteRoute}>
+                    <Text style={[styles.routeText, { color: theme.colors.text }]}>
+                      {quote.origin_port?.name || 'Origin'} → {quote.destination_port?.name || 'Destination'}
+                    </Text>
+                  </View>
+
+                  {quote.cargo_type && (
+                    <Text style={[styles.cargoType, { color: colors.textSecondary }]}>
+                      {quote.cargo_type}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Recent Shipments Section */}
+        {shipments.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Expéditions récentes
               </Text>
             </View>
-          ) : (
+
             <View style={styles.shipmentsContainer}>
               {shipments.map((shipment, index) => (
                 <TouchableOpacity
@@ -573,48 +621,20 @@ export default function ClientDashboardScreen() {
                   onPress={() => handleShipmentClick(shipment.id)}
                 >
                   <View style={styles.shipmentHeader}>
-                    <View style={styles.shipmentInfo}>
-                      <Text style={[styles.trackingNumber, { color: theme.colors.text }]}>
-                        {shipment.tracking_number}
+                    <Text style={[styles.trackingNumber, { color: theme.colors.text }]}>
+                      {shipment.tracking_number}
+                    </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shipment.current_status) + '20' }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(shipment.current_status) }]}>
+                        {formatStatus(shipment.current_status)}
                       </Text>
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shipment.current_status) + '20' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(shipment.current_status) }]}>
-                          {formatStatus(shipment.current_status)}
-                        </Text>
-                      </View>
                     </View>
-                    <IconSymbol
-                      ios_icon_name="chevron.right"
-                      android_material_icon_name="chevron_right"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
                   </View>
 
                   <View style={styles.shipmentRoute}>
-                    <View style={styles.routePoint}>
-                      <IconSymbol
-                        ios_icon_name="circle.fill"
-                        android_material_icon_name="circle"
-                        size={8}
-                        color={colors.primary}
-                      />
-                      <Text style={[styles.routeText, { color: colors.textSecondary }]}>
-                        {shipment.origin_port?.name || 'Origin'}
-                      </Text>
-                    </View>
-                    <View style={[styles.routeLine, { backgroundColor: colors.border }]} />
-                    <View style={styles.routePoint}>
-                      <IconSymbol
-                        ios_icon_name="location.fill"
-                        android_material_icon_name="location_on"
-                        size={8}
-                        color={colors.secondary}
-                      />
-                      <Text style={[styles.routeText, { color: colors.textSecondary }]}>
-                        {shipment.destination_port?.name || 'Destination'}
-                      </Text>
-                    </View>
+                    <Text style={[styles.routeText, { color: colors.textSecondary }]}>
+                      {shipment.origin_port?.name || 'Origin'} → {shipment.destination_port?.name || 'Destination'}
+                    </Text>
                   </View>
 
                   {shipment.eta && (
@@ -630,69 +650,11 @@ export default function ClientDashboardScreen() {
                       </Text>
                     </View>
                   )}
-
-                  {!subscriptionAccess.hasFullTrackingAccess && (
-                    <View style={[styles.lockBadge, { backgroundColor: colors.warning + '20' }]}>
-                      <IconSymbol
-                        ios_icon_name="lock.fill"
-                        android_material_icon_name="lock"
-                        size={12}
-                        color={colors.warning}
-                      />
-                      <Text style={[styles.lockText, { color: colors.warning }]}>
-                        Détails limités - Passez à Premium
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.shipmentFooter}>
-                    <Text style={[styles.detailLink, { color: colors.primary }]}>
-                      {subscriptionAccess.hasFullTrackingAccess ? 'Voir le détail →' : 'Voir les plans →'}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               ))}
             </View>
-          )}
-        </View>
-
-        {/* Quick Actions Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Actions rapides
-          </Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => router.push('/(tabs)/freight-quote')}
-            >
-              <IconSymbol
-                ios_icon_name="doc.text"
-                android_material_icon_name="description"
-                size={28}
-                color={colors.primary}
-              />
-              <Text style={[styles.actionCardText, { color: theme.colors.text }]}>
-                Demander un devis
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => router.push('/(tabs)/contact')}
-            >
-              <IconSymbol
-                ios_icon_name="envelope"
-                android_material_icon_name="email"
-                size={28}
-                color={colors.secondary}
-              />
-              <Text style={[styles.actionCardText, { color: theme.colors.text }]}>
-                Contacter le support
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
         {/* Admin Section */}
         {isAdmin && (
@@ -807,7 +769,7 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     padding: 20,
-    gap: 8,
+    gap: 16,
   },
   greetingText: {
     fontSize: 16,
@@ -817,7 +779,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flexWrap: 'wrap',
-    marginBottom: 8,
   },
   nameText: {
     fontSize: 32,
@@ -835,180 +796,96 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  infoCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 4,
   },
-  infoText: {
-    fontSize: 15,
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 80,
   },
-  updateProfileButton: {
+  infoValue: {
+    fontSize: 14,
+    flex: 1,
+  },
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    padding: 20,
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: 16,
+    alignItems: 'center',
+    gap: 8,
   },
-  updateProfileText: {
-    fontSize: 15,
-    fontWeight: '600',
+  statValue: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 32,
+    marginBottom: 24,
+    gap: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '700',
-    marginBottom: 16,
   },
   seeAllText: {
     fontSize: 15,
     fontWeight: '600',
   },
-  digitalPortalButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  digitalPortalContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1,
-  },
-  digitalPortalText: {
-    flex: 1,
-    gap: 4,
-  },
-  digitalPortalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  digitalPortalSubtitle: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    lineHeight: 18,
-  },
-  emptyCard: {
-    padding: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 12,
-  },
-  emptyCardText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  emptyCardSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  secondaryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 2,
-    marginTop: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  subscriptionCard: {
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
-  },
-  subscriptionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  planBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  planType: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  activeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
     borderRadius: 12,
-  },
-  activeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  subscriptionDates: {
-    gap: 4,
-  },
-  dateLabel: {
-    fontSize: 14,
-  },
-  accessFeatures: {
-    gap: 8,
-    marginTop: 8,
-  },
-  accessFeature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  accessFeatureText: {
-    fontSize: 14,
-  },
-  shipmentsContainer: {
     gap: 12,
   },
-  shipmentCard: {
+  actionButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  actionButtonTextSecondary: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  quotesContainer: {
+    gap: 12,
+  },
+  quoteCard: {
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 12,
   },
-  shipmentHeader: {
+  quoteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  shipmentInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  trackingNumber: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -1019,24 +896,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  shipmentRoute: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  quoteDate: {
+    fontSize: 13,
   },
-  routePoint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  routeLine: {
-    height: 1,
-    width: 40,
+  quoteRoute: {
+    marginTop: 4,
   },
   routeText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  cargoType: {
     fontSize: 14,
-    flex: 1,
+  },
+  shipmentsContainer: {
+    gap: 12,
+  },
+  shipmentCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  shipmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trackingNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  shipmentRoute: {
+    marginTop: 4,
   },
   etaContainer: {
     flexDirection: 'row',
@@ -1046,45 +940,6 @@ const styles = StyleSheet.create({
   etaText: {
     fontSize: 13,
     fontStyle: 'italic',
-  },
-  lockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  lockText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  shipmentFooter: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  detailLink: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionCard: {
-    flex: 1,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 12,
-  },
-  actionCardText: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   adminCard: {
     flexDirection: 'row',
