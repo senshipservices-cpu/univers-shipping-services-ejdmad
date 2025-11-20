@@ -6,6 +6,8 @@ import { Tables } from '@/app/integrations/supabase/types';
 import { logLogin, logLogout } from '@/utils/eventLogger';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { Platform } from 'react-native';
 
 type Client = Tables<'clients'>;
 
@@ -23,13 +25,23 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshClient: () => Promise<void>;
+  isEmailVerified: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function AuthProviderInner({ children }: { children: ReactNode }) {
+  // Configure Google Sign-In
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+      offlineAccess: true,
+      scopes: ['profile', 'email'],
+    });
+  }, []);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -71,6 +83,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       await fetchClient(user.id);
     }
   }, [user?.id, fetchClient]);
+
+  const isEmailVerified = useCallback(() => {
+    return !!user?.email_confirmed_at;
+  }, [user]);
 
   useEffect(() => {
     // Get initial session
@@ -177,6 +193,78 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      console.log('Starting Google Sign-In...');
+      
+      // Get the current app language for new users
+      const currentLanguage = await AsyncStorage.getItem('lang') || 'en';
+      
+      // Check if Google Play Services are available (Android only)
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+
+      // Sign in with Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('Google Sign-In successful:', userInfo);
+
+      // Check if we have an ID token
+      if (!userInfo.data?.idToken) {
+        console.error('No ID token received from Google');
+        return { error: { message: 'Aucun jeton d\'identification reçu de Google' } };
+      }
+
+      // Sign in to Supabase with the Google ID token
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: userInfo.data.idToken,
+        options: {
+          data: {
+            full_name: userInfo.data.user?.name || '',
+            preferred_language: currentLanguage,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Supabase sign-in error:', error);
+        return { error };
+      }
+
+      console.log('Supabase sign-in successful:', data);
+
+      // Fetch or create client record
+      if (data.user?.id) {
+        await fetchClient(data.user.id);
+        
+        // Log login event
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        await logLogin(data.user.id, clientData?.id || null);
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      console.error('Google sign-in exception:', error);
+      
+      // Handle specific Google Sign-In errors
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { error: { message: 'Connexion annulée par l\'utilisateur' } };
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        return { error: { message: 'Une connexion est déjà en cours' } };
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        return { error: { message: 'Google Play Services n\'est pas disponible ou est obsolète' } };
+      }
+      
+      return { error };
+    }
+  };
+
   const signOut = async () => {
     try {
       // Log logout event before signing out
@@ -199,8 +287,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     refreshClient,
+    isEmailVerified,
   };
 
   return (

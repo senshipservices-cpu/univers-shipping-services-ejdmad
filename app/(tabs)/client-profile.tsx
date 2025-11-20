@@ -25,7 +25,7 @@ export default function ClientProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { user, isEmailVerified } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
@@ -133,6 +133,11 @@ export default function ClientProfileScreen() {
   // Redirect if not authenticated
   if (!user) {
     return <Redirect href="/(tabs)/client-space" />;
+  }
+
+  // Redirect if email is not verified
+  if (!isEmailVerified()) {
+    return <Redirect href="/(tabs)/verify-email" />;
   }
 
   if (loading) {

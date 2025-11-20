@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function LoginScreen() {
-  const { signIn, loading: authLoading, user } = useAuth();
+  const { signIn, signInWithGoogle, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +73,25 @@ export default function LoginScreen() {
       console.log('Login successful');
       router.replace('/(tabs)/client-dashboard');
     }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    const { error } = await signInWithGoogle();
+    setLoading(false);
+
+    if (error) {
+      console.error('Google sign-in error:', error);
+      
+      let errorMessage = 'Une erreur est survenue lors de la connexion avec Google';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Erreur de connexion', errorMessage);
+    }
+    // Success will be handled by the OAuth redirect
   };
 
   const handleForgotPassword = () => {
@@ -173,6 +192,27 @@ export default function LoginScreen() {
           <Text style={styles.dividerText}>OU</Text>
           <View style={styles.dividerLine} />
         </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, loading && styles.buttonDisabled]}
+          onPress={handleGoogleSignIn}
+          disabled={loading || authLoading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.text} />
+          ) : (
+            <React.Fragment>
+              <IconSymbol
+                ios_icon_name="globe"
+                android_material_icon_name="language"
+                size={20}
+                color={colors.text}
+                style={styles.googleIcon}
+              />
+              <Text style={styles.googleButtonText}>Continuer avec Google</Text>
+            </React.Fragment>
+          )}
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.signupButton}
@@ -299,6 +339,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     fontSize: 14,
     color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: colors.text,
+    fontSize: 16,
     fontWeight: '600',
   },
   signupButton: {

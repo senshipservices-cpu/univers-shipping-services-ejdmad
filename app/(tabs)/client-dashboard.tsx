@@ -46,7 +46,7 @@ export default function ClientDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, client: authClient, signOut } = useAuth();
+  const { user, client: authClient, signOut, isEmailVerified } = useAuth();
   const subscriptionAccess = useSubscriptionAccess();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,6 +55,16 @@ export default function ClientDashboardScreen() {
   
   // Check if user is admin
   const isAdmin = authClient?.is_super_admin === true || authClient?.admin_option === true;
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/client-space" />;
+  }
+
+  // Redirect if email is not verified
+  if (!isEmailVerified()) {
+    return <Redirect href="/(tabs)/verify-email" />;
+  }
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -222,11 +232,6 @@ export default function ClientDashboardScreen() {
 
     router.push(`/(tabs)/shipment-detail?id=${shipmentId}`);
   };
-
-  // Redirect if not authenticated
-  if (!user) {
-    return <Redirect href="/(tabs)/client-space" />;
-  }
 
   // Loading state
   if (loading) {

@@ -60,7 +60,7 @@ export default function DigitalPortalScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, client } = useAuth();
+  const { user, client, isEmailVerified } = useAuth();
   const { hasDigitalPortalAccess, loading: subscriptionLoading, subscription } = useSubscriptionAccess();
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -382,6 +382,12 @@ export default function DigitalPortalScreen() {
   if (!user) {
     console.log('Digital Portal - Redirecting to client-space (not authenticated)');
     return <Redirect href="/(tabs)/client-space" />;
+  }
+
+  // Redirect if email is not verified
+  if (!isEmailVerified()) {
+    console.log('Digital Portal - Redirecting to verify-email (email not verified)');
+    return <Redirect href="/(tabs)/verify-email" />;
   }
 
   // Show loading while checking access
