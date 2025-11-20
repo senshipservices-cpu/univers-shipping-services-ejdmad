@@ -55,12 +55,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       console.log('Client record fetched:', data);
       setClient(data);
       
-      // Load user's preferred language if available
-      if (data.preferred_language) {
-        console.log('Loading user preferred language:', data.preferred_language);
-        await setLanguage(data.preferred_language as 'fr' | 'en' | 'es' | 'ar');
-        await AsyncStorage.setItem('lang', data.preferred_language);
-      }
+      // Load user's preferred language if available, default to 'en' if not specified
+      const userLanguage = data.preferred_language || 'en';
+      console.log('Loading user preferred language:', userLanguage);
+      await setLanguage(userLanguage as 'fr' | 'en' | 'es' | 'ar');
+      await AsyncStorage.setItem('lang', userLanguage);
     } catch (error) {
       console.error('Exception fetching client:', error);
       setClient(null);
@@ -146,6 +145,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     metadata?: SignUpMetadata
   ) => {
     try {
+      // Default to 'en' (English) if no language is specified
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -153,9 +153,9 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           emailRedirectTo: 'https://natively.dev/email-confirmed',
           data: {
             full_name: metadata?.full_name || '',
-            company: metadata?.company || 'À renseigner',
+            company: metadata?.company || 'To be specified',
             phone: metadata?.phone || '',
-            preferred_language: metadata?.preferred_language || 'fr',
+            preferred_language: metadata?.preferred_language || 'en',
           },
         },
       });
