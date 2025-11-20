@@ -51,6 +51,9 @@ interface FreightQuote {
   created_at: string;
   origin_port: Port | null;
   destination_port: Port | null;
+  quote_amount: number | null;
+  quote_currency: string | null;
+  payment_status: string | null;
 }
 
 export default function ClientDashboardScreen() {
@@ -208,21 +211,26 @@ export default function ClientDashboardScreen() {
     switch (status) {
       case 'delivered':
       case 'accepted':
+      case 'paid':
         return '#10b981';
       case 'in_transit':
       case 'confirmed':
       case 'in_progress':
+      case 'processing':
         return colors.primary;
       case 'at_port':
       case 'sent_to_client':
+      case 'unpaid':
         return '#f59e0b';
       case 'on_hold':
       case 'cancelled':
       case 'refused':
+      case 'failed':
         return '#ef4444';
       case 'draft':
       case 'quote_pending':
       case 'received':
+      case 'pending':
         return colors.textSecondary;
       default:
         return colors.textSecondary;
@@ -263,6 +271,10 @@ export default function ClientDashboardScreen() {
 
     router.push(`/(tabs)/shipment-detail?id=${shipmentId}`);
   }, [subscriptionAccess.hasFullTrackingAccess, router]);
+
+  const handleQuoteClick = useCallback((quoteId: string) => {
+    router.push(`/(tabs)/quote-details?id=${quoteId}`);
+  }, [router]);
 
   // Redirect if not authenticated
   if (!user) {
@@ -572,9 +584,10 @@ export default function ClientDashboardScreen() {
 
             <View style={styles.quotesContainer}>
               {quotes.map((quote, index) => (
-                <View
+                <TouchableOpacity
                   key={index}
                   style={[styles.quoteCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                  onPress={() => handleQuoteClick(quote.id)}
                 >
                   <View style={styles.quoteHeader}>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(quote.status) + '20' }]}>
@@ -598,7 +611,25 @@ export default function ClientDashboardScreen() {
                       {quote.cargo_type}
                     </Text>
                   )}
-                </View>
+
+                  {quote.payment_status && (
+                    <View style={styles.paymentStatusRow}>
+                      <View style={[styles.paymentStatusBadge, { backgroundColor: getStatusColor(quote.payment_status) + '20' }]}>
+                        <Text style={[styles.paymentStatusText, { color: getStatusColor(quote.payment_status) }]}>
+                          {formatStatus(quote.payment_status)}
+                        </Text>
+                      </View>
+                      {quote.payment_status === 'unpaid' && quote.quote_amount && (
+                        <IconSymbol
+                          ios_icon_name="chevron.right"
+                          android_material_icon_name="chevron_right"
+                          size={20}
+                          color={colors.primary}
+                        />
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -908,6 +939,21 @@ const styles = StyleSheet.create({
   },
   cargoType: {
     fontSize: 14,
+  },
+  paymentStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   shipmentsContainer: {
     gap: 12,
