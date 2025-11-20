@@ -55,7 +55,12 @@ export function PageHeader({
         {/* Center: Logo or Title */}
         <View style={styles.centerSection}>
           {showLogo ? (
-            <Logo width={120} showText={false} />
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/(home)/')}
+              activeOpacity={0.7}
+            >
+              <Logo width={120} showText={false} />
+            </TouchableOpacity>
           ) : title ? (
             <Text style={styles.headerTitle} numberOfLines={1}>
               {title}
