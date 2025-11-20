@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
+import { supabase } from "@/app/integrations/supabase/client";
 
 export default function ContactScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function ContactScreen() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (client) {
@@ -44,6 +46,11 @@ export default function ContactScreen() {
     }
   }, [prefilledSubject]);
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (!formData.name.trim()) {
@@ -53,6 +60,11 @@ export default function ContactScreen() {
 
     if (!formData.email.trim()) {
       Alert.alert(t.common.error || "Erreur", "Veuillez entrer votre email");
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      Alert.alert(t.common.error || "Erreur", "Veuillez entrer un email valide");
       return;
     }
 
@@ -68,37 +80,49 @@ export default function ContactScreen() {
 
     setIsSubmitting(true);
 
-    // For now, we'll use mailto as a simple solution
-    // In production, you would want to send this to an edge function or API
-    const mailtoUrl = `mailto:contact@universalshipping.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
-      `Nom: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    )}`;
-
     try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
+      // Save to contact_messages collection
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .insert([{
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          client_id: client?.id || null,
+          user_id: user?.id || null,
+          status: 'new',
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error submitting contact message:', error);
         Alert.alert(
-          "Message envoyé",
-          "Votre client email a été ouvert. Veuillez envoyer le message.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.back(),
-            },
-          ]
+          t.common.error || "Erreur",
+          "Une erreur s'est produite lors de l'envoi de votre message. Veuillez réessayer."
         );
-      } else {
-        Alert.alert(
-          "Erreur",
-          "Impossible d'ouvrir le client email. Veuillez contacter contact@universalshipping.com directement."
-        );
+        setIsSubmitting(false);
+        return;
       }
+
+      console.log('Contact message submitted successfully:', data);
+
+      // Show success state
+      setShowSuccess(true);
+
+      // Reset form
+      setFormData({
+        name: client?.contact_name || "",
+        email: user?.email || "",
+        subject: "",
+        message: "",
+      });
     } catch (error) {
-      console.error('Error opening email client:', error);
+      console.error('Exception submitting contact message:', error);
       Alert.alert(
-        "Erreur",
-        "Une erreur s'est produite. Veuillez contacter contact@universalshipping.com directement."
+        t.common.error || "Erreur",
+        "Une erreur s'est produite. Veuillez réessayer."
       );
     } finally {
       setIsSubmitting(false);
@@ -113,11 +137,62 @@ export default function ContactScreen() {
     Linking.openURL('https://wa.me/33123456789');
   };
 
+  if (showSuccess) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+          <View style={{ width: 28 }} />
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Nous contacter
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <View style={styles.successContainer}>
+          <View style={[styles.successIconContainer, { backgroundColor: colors.success }]}>
+            <IconSymbol
+              ios_icon_name="checkmark"
+              android_material_icon_name="check"
+              size={60}
+              color="#ffffff"
+            />
+          </View>
+          
+          <Text style={[styles.successTitle, { color: theme.colors.text }]}>
+            Message envoyé !
+          </Text>
+          
+          <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+            Votre message a bien été reçu. Notre équipe vous répondra dans les plus brefs délais.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              setShowSuccess(false);
+              router.back();
+            }}
+          >
+            <Text style={styles.backButtonText}>
+              Retour
+            </Text>
+            <IconSymbol
+              ios_icon_name="arrow.left"
+              android_material_icon_name="arrow_back"
+              size={20}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.headerBackButton}
           onPress={() => router.back()}
         >
           <IconSymbol
@@ -373,7 +448,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backButton: {
+  headerBackButton: {
     padding: 4,
   },
   headerTitle: {
@@ -515,5 +590,45 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  successIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  successMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 8,
+  },
+  backButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Modal } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -13,6 +13,14 @@ import { FAQSection, FAQItem } from "@/components/FAQSection";
 import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 
+interface Port {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+  region: string | null;
+}
+
 export default function FreightQuoteScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -23,9 +31,16 @@ export default function FreightQuoteScreen() {
   const serviceId = params.service_id as string | undefined;
 
   const [serviceName, setServiceName] = useState<string>("");
+  const [ports, setPorts] = useState<Port[]>([]);
+  const [showOriginPortPicker, setShowOriginPortPicker] = useState(false);
+  const [showDestinationPortPicker, setShowDestinationPortPicker] = useState(false);
+  const [portSearchQuery, setPortSearchQuery] = useState("");
+  
   const [formData, setFormData] = useState({
     clientName: client?.contact_name || "",
     clientEmail: user?.email || "",
+    originPort: null as Port | null,
+    destinationPort: null as Port | null,
     cargoType: "",
     volumeDetails: "",
     incoterm: "",
@@ -55,11 +70,32 @@ export default function FreightQuoteScreen() {
     }
   }, [serviceId]);
 
+  const loadPorts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ports")
+        .select("id, name, city, country, region")
+        .eq("status", "active")
+        .order("region")
+        .order("name");
+
+      if (error) {
+        console.error("Error loading ports:", error);
+        return;
+      }
+
+      setPorts(data || []);
+    } catch (error) {
+      console.error("Error loading ports:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (serviceId) {
       fetchServiceName();
     }
-  }, [serviceId, fetchServiceName]);
+    loadPorts();
+  }, [serviceId, fetchServiceName, loadPorts]);
 
   useEffect(() => {
     if (client) {
@@ -99,6 +135,16 @@ export default function FreightQuoteScreen() {
       return;
     }
 
+    if (!formData.originPort) {
+      Alert.alert(t.common.error || "Erreur", "Veuillez sélectionner un port d'origine");
+      return;
+    }
+
+    if (!formData.destinationPort) {
+      Alert.alert(t.common.error || "Erreur", "Veuillez sélectionner un port de destination");
+      return;
+    }
+
     if (!formData.cargoType.trim()) {
       Alert.alert(t.common.error || "Erreur", "Veuillez spécifier le type de cargo");
       return;
@@ -111,11 +157,14 @@ export default function FreightQuoteScreen() {
         client: client?.id || null,
         client_name: formData.clientName,
         client_email: formData.clientEmail,
+        origin_port: formData.originPort.id,
+        destination_port: formData.destinationPort.id,
         cargo_type: formData.cargoType,
         volume_details: formData.volumeDetails || null,
         incoterm: formData.incoterm || null,
         desired_eta: formData.desiredEta || null,
         status: 'received',
+        service_id: serviceId || null,
       };
 
       // Add service reference in notes if service_id is provided
@@ -171,6 +220,12 @@ export default function FreightQuoteScreen() {
       setIsSubmitting(false);
     }
   };
+
+  const filteredPorts = ports.filter((port) =>
+    `${port.name} ${port.city} ${port.country}`
+      .toLowerCase()
+      .includes(portSearchQuery.toLowerCase())
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -258,6 +313,54 @@ export default function FreightQuoteScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+            Ports et itinéraire
+          </Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Port d&apos;origine *
+            </Text>
+            <TouchableOpacity
+              style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+              onPress={() => setShowOriginPortPicker(true)}
+            >
+              <Text style={[styles.pickerButtonText, { color: formData.originPort ? theme.colors.text : colors.textSecondary }]}>
+                {formData.originPort
+                  ? `${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}`
+                  : "Sélectionner le port d'origine"}
+              </Text>
+              <IconSymbol
+                ios_icon_name="chevron.down"
+                android_material_icon_name="expand_more"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Port de destination *
+            </Text>
+            <TouchableOpacity
+              style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+              onPress={() => setShowDestinationPortPicker(true)}
+            >
+              <Text style={[styles.pickerButtonText, { color: formData.destinationPort ? theme.colors.text : colors.textSecondary }]}>
+                {formData.destinationPort
+                  ? `${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}`
+                  : "Sélectionner le port de destination"}
+              </Text>
+              <IconSymbol
+                ios_icon_name="chevron.down"
+                android_material_icon_name="expand_more"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
           </View>
 
           <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
@@ -468,6 +571,108 @@ export default function FreightQuoteScreen() {
           ]}
         />
       </ScrollView>
+
+      {/* Origin Port Picker Modal */}
+      <Modal
+        visible={showOriginPortPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowOriginPortPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                Port d&apos;origine
+              </Text>
+              <TouchableOpacity onPress={() => setShowOriginPortPicker(false)}>
+                <IconSymbol
+                  ios_icon_name="xmark"
+                  android_material_icon_name="close"
+                  size={24}
+                  color={theme.colors.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={[styles.searchInput, { backgroundColor: theme.colors.background, color: theme.colors.text }]}
+              placeholder="Rechercher un port..."
+              placeholderTextColor={colors.textSecondary}
+              value={portSearchQuery}
+              onChangeText={setPortSearchQuery}
+            />
+            <ScrollView style={styles.modalList}>
+              {filteredPorts.map((port, index) => (
+                <React.Fragment key={port.id}>
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setFormData({ ...formData, originPort: port });
+                      setShowOriginPortPicker(false);
+                      setPortSearchQuery("");
+                    }}
+                  >
+                    <Text style={[styles.modalItemText, { color: theme.colors.text }]}>
+                      {port.name}, {port.city}, {port.country}
+                    </Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Destination Port Picker Modal */}
+      <Modal
+        visible={showDestinationPortPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDestinationPortPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                Port de destination
+              </Text>
+              <TouchableOpacity onPress={() => setShowDestinationPortPicker(false)}>
+                <IconSymbol
+                  ios_icon_name="xmark"
+                  android_material_icon_name="close"
+                  size={24}
+                  color={theme.colors.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={[styles.searchInput, { backgroundColor: theme.colors.background, color: theme.colors.text }]}
+              placeholder="Rechercher un port..."
+              placeholderTextColor={colors.textSecondary}
+              value={portSearchQuery}
+              onChangeText={setPortSearchQuery}
+            />
+            <ScrollView style={styles.modalList}>
+              {filteredPorts.map((port, index) => (
+                <React.Fragment key={port.id}>
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setFormData({ ...formData, destinationPort: port });
+                      setShowDestinationPortPicker(false);
+                      setPortSearchQuery("");
+                    }}
+                  >
+                    <Text style={[styles.modalItemText, { color: theme.colors.text }]}>
+                      {port.name}, {port.city}, {port.country}
+                    </Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -560,6 +765,19 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    flex: 1,
+  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -576,5 +794,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  searchInput: {
+    marginHorizontal: 20,
+    marginVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 16,
+  },
+  modalList: {
+    flex: 1,
+  },
+  modalItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalItemText: {
+    fontSize: 16,
   },
 });
