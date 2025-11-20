@@ -537,6 +537,27 @@ export default function AdminDashboardScreen() {
           color="#FFFFFF"
         />
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.detailedAnalyticsButton, { backgroundColor: colors.secondary, marginTop: 12 }]}
+        onPress={() => router.push('/(tabs)/email-audit')}
+      >
+        <IconSymbol
+          ios_icon_name="envelope.fill"
+          android_material_icon_name="email"
+          size={24}
+          color="#FFFFFF"
+        />
+        <Text style={styles.detailedAnalyticsText}>
+          Audit Emails & Workflows
+        </Text>
+        <IconSymbol
+          ios_icon_name="arrow.right"
+          android_material_icon_name="arrow_forward"
+          size={20}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
     </View>
   );
 
