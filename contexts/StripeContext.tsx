@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { StripeProvider as StripeProviderNative } from '@stripe/stripe-react-native';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 interface StripeContextType {
@@ -48,6 +48,20 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
     publishableKey,
     isReady,
   };
+
+  // On web, we don't use the native Stripe provider
+  // Instead, we'll use Stripe.js in components that need it
+  if (Platform.OS === 'web') {
+    return (
+      <StripeContext.Provider value={value}>
+        {children}
+      </StripeContext.Provider>
+    );
+  }
+
+  // For native platforms, dynamically import the Stripe provider
+  // This prevents the web build from trying to import native modules
+  const StripeProviderNative = require('@stripe/stripe-react-native').StripeProvider;
 
   // If no publishable key, render children without Stripe provider
   if (!publishableKey) {
