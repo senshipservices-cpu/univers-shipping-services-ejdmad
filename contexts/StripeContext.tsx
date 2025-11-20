@@ -61,7 +61,18 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
 
   // For native platforms, dynamically import the Stripe provider
   // This prevents the web build from trying to import native modules
-  const StripeProviderNative = require('@stripe/stripe-react-native').StripeProvider;
+  // Only require the module on native platforms
+  let StripeProviderNative;
+  try {
+    StripeProviderNative = require('@stripe/stripe-react-native').StripeProvider;
+  } catch (error) {
+    console.error('Failed to load Stripe native module:', error);
+    return (
+      <StripeContext.Provider value={value}>
+        {children}
+      </StripeContext.Provider>
+    );
+  }
 
   // If no publishable key, render children without Stripe provider
   if (!publishableKey) {
