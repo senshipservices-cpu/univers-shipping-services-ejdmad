@@ -9,10 +9,22 @@ const SUPABASE_URL = appConfig.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = appConfig.env.SUPABASE_ANON_KEY;
 
 // Validate configuration
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  appConfig.logger.error('Supabase configuration is missing!');
-  appConfig.logger.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
-  throw new Error('Supabase configuration is missing');
+if (!SUPABASE_URL || SUPABASE_URL === '') {
+  appConfig.logger.error('Supabase URL is missing!');
+  appConfig.logger.error('Please set EXPO_PUBLIC_SUPABASE_URL in your environment');
+  throw new Error('Supabase URL is missing');
+}
+
+if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
+  appConfig.logger.error('Invalid Supabase URL:', SUPABASE_URL);
+  appConfig.logger.error('URL must start with http:// or https://');
+  throw new Error('Invalid Supabase URL: Must be a valid HTTP or HTTPS URL');
+}
+
+if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === '') {
+  appConfig.logger.error('Supabase Anon Key is missing!');
+  appConfig.logger.error('Please set EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment');
+  throw new Error('Supabase Anon Key is missing');
 }
 
 appConfig.logger.info('Initializing Supabase client');

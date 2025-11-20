@@ -23,6 +23,26 @@ const isProduction = APP_ENV === 'production';
 const isDev = !isProduction;
 
 /**
+ * Get environment variable with fallback
+ * Tries multiple sources in order of priority
+ */
+function getEnvVar(key: string, fallback: string = ''): string {
+  // Try process.env first (for web and development)
+  if (process.env[key]) {
+    return process.env[key] as string;
+  }
+  
+  // Try Constants.expoConfig.extra (for native apps)
+  const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
+  if (Constants.expoConfig?.extra?.[extraKey]) {
+    return Constants.expoConfig.extra[extraKey] as string;
+  }
+  
+  // Return fallback
+  return fallback;
+}
+
+/**
  * Environment Variables
  * All sensitive keys should be accessed through this configuration
  */
@@ -31,37 +51,29 @@ export const env = {
   APP_ENV,
   
   // Supabase Configuration
-  SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || 
-                Constants.expoConfig?.extra?.supabaseUrl || 
-                'https://lnfsjpuffrcyenuuoxxk.supabase.co',
+  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', 'https://lnfsjpuffrcyenuuoxxk.supabase.co'),
   
-  SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
-                     Constants.expoConfig?.extra?.supabaseAnonKey || 
-                     '',
+  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZnNqcHVmZnJjeWVudXVveHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MTMxNzMsImV4cCI6MjA3ODk4OTE3M30.Q-NG1rOvLUhf5j38qZB19o_ZM5CunvgjPWe85NMbmNU'),
   
-  SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY || '',
+  SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
   // Stripe Configuration
-  STRIPE_PUBLIC_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
-                     Constants.expoConfig?.extra?.stripePublishableKey || 
-                     '',
+  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
   
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
-  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
+  STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
+  STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
   
   // Google Maps Configuration
-  GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 
-                       Constants.expoConfig?.extra?.googleMapsApiKey || 
-                       '',
+  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
   
   // SMTP Configuration
-  SMTP_HOST: process.env.SMTP_HOST || '',
-  SMTP_PORT: process.env.SMTP_PORT || '587',
-  SMTP_USERNAME: process.env.SMTP_USERNAME || '',
-  SMTP_PASSWORD: process.env.SMTP_PASSWORD || '',
+  SMTP_HOST: getEnvVar('SMTP_HOST', ''),
+  SMTP_PORT: getEnvVar('SMTP_PORT', '587'),
+  SMTP_USERNAME: getEnvVar('SMTP_USERNAME', ''),
+  SMTP_PASSWORD: getEnvVar('SMTP_PASSWORD', ''),
   
   // Admin Configuration
-  ADMIN_EMAILS: (process.env.ADMIN_EMAILS || 'cheikh@universalshipping.com')
+  ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
     .split(',')
     .map(email => email.trim()),
 };
@@ -152,11 +164,13 @@ export const validateConfig = (): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
   
   // Required variables
-  if (!env.SUPABASE_URL) {
+  if (!env.SUPABASE_URL || env.SUPABASE_URL === '') {
     errors.push('SUPABASE_URL is not set');
+  } else if (!env.SUPABASE_URL.startsWith('http://') && !env.SUPABASE_URL.startsWith('https://')) {
+    errors.push('SUPABASE_URL must be a valid HTTP or HTTPS URL');
   }
   
-  if (!env.SUPABASE_ANON_KEY) {
+  if (!env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY === '') {
     errors.push('SUPABASE_ANON_KEY is not set');
   }
   
