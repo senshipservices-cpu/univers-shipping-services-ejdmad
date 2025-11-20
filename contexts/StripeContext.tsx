@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import appConfig from '@/config/appConfig';
 
 interface StripeContextType {
   publishableKey: string | null;
@@ -30,16 +30,15 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Get Stripe publishable key from environment variables
-    const key = Constants.expoConfig?.extra?.stripePublishableKey || 
-                process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    // Get Stripe publishable key from environment configuration
+    const key = appConfig.env.STRIPE_PUBLIC_KEY;
     
     if (key) {
-      console.log('Stripe publishable key loaded (Fallback)');
+      appConfig.logger.info('Stripe publishable key loaded (Fallback)');
       setPublishableKey(key);
       setIsReady(true);
     } else {
-      console.warn('Stripe publishable key not found in environment variables');
+      appConfig.logger.warn('Stripe publishable key not found in environment variables');
       setIsReady(true); // Still set ready to avoid blocking the app
     }
   }, []);
@@ -50,7 +49,7 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
   };
 
   // Fallback implementation - just provide context without native Stripe
-  console.warn('Using fallback StripeContext - platform-specific file not found');
+  appConfig.logger.warn('Using fallback StripeContext - platform-specific file not found');
   return (
     <StripeContext.Provider value={value}>
       {children}

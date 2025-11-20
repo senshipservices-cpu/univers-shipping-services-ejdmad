@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import Constants from 'expo-constants';
 import { StripeProvider as StripeProviderNative } from '@stripe/stripe-react-native';
+import appConfig from '@/config/appConfig';
 
 interface StripeContextType {
   publishableKey: string | null;
@@ -30,16 +30,15 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({ children }) => {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Get Stripe publishable key from environment variables
-    const key = Constants.expoConfig?.extra?.stripePublishableKey || 
-                process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    // Get Stripe publishable key from environment configuration
+    const key = appConfig.env.STRIPE_PUBLIC_KEY;
     
     if (key) {
-      console.log('Stripe publishable key loaded (Native)');
+      appConfig.logger.info('Stripe publishable key loaded (Native)');
       setPublishableKey(key);
       setIsReady(true);
     } else {
-      console.warn('Stripe publishable key not found in environment variables');
+      appConfig.logger.warn('Stripe publishable key not found in environment variables');
       setIsReady(true); // Still set ready to avoid blocking the app
     }
   }, []);

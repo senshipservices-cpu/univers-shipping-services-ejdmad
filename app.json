@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "3S Global",
@@ -41,7 +42,12 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "appEnv": "${APP_ENV}",
+      "supabaseUrl": "${EXPO_PUBLIC_SUPABASE_URL}",
+      "supabaseAnonKey": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
+      "stripePublishableKey": "${EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}",
+      "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
     }
   },
   "scheme": "3S Global"

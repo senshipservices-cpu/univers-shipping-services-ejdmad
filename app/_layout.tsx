@@ -2,15 +2,41 @@
 import { Stack } from 'expo-router';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AdminProvider } from '@/contexts/AdminContext';
 import { WidgetProvider } from '@/contexts/WidgetContext';
 import { StripeProvider } from '@/contexts/StripeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import appConfig from '@/config/appConfig';
+import { verifyAllServices } from '@/config/configVerification';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Log app startup
+    appConfig.logger.essential('='.repeat(50));
+    appConfig.logger.essential('Universal Shipping Services - Starting');
+    appConfig.logger.essential(`Environment: ${appConfig.appEnv}`);
+    appConfig.logger.essential(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
+    appConfig.logger.essential('='.repeat(50));
+
+    // Validate configuration
+    const validation = appConfig.validateConfig();
+    if (!validation.valid) {
+      appConfig.logger.error('Configuration validation failed:');
+      validation.errors.forEach(error => {
+        appConfig.logger.error(`  - ${error}`);
+      });
+    }
+
+    // Verify all services (async, non-blocking)
+    verifyAllServices().catch(error => {
+      appConfig.logger.error('Service verification failed:', error);
+    });
+  }, []);
 
   return (
     <ErrorBoundary>

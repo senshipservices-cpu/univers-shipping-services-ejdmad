@@ -6,15 +6,13 @@
  * For server-side operations, use Stripe Edge Functions with the STRIPE_SECRET_KEY.
  */
 
-import Constants from 'expo-constants';
+import appConfig from '@/config/appConfig';
 
 /**
  * Get Stripe publishable key from environment
  */
 export const getStripePublishableKey = (): string | null => {
-  return Constants.expoConfig?.extra?.stripePublishableKey || 
-         process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
-         null;
+  return appConfig.env.STRIPE_PUBLIC_KEY || null;
 };
 
 /**

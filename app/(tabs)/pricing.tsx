@@ -14,6 +14,8 @@ import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { TrustBar } from "@/components/TrustBar";
 import { MicroCopy } from "@/components/MicroCopy";
 import { formatPrice, getBillingPeriodLabel } from "@/utils/stripe";
+import { ConfigStatus } from "@/components/ConfigStatus";
+import appConfig from "@/config/appConfig";
 import * as Linking from 'expo-linking';
 
 interface PricingPlan {
@@ -50,7 +52,7 @@ export default function PricingScreen() {
     
     // Check for highlight parameter
     if (params.highlight) {
-      console.log('Highlighting plan:', params.highlight);
+      appConfig.logger.info('Highlighting plan:', params.highlight);
       setHighlightedPlan(params.highlight as string);
     }
   }, [params.highlight]);
@@ -65,15 +67,15 @@ export default function PricingScreen() {
         .order('price_eur', { ascending: true });
 
       if (error) {
-        console.error('Error fetching plans:', error);
+        appConfig.logger.error('Error fetching plans:', error);
         Alert.alert('Erreur', 'Impossible de charger les plans tarifaires.');
         return;
       }
 
-      console.log('Fetched plans:', data);
+      appConfig.logger.info('Fetched plans:', data);
       setPlans(data || []);
     } catch (error) {
-      console.error('Exception fetching plans:', error);
+      appConfig.logger.error('Exception fetching plans:', error);
       Alert.alert('Erreur', 'Une erreur est survenue lors du chargement des plans.');
     } finally {
       setLoading(false);
@@ -81,7 +83,7 @@ export default function PricingScreen() {
   };
 
   const handleSelectPlan = async (plan: PricingPlan) => {
-    console.log('Plan selected:', plan.code, 'User:', user?.id);
+    appConfig.logger.info('Plan selected:', plan.code, 'User:', user?.id);
 
     // Check if user is authenticated
     if (!user || !session) {
@@ -110,7 +112,7 @@ export default function PricingScreen() {
       });
 
       if (error) {
-        console.error('Error creating checkout session:', error);
+        appConfig.logger.error('Error creating checkout session:', error);
         Alert.alert(
           'Erreur',
           'Impossible de créer la session de paiement. Veuillez réessayer.'
@@ -118,7 +120,7 @@ export default function PricingScreen() {
         return;
       }
 
-      console.log('Checkout session created:', data);
+      appConfig.logger.info('Checkout session created:', data);
 
       // Redirect to Stripe Checkout
       if (data.url) {
@@ -132,7 +134,7 @@ export default function PricingScreen() {
         Alert.alert('Erreur', 'URL de paiement non disponible.');
       }
     } catch (error) {
-      console.error('Exception handling plan selection:', error);
+      appConfig.logger.error('Exception handling plan selection:', error);
       Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setProcessingPlan(null);
@@ -197,6 +199,9 @@ export default function PricingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Configuration Status (Dev Only) */}
+        {appConfig.isDev && <ConfigStatus />}
+
         {highlightedPlan === 'digital_portal' && (
           <View style={[styles.accessBanner, { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}>
             <IconSymbol
