@@ -61,6 +61,79 @@ export const verifySupabase = async (): Promise<VerificationResult> => {
 };
 
 /**
+ * Verify PayPal Configuration
+ */
+export const verifyPayPal = async (): Promise<VerificationResult> => {
+  try {
+    logger.debug('Verifying PayPal configuration...');
+    
+    const clientId = appConfig.env.PAYPAL_CLIENT_ID;
+    const environment = appConfig.env.PAYPAL_ENV;
+    
+    if (!clientId) {
+      return {
+        service: 'PayPal',
+        status: appConfig.payment.provider === 'paypal' ? 'error' : 'warning',
+        message: 'PayPal client ID not configured',
+      };
+    }
+    
+    // Validate environment setting
+    if (environment !== 'sandbox' && environment !== 'live') {
+      return {
+        service: 'PayPal',
+        status: 'error',
+        message: `Invalid PayPal environment: ${environment}. Must be "sandbox" or "live"`,
+      };
+    }
+    
+    // Check environment consistency
+    if (appConfig.isProduction && environment === 'sandbox') {
+      return {
+        service: 'PayPal',
+        status: 'warning',
+        message: 'Using PayPal sandbox in production environment',
+        details: {
+          environment,
+          recommendation: 'Change PAYPAL_ENV to "live" for production',
+        },
+      };
+    }
+    
+    if (!appConfig.isProduction && environment === 'live') {
+      return {
+        service: 'PayPal',
+        status: 'warning',
+        message: 'Using PayPal live in development environment',
+        details: {
+          environment,
+          recommendation: 'Consider using "sandbox" for development',
+        },
+      };
+    }
+    
+    logger.info('PayPal configuration verified successfully');
+    return {
+      service: 'PayPal',
+      status: 'success',
+      message: `PayPal is properly configured (${environment} mode)`,
+      details: {
+        environment,
+        clientIdPrefix: clientId.substring(0, 12) + '...',
+        apiUrl: appConfig.payment.paypal.apiUrl,
+      },
+    };
+  } catch (error) {
+    logger.error('PayPal verification failed:', error);
+    return {
+      service: 'PayPal',
+      status: 'error',
+      message: `PayPal verification failed: ${error}`,
+    };
+  }
+};
+
+/**
  * Verify Stripe Configuration
  */
 export const verifyStripe = async (): Promise<VerificationResult> => {
@@ -72,8 +145,8 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
     if (!publicKey) {
       return {
         service: 'Stripe',
-        status: 'warning',
-        message: 'Stripe public key not configured - payment features will be limited',
+        status: appConfig.payment.provider === 'stripe' ? 'error' : 'warning',
+        message: 'Stripe public key not configured',
       };
     }
     
@@ -225,16 +298,38 @@ export const verifySMTP = async (): Promise<VerificationResult> => {
 };
 
 /**
+ * Verify Payment Provider Configuration
+ */
+export const verifyPaymentProvider = async (): Promise<VerificationResult> => {
+  const provider = appConfig.payment.provider;
+  
+  logger.info(`Active payment provider: ${provider}`);
+  
+  if (provider === 'paypal') {
+    return await verifyPayPal();
+  } else if (provider === 'stripe') {
+    return await verifyStripe();
+  } else {
+    return {
+      service: 'Payment Provider',
+      status: 'error',
+      message: `Unknown payment provider: ${provider}`,
+    };
+  }
+};
+
+/**
  * Verify All Services
  */
 export const verifyAllServices = async (): Promise<VerificationResult[]> => {
   logger.info('Starting configuration verification...');
   logger.info(`Environment: ${appConfig.appEnv}`);
   logger.info(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
+  logger.info(`Payment Provider: ${appConfig.payment.provider}`);
   
   const results = await Promise.all([
     verifySupabase(),
-    verifyStripe(),
+    verifyPaymentProvider(),
     verifyGoogleMaps(),
     verifySMTP(),
   ]);

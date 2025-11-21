@@ -13,7 +13,7 @@ import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { TrustBar } from "@/components/TrustBar";
 import { MicroCopy } from "@/components/MicroCopy";
-import { formatPrice, getBillingPeriodLabel } from "@/utils/stripe";
+import { formatPrice, getBillingPeriodLabel } from "@/utils/paypal";
 import { ConfigStatus } from "@/components/ConfigStatus";
 import appConfig from "@/config/appConfig";
 import * as Linking from 'expo-linking';
@@ -104,15 +104,19 @@ export default function PricingScreen() {
     try {
       setProcessingPlan(plan.code);
 
-      // Call the Edge Function to create a Stripe Checkout session
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      // Call the Edge Function to create a PayPal Order
+      const edgeFunctionName = appConfig.payment.provider === 'paypal' 
+        ? 'create-paypal-order' 
+        : 'create-checkout-session';
+
+      const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
         body: {
           plan_code: plan.code,
         },
       });
 
       if (error) {
-        appConfig.logger.error('Error creating checkout session:', error);
+        appConfig.logger.error('Error creating payment session:', error);
         Alert.alert(
           'Erreur',
           'Impossible de créer la session de paiement. Veuillez réessayer.'
@@ -120,9 +124,9 @@ export default function PricingScreen() {
         return;
       }
 
-      appConfig.logger.info('Checkout session created:', data);
+      appConfig.logger.info('Payment session created:', data);
 
-      // Redirect to Stripe Checkout
+      // Redirect to payment page (PayPal or Stripe)
       if (data.url) {
         const supported = await Linking.canOpenURL(data.url);
         if (supported) {
@@ -332,7 +336,7 @@ export default function PricingScreen() {
                     </TouchableOpacity>
                     {isPopular && (
                       <MicroCopy
-                        text="Paiement sécurisé par Stripe"
+                        text={`Paiement sécurisé par ${appConfig.payment.provider === 'paypal' ? 'PayPal' : 'Stripe'}`}
                         icon={{ ios: 'lock.shield.fill', android: 'security' }}
                       />
                     )}

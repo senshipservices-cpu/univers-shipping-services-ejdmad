@@ -8,6 +8,7 @@
  * - Conditional logging based on environment
  * - Access to environment variables
  * - Feature flags based on environment
+ * - Payment provider configuration (Stripe/PayPal)
  */
 
 import Constants from 'expo-constants';
@@ -57,11 +58,19 @@ export const env = {
   
   SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
-  // Stripe Configuration
+  // Stripe Configuration (Legacy - kept for backward compatibility)
   STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
-  
   STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
   STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
+  
+  // PayPal Configuration
+  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', ''),
+  PAYPAL_CLIENT_SECRET: getEnvVar('PAYPAL_CLIENT_SECRET', ''),
+  PAYPAL_WEBHOOK_ID: getEnvVar('PAYPAL_WEBHOOK_ID', ''),
+  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDev ? 'sandbox' : 'live'),
+  
+  // Payment Provider Configuration
+  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'), // 'stripe' or 'paypal'
   
   // Google Maps Configuration
   GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
@@ -76,6 +85,43 @@ export const env = {
   ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
     .split(',')
     .map(email => email.trim()),
+};
+
+/**
+ * Payment Configuration
+ * Centralized payment provider settings
+ */
+export const payment = {
+  // Active payment provider
+  provider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
+  
+  // PayPal configuration
+  paypal: {
+    clientId: env.PAYPAL_CLIENT_ID,
+    environment: env.PAYPAL_ENV as 'sandbox' | 'live',
+    isSandbox: env.PAYPAL_ENV === 'sandbox',
+    isLive: env.PAYPAL_ENV === 'live',
+    apiUrl: env.PAYPAL_ENV === 'sandbox' 
+      ? 'https://api-m.sandbox.paypal.com'
+      : 'https://api-m.paypal.com',
+  },
+  
+  // Stripe configuration (legacy)
+  stripe: {
+    publishableKey: env.STRIPE_PUBLIC_KEY,
+    isTestMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_test_'),
+    isLiveMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_live_'),
+  },
+  
+  // Helper to check if payment provider is configured
+  isConfigured: () => {
+    if (env.PAYMENT_PROVIDER === 'paypal') {
+      return !!env.PAYPAL_CLIENT_ID;
+    } else if (env.PAYMENT_PROVIDER === 'stripe') {
+      return !!env.STRIPE_PUBLIC_KEY;
+    }
+    return false;
+  },
 };
 
 /**
@@ -115,6 +161,13 @@ export const logger = {
   essential: (...args: any[]) => {
     console.log('[ESSENTIAL]', ...args);
   },
+  
+  // Payment-specific logging (never log sensitive data in production)
+  payment: (...args: any[]) => {
+    if (isDev) {
+      console.log('[PAYMENT]', ...args);
+    }
+  },
 };
 
 /**
@@ -123,7 +176,8 @@ export const logger = {
  */
 export const features = {
   // Payment features
-  enableStripePayments: isProduction ? true : true, // Enable in both for testing
+  enableStripePayments: env.PAYMENT_PROVIDER === 'stripe' && !!env.STRIPE_PUBLIC_KEY,
+  enablePayPalPayments: env.PAYMENT_PROVIDER === 'paypal' && !!env.PAYPAL_CLIENT_ID,
   enableTestMode: isDev,
   
   // Logging and debugging
@@ -148,7 +202,9 @@ export const api = {
   supabaseUrl: env.SUPABASE_URL,
   supabaseAnonKey: env.SUPABASE_ANON_KEY,
   
-  // Stripe
+  // Payment providers
+  paypalClientId: env.PAYPAL_CLIENT_ID,
+  paypalApiUrl: payment.paypal.apiUrl,
   stripePublicKey: env.STRIPE_PUBLIC_KEY,
   
   // Timeouts
@@ -160,8 +216,9 @@ export const api = {
  * Validation
  * Check if required environment variables are set
  */
-export const validateConfig = (): { valid: boolean; errors: string[] } => {
+export const validateConfig = (): { valid: boolean; errors: string[]; warnings: string[] } => {
   const errors: string[] = [];
+  const warnings: string[] = [];
   
   // Required variables
   if (!env.SUPABASE_URL || env.SUPABASE_URL === '') {
@@ -174,22 +231,69 @@ export const validateConfig = (): { valid: boolean; errors: string[] } => {
     errors.push('SUPABASE_ANON_KEY is not set');
   }
   
-  // Warn about optional but recommended variables
-  if (!env.STRIPE_PUBLIC_KEY && isDev) {
-    logger.warn('STRIPE_PUBLIC_KEY is not set - payment features will be limited');
+  // Payment provider validation
+  if (!env.PAYMENT_PROVIDER) {
+    warnings.push('PAYMENT_PROVIDER is not set - defaulting to PayPal');
   }
   
+  if (env.PAYMENT_PROVIDER === 'paypal') {
+    if (!env.PAYPAL_CLIENT_ID) {
+      errors.push('PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
+    }
+    
+    if (!env.PAYPAL_CLIENT_SECRET && isProduction) {
+      errors.push('PAYPAL_CLIENT_SECRET is not set - required for backend operations');
+    }
+    
+    if (!env.PAYPAL_WEBHOOK_ID && isProduction) {
+      warnings.push('PAYPAL_WEBHOOK_ID is not set - webhook verification will be limited');
+    }
+    
+    // Environment consistency check
+    if (isProduction && env.PAYPAL_ENV === 'sandbox') {
+      warnings.push('Using PayPal SANDBOX in production environment - this should be changed to "live"');
+    }
+    
+    if (!isProduction && env.PAYPAL_ENV === 'live') {
+      warnings.push('Using PayPal LIVE in development environment - consider using "sandbox" for testing');
+    }
+  } else if (env.PAYMENT_PROVIDER === 'stripe') {
+    if (!env.STRIPE_PUBLIC_KEY) {
+      warnings.push('STRIPE_PUBLIC_KEY is not set but Stripe is the active payment provider');
+    }
+    
+    if (env.STRIPE_PUBLIC_KEY) {
+      const isTestKey = env.STRIPE_PUBLIC_KEY.startsWith('pk_test_');
+      const isLiveKey = env.STRIPE_PUBLIC_KEY.startsWith('pk_live_');
+      
+      if (!isTestKey && !isLiveKey) {
+        errors.push('Invalid Stripe public key format');
+      }
+      
+      if (isProduction && isTestKey) {
+        warnings.push('Using Stripe test key in production environment');
+      }
+      
+      if (!isProduction && isLiveKey) {
+        warnings.push('Using Stripe live key in development environment');
+      }
+    }
+  }
+  
+  // Google Maps validation
   if (!env.GOOGLE_MAPS_API_KEY && isDev) {
-    logger.warn('GOOGLE_MAPS_API_KEY is not set - map features will be limited');
+    warnings.push('GOOGLE_MAPS_API_KEY is not set - map features will be limited');
   }
   
+  // SMTP validation
   if (!env.SMTP_HOST && isProduction) {
-    logger.warn('SMTP configuration is not set - email features will not work');
+    warnings.push('SMTP configuration is not set - email features will not work');
   }
   
   return {
     valid: errors.length === 0,
     errors,
+    warnings,
   };
 };
 
@@ -202,8 +306,15 @@ const appConfig = {
   isProduction,
   isDev,
   
+  // Payment provider
+  paymentProvider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
+  paypalEnv: env.PAYPAL_ENV as 'sandbox' | 'live',
+  
   // Environment variables
   env,
+  
+  // Payment configuration
+  payment,
   
   // Logger
   logger,
