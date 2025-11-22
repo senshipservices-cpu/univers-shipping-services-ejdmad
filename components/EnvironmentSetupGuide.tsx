@@ -1,215 +1,299 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
-import { colors } from '@/styles/commonStyles';
+import { useColors } from '@/styles/commonStyles';
+import appConfig from '@/config/appConfig';
 
-interface EnvironmentSetupGuideProps {
-  missingVariables: string[];
-}
+/**
+ * EnvironmentSetupGuide Component
+ * Displays setup instructions when environment variables are not configured
+ */
+export default function EnvironmentSetupGuide() {
+  const colors = useColors();
+  const validation = appConfig.validateConfig();
 
-export default function EnvironmentSetupGuide({ missingVariables }: EnvironmentSetupGuideProps) {
+  // Only show if there are errors
+  if (validation.valid) {
+    return null;
+  }
+
   const openSupabaseDashboard = () => {
     Linking.openURL('https://supabase.com/dashboard/project/lnfsjpuffrcyenuuoxxk/settings/api');
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 30,
+      paddingTop: 40,
+    },
+    headerIcon: {
+      fontSize: 48,
+      marginBottom: 16,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    headerSubtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    errorItem: {
+      flexDirection: 'row',
+      marginBottom: 8,
+      backgroundColor: colors.error + '10',
+      padding: 12,
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.error,
+    },
+    errorBullet: {
+      color: colors.error,
+      marginRight: 8,
+      fontWeight: 'bold',
+    },
+    errorText: {
+      flex: 1,
+      color: colors.error,
+      fontSize: 14,
+    },
+    warningItem: {
+      flexDirection: 'row',
+      marginBottom: 8,
+      backgroundColor: '#FFA50010',
+      padding: 12,
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#FFA500',
+    },
+    warningBullet: {
+      color: '#FFA500',
+      marginRight: 8,
+      fontWeight: 'bold',
+    },
+    warningText: {
+      flex: 1,
+      color: '#FFA500',
+      fontSize: 14,
+    },
+    instructionCard: {
+      backgroundColor: colors.card,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    instructionStep: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    instructionText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      lineHeight: 20,
+    },
+    linkButton: {
+      backgroundColor: colors.primary,
+      padding: 12,
+      borderRadius: 8,
+      marginVertical: 8,
+    },
+    linkButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    codeBlock: {
+      backgroundColor: colors.background,
+      padding: 12,
+      borderRadius: 8,
+      marginTop: 8,
+    },
+    codeText: {
+      fontFamily: 'monospace',
+      fontSize: 13,
+      color: colors.text,
+      marginBottom: 4,
+    },
+    stepList: {
+      marginTop: 8,
+      marginBottom: 12,
+    },
+    stepItem: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 6,
+      paddingLeft: 8,
+    },
+    variableCard: {
+      backgroundColor: colors.background,
+      padding: 12,
+      borderRadius: 8,
+      marginTop: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    variableName: {
+      fontFamily: 'monospace',
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+      marginBottom: 4,
+    },
+    variableValue: {
+      fontFamily: 'monospace',
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    helpSection: {
+      backgroundColor: colors.primary + '10',
+      padding: 16,
+      borderRadius: 12,
+      marginTop: 24,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+    },
+    helpTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      marginBottom: 8,
+    },
+    helpText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 20,
+    },
+  });
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>⚠️ Configuration Required</Text>
-        
-        <Text style={styles.description}>
-          The following environment variables are missing or invalid:
-        </Text>
-        
-        <View style={styles.variablesList}>
-          {missingVariables.map((variable, index) => (
-            <Text key={index} style={styles.variableItem}>• {variable}</Text>
-          ))}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerIcon}>⚙️</Text>
+          <Text style={styles.headerTitle}>Configuration Required</Text>
+          <Text style={styles.headerSubtitle}>
+            Please set up your environment variables to continue
+          </Text>
         </View>
-        
+
+        {/* Errors */}
+        {validation.errors.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>❌ Required Configuration</Text>
+            {validation.errors.map((error, index) => (
+              <View key={index} style={styles.errorItem}>
+                <Text style={styles.errorBullet}>•</Text>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Setup Instructions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Setup Instructions</Text>
           
-          <View style={styles.step}>
-            <Text style={styles.stepNumber}>1.</Text>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Open Natively Environment Variables</Text>
-              <Text style={styles.stepDescription}>
-                Go to the Environment Variables tab in Natively
-              </Text>
+          <View style={styles.instructionCard}>
+            <Text style={styles.instructionStep}>Step 1: Get Your Supabase Credentials</Text>
+            <TouchableOpacity style={styles.linkButton} onPress={openSupabaseDashboard}>
+              <Text style={styles.linkButtonText}>Open Supabase Dashboard →</Text>
+            </TouchableOpacity>
+            <Text style={styles.instructionText}>
+              Navigate to: Project Settings → API
+            </Text>
+            <Text style={styles.instructionText}>
+              Copy the following values:
+            </Text>
+            <View style={styles.codeBlock}>
+              <Text style={styles.codeText}>• Project URL</Text>
+              <Text style={styles.codeText}>• anon public key</Text>
             </View>
           </View>
-          
-          <View style={styles.step}>
-            <Text style={styles.stepNumber}>2.</Text>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Add Required Variables</Text>
-              <Text style={styles.stepDescription}>
-                Click "Add Variable" and enter the following:
-              </Text>
+
+          <View style={styles.instructionCard}>
+            <Text style={styles.instructionStep}>Step 2: Add to Natively Environment Variables</Text>
+            <Text style={styles.instructionText}>
+              In your Natively project:
+            </Text>
+            <View style={styles.stepList}>
+              <Text style={styles.stepItem}>1. Go to Project Settings</Text>
+              <Text style={styles.stepItem}>2. Navigate to Environment Variables tab</Text>
+              <Text style={styles.stepItem}>3. Click "Add Variable"</Text>
+              <Text style={styles.stepItem}>4. Add the following variables:</Text>
             </View>
-          </View>
-          
-          {missingVariables.includes('EXPO_PUBLIC_SUPABASE_URL') && (
+            
             <View style={styles.variableCard}>
               <Text style={styles.variableName}>EXPO_PUBLIC_SUPABASE_URL</Text>
               <Text style={styles.variableValue}>https://lnfsjpuffrcyenuuoxxk.supabase.co</Text>
             </View>
-          )}
-          
-          {missingVariables.includes('EXPO_PUBLIC_SUPABASE_ANON_KEY') && (
+
             <View style={styles.variableCard}>
               <Text style={styles.variableName}>EXPO_PUBLIC_SUPABASE_ANON_KEY</Text>
-              <Text style={styles.variableValue}>Your Supabase anonymous key</Text>
-              <TouchableOpacity 
-                style={styles.linkButton}
-                onPress={openSupabaseDashboard}
-              >
-                <Text style={styles.linkButtonText}>
-                  Get key from Supabase Dashboard →
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.variableValue}>Your anon public key from Supabase</Text>
             </View>
-          )}
-          
-          <View style={styles.step}>
-            <Text style={styles.stepNumber}>3.</Text>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Save and Restart</Text>
-              <Text style={styles.stepDescription}>
-                Click "Save" and restart the app to apply changes
-              </Text>
+          </View>
+
+          <View style={styles.instructionCard}>
+            <Text style={styles.instructionStep}>Step 3: Restart the App</Text>
+            <Text style={styles.instructionText}>
+              After adding the environment variables:
+            </Text>
+            <View style={styles.stepList}>
+              <Text style={styles.stepItem}>1. Save the variables</Text>
+              <Text style={styles.stepItem}>2. Stop the development server</Text>
+              <Text style={styles.stepItem}>3. Restart the app</Text>
             </View>
           </View>
         </View>
-        
+
+        {/* Warnings */}
+        {validation.warnings.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>⚠️  Optional Configuration</Text>
+            {validation.warnings.map((warning, index) => (
+              <View key={index} style={styles.warningItem}>
+                <Text style={styles.warningBullet}>•</Text>
+                <Text style={styles.warningText}>{warning}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Help */}
         <View style={styles.helpSection}>
           <Text style={styles.helpTitle}>Need Help?</Text>
           <Text style={styles.helpText}>
-            Check the .env.example file in the project root for detailed setup instructions.
+            Check the documentation in the docs/ folder for detailed setup instructions.
           </Text>
         </View>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: 20,
-    paddingTop: 60,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  variablesList: {
-    backgroundColor: colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  variableItem: {
-    fontSize: 14,
-    color: colors.error,
-    marginBottom: 8,
-    fontFamily: 'monospace',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  step: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  stepNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginRight: 12,
-    width: 24,
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  stepDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  variableCard: {
-    backgroundColor: colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    marginLeft: 36,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-  },
-  variableName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 8,
-    fontFamily: 'monospace',
-  },
-  variableValue: {
-    fontSize: 13,
-    color: colors.text,
-    fontFamily: 'monospace',
-    backgroundColor: colors.background,
-    padding: 8,
-    borderRadius: 6,
-  },
-  linkButton: {
-    marginTop: 12,
-    paddingVertical: 8,
-  },
-  linkButtonText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  helpSection: {
-    backgroundColor: colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 24,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  helpText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-});

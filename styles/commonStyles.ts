@@ -22,6 +22,7 @@ export const useColors = () => {
     error: '#F44336',
     warning: '#FFC107',
     background: isDark ? '#121212' : brandColors.pureWhite,
+    surface: isDark ? '#1E1E1E' : brandColors.lightGrey,
     card: isDark ? '#1E1E1E' : brandColors.lightGrey,
     text: isDark ? brandColors.pureWhite : '#000000',
     textSecondary: isDark ? '#B0B0B0' : '#666666',
@@ -43,6 +44,7 @@ export const colors = {
   
   // Light Mode
   background: brandColors.pureWhite,
+  surface: brandColors.lightGrey,
   card: brandColors.lightGrey,
   text: '#000000',
   textSecondary: '#666666',
@@ -51,6 +53,7 @@ export const colors = {
   
   // Dark Mode
   backgroundDark: '#121212',
+  surfaceDark: '#1E1E1E',
   cardDark: '#1E1E1E',
   textDark: brandColors.pureWhite,
   textSecondaryDark: '#B0B0B0',

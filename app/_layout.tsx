@@ -1,114 +1,128 @@
 
-import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
-import { AdminProvider } from '@/contexts/AdminContext';
-import { StripeProvider } from '@/contexts/StripeContext';
-import { colors } from '@/styles/commonStyles';
-import appConfig from '@/config/appConfig';
-import EnvironmentSetupGuide from '@/components/EnvironmentSetupGuide';
+import "react-native-reanimated";
+import React, { useEffect } from "react";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { SystemBars } from "react-native-edge-to-edge";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useColorScheme, Alert } from "react-native";
+import { useNetworkState } from "expo-network";
+import {
+  DarkTheme,
+  DefaultTheme,
+  Theme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { StatusBar } from "expo-status-bar";
+import { WidgetProvider } from "../contexts/WidgetContext";
+import SupabaseConfigCheck from "@/components/SupabaseConfigCheck";
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
+export const unstable_settings = {
+  initialRouteName: "(tabs)", // Ensure any route can link back to `/`
+};
 
 export default function RootLayout() {
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [missingVariables, setMissingVariables] = useState<string[]>([]);
+  const colorScheme = useColorScheme();
+  const networkState = useNetworkState();
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
 
   useEffect(() => {
-    // Validate configuration on startup
-    const validation = appConfig.validateConfig();
-    
-    if (!validation.valid) {
-      console.error('Configuration validation failed:', validation.errors);
-      setConfigError(validation.errors.join('\n'));
-      
-      // Extract missing variable names
-      const missing: string[] = [];
-      if (!appConfig.env.SUPABASE_URL) {
-        missing.push('EXPO_PUBLIC_SUPABASE_URL');
-      }
-      if (!appConfig.env.SUPABASE_ANON_KEY) {
-        missing.push('EXPO_PUBLIC_SUPABASE_ANON_KEY');
-      }
-      setMissingVariables(missing);
-    } else if (validation.warnings.length > 0) {
-      console.warn('Configuration warnings:', validation.warnings);
+    if (loaded) {
+      SplashScreen.hideAsync();
     }
-  }, []);
+  }, [loaded]);
 
-  // If configuration is invalid, show setup guide
-  if (configError && missingVariables.length > 0) {
-    return <EnvironmentSetupGuide missingVariables={missingVariables} />;
+  React.useEffect(() => {
+    if (
+      !networkState.isConnected &&
+      networkState.isInternetReachable === false
+    ) {
+      Alert.alert(
+        "🔌 You are offline",
+        "You can keep using the app! Your changes will be saved locally and synced when you are back online."
+      );
+    }
+  }, [networkState.isConnected, networkState.isInternetReachable]);
+
+  if (!loaded) {
+    return null;
   }
 
+  const CustomDefaultTheme: Theme = {
+    ...DefaultTheme,
+    dark: false,
+    colors: {
+      primary: "rgb(0, 122, 255)", // System Blue
+      background: "rgb(242, 242, 247)", // Light mode background
+      card: "rgb(255, 255, 255)", // White cards/surfaces
+      text: "rgb(0, 0, 0)", // Black text for light mode
+      border: "rgb(216, 216, 220)", // Light gray for separators/borders
+      notification: "rgb(255, 59, 48)", // System Red
+    },
+  };
+
+  const CustomDarkTheme: Theme = {
+    ...DarkTheme,
+    colors: {
+      primary: "rgb(10, 132, 255)", // System Blue (Dark Mode)
+      background: "rgb(1, 1, 1)", // True black background for OLED displays
+      card: "rgb(28, 28, 30)", // Dark card/surface color
+      text: "rgb(255, 255, 255)", // White text for dark mode
+      border: "rgb(44, 44, 46)", // Dark gray for separators/borders
+      notification: "rgb(255, 69, 58)", // System Red (Dark Mode)
+    },
+  };
+  
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <AdminProvider>
-          <StripeProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background },
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen 
-                name="modal" 
-                options={{ 
-                  presentation: 'modal',
-                  headerShown: false,
-                }} 
-              />
-              <Stack.Screen 
-                name="transparent-modal" 
-                options={{ 
-                  presentation: 'transparentModal',
-                  headerShown: false,
-                  animation: 'fade',
-                }} 
-              />
-              <Stack.Screen 
-                name="formsheet" 
-                options={{ 
-                  presentation: 'formSheet',
-                  headerShown: false,
-                }} 
-              />
-              <Stack.Screen 
-                name="language-selection" 
-                options={{ 
-                  presentation: 'modal',
-                  headerShown: false,
-                }} 
-              />
-            </Stack>
-          </StripeProvider>
-        </AdminProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <>
+      <StatusBar style="auto" animated />
+      <ThemeProvider
+        value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
+      >
+        <SupabaseConfigCheck>
+          <WidgetProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <Stack>
+                {/* Main app with tabs */}
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+                {/* Modal Demo Screens */}
+                <Stack.Screen
+                  name="modal"
+                  options={{
+                    presentation: "modal",
+                    title: "Standard Modal",
+                  }}
+                />
+                <Stack.Screen
+                  name="formsheet"
+                  options={{
+                    presentation: "formSheet",
+                    title: "Form Sheet Modal",
+                    sheetGrabberVisible: true,
+                    sheetAllowedDetents: [0.5, 0.8, 1.0],
+                    sheetCornerRadius: 20,
+                  }}
+                />
+                <Stack.Screen
+                  name="transparent-modal"
+                  options={{
+                    presentation: "transparentModal",
+                    headerShown: false,
+                  }}
+                />
+              </Stack>
+              <SystemBars style={"auto"} />
+            </GestureHandlerRootView>
+          </WidgetProvider>
+        </SupabaseConfigCheck>
+      </ThemeProvider>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.background,
-  },
-  errorTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.error,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-});

@@ -14,6 +14,19 @@
 import Constants from 'expo-constants';
 
 /**
+ * Check if a value is a valid environment variable value
+ * Returns false for empty strings, undefined, null, or placeholder values
+ */
+function isValidValue(value: any): boolean {
+  if (!value) return false;
+  if (typeof value !== 'string') return false;
+  if (value === '') return false;
+  // Check for placeholder patterns like ${VAR_NAME}
+  if (value.startsWith('${') && value.endsWith('}')) return false;
+  return true;
+}
+
+/**
  * Get environment variable with fallback
  * Tries multiple sources in order of priority:
  * 1. Constants.expoConfig.extra (for native apps via app.json)
@@ -25,8 +38,9 @@ function getEnvVar(key: string, fallback: string = ''): string {
   // This is the primary source for React Native/Expo apps
   if (Constants.expoConfig?.extra) {
     // Try the exact key first
-    if (Constants.expoConfig.extra[key] && Constants.expoConfig.extra[key] !== `\${${key}}`) {
-      return String(Constants.expoConfig.extra[key]);
+    const exactValue = Constants.expoConfig.extra[key];
+    if (isValidValue(exactValue)) {
+      return String(exactValue);
     }
     
     // Try camelCase version (e.g., EXPO_PUBLIC_SUPABASE_URL -> supabaseUrl)
@@ -35,14 +49,18 @@ function getEnvVar(key: string, fallback: string = ''): string {
       .toLowerCase()
       .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
     
-    if (Constants.expoConfig.extra[camelKey] && Constants.expoConfig.extra[camelKey] !== `\${${key}}`) {
-      return String(Constants.expoConfig.extra[camelKey]);
+    const camelValue = Constants.expoConfig.extra[camelKey];
+    if (isValidValue(camelValue)) {
+      return String(camelValue);
     }
   }
   
   // Try process.env (for web and development)
   if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return String(process.env[key]);
+    const envValue = process.env[key];
+    if (isValidValue(envValue)) {
+      return String(envValue);
+    }
   }
   
   // Return fallback
@@ -278,7 +296,7 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   if (!env.SUPABASE_URL || env.SUPABASE_URL === '') {
     errors.push('SUPABASE_URL is not set. Please set EXPO_PUBLIC_SUPABASE_URL in your environment variables.');
   } else if (!env.SUPABASE_URL.startsWith('http://') && !env.SUPABASE_URL.startsWith('https://')) {
-    errors.push('SUPABASE_URL must be a valid HTTP or HTTPS URL');
+    errors.push(`SUPABASE_URL must be a valid HTTP or HTTPS URL. Current value: "${env.SUPABASE_URL}"`);
   }
   
   if (!env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY === '') {
@@ -292,11 +310,11 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   
   if (env.PAYMENT_PROVIDER === 'paypal') {
     if (!env.PAYPAL_CLIENT_ID) {
-      errors.push('PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
+      warnings.push('PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
     }
     
     if (!env.PAYPAL_CLIENT_SECRET && isProduction) {
-      errors.push('PAYPAL_CLIENT_SECRET is not set - required for backend operations');
+      warnings.push('PAYPAL_CLIENT_SECRET is not set - required for backend operations');
     }
     
     if (!env.PAYPAL_WEBHOOK_ID && isProduction) {
