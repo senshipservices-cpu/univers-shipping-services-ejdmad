@@ -13,126 +13,83 @@ function isValidValue(value: any): boolean {
   if (!value) return false;
   if (typeof value !== 'string') return false;
   if (value === '') return false;
-  // Check for placeholder patterns like ${VAR_NAME}
+  if (value.trim() === '') return false;
+  // Check for placeholder patterns
   if (value.startsWith('${') && value.endsWith('}')) return false;
+  if (value === 'YOUR_SUPABASE_URL') return false;
+  if (value === 'YOUR_SUPABASE_ANON_KEY') return false;
+  if (value === 'placeholder') return false;
+  if (value.includes('placeholder')) return false;
   return true;
 }
 
 /**
  * Get environment variable with fallback
- * Tries multiple sources in order of priority
+ * Simplified version that works better with Natively
  */
 function getEnvVar(key: string, fallback: string = ''): string {
   try {
-    // Try Constants.expoConfig.extra first (for Natively environment variables)
+    // Log what we're looking for
+    console.log(`[ENV] Looking for: ${key}`);
+    
+    // Try Constants.expoConfig.extra first (Natively environment variables)
     if (Constants.expoConfig?.extra) {
+      console.log(`[ENV] Constants.expoConfig.extra available`);
+      console.log(`[ENV] Available keys:`, Object.keys(Constants.expoConfig.extra));
+      
+      // Try exact match first
       const exactValue = Constants.expoConfig.extra[key];
+      console.log(`[ENV] ${key} exact match:`, exactValue ? 'Found' : 'Not found');
       if (isValidValue(exactValue)) {
+        console.log(`[ENV] ✓ Using ${key} from Constants.expoConfig.extra`);
         return String(exactValue);
       }
       
+      // Try without EXPO_PUBLIC_ prefix
+      const withoutPrefix = key.replace('EXPO_PUBLIC_', '');
+      const withoutPrefixValue = Constants.expoConfig.extra[withoutPrefix];
+      console.log(`[ENV] ${withoutPrefix} match:`, withoutPrefixValue ? 'Found' : 'Not found');
+      if (isValidValue(withoutPrefixValue)) {
+        console.log(`[ENV] ✓ Using ${withoutPrefix} from Constants.expoConfig.extra`);
+        return String(withoutPrefixValue);
+      }
+      
       // Try camelCase version
-      const camelKey = key
-        .replace('EXPO_PUBLIC_', '')
+      const camelKey = withoutPrefix
         .toLowerCase()
         .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      
       const camelValue = Constants.expoConfig.extra[camelKey];
+      console.log(`[ENV] ${camelKey} (camelCase) match:`, camelValue ? 'Found' : 'Not found');
       if (isValidValue(camelValue)) {
+        console.log(`[ENV] ✓ Using ${camelKey} from Constants.expoConfig.extra`);
         return String(camelValue);
       }
+      
+      // Try lowercase version
+      const lowerKey = withoutPrefix.toLowerCase();
+      const lowerValue = Constants.expoConfig.extra[lowerKey];
+      console.log(`[ENV] ${lowerKey} (lowercase) match:`, lowerValue ? 'Found' : 'Not found');
+      if (isValidValue(lowerValue)) {
+        console.log(`[ENV] ✓ Using ${lowerKey} from Constants.expoConfig.extra`);
+        return String(lowerValue);
+      }
+    } else {
+      console.log(`[ENV] Constants.expoConfig.extra NOT available`);
     }
     
     // Try process.env (for local development)
     if (typeof process !== 'undefined' && process.env) {
-      let envValue: string | undefined;
-      
-      switch (key) {
-        case 'APP_ENV':
-          envValue = process.env.APP_ENV;
-          break;
-        case 'EXPO_PUBLIC_SUPABASE_URL':
-          envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
-          break;
-        case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
-          envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-          break;
-        case 'SUPABASE_SERVICE_KEY':
-          envValue = process.env.SUPABASE_SERVICE_KEY;
-          break;
-        case 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY':
-          envValue = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-          break;
-        case 'STRIPE_SECRET_KEY':
-          envValue = process.env.STRIPE_SECRET_KEY;
-          break;
-        case 'STRIPE_WEBHOOK_SECRET':
-          envValue = process.env.STRIPE_WEBHOOK_SECRET;
-          break;
-        case 'EXPO_PUBLIC_PAYPAL_CLIENT_ID':
-          envValue = process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID;
-          break;
-        case 'PAYPAL_CLIENT_SECRET':
-          envValue = process.env.PAYPAL_CLIENT_SECRET;
-          break;
-        case 'PAYPAL_WEBHOOK_ID':
-          envValue = process.env.PAYPAL_WEBHOOK_ID;
-          break;
-        case 'PAYPAL_ENV':
-          envValue = process.env.PAYPAL_ENV;
-          break;
-        case 'PAYMENT_PROVIDER':
-          envValue = process.env.PAYMENT_PROVIDER;
-          break;
-        case 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY':
-          envValue = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-          break;
-        case 'SMTP_HOST':
-          envValue = process.env.SMTP_HOST;
-          break;
-        case 'SMTP_PORT':
-          envValue = process.env.SMTP_PORT;
-          break;
-        case 'SMTP_USERNAME':
-          envValue = process.env.SMTP_USERNAME;
-          break;
-        case 'SMTP_PASSWORD':
-          envValue = process.env.SMTP_PASSWORD;
-          break;
-        case 'ADMIN_EMAILS':
-          envValue = process.env.ADMIN_EMAILS;
-          break;
-        case 'supabaseUrl':
-          envValue = process.env.supabaseUrl;
-          break;
-        case 'supabaseAnonKey':
-          envValue = process.env.supabaseAnonKey;
-          break;
-        case 'stripePublishableKey':
-          envValue = process.env.stripePublishableKey;
-          break;
-        case 'paypalClientId':
-          envValue = process.env.paypalClientId;
-          break;
-        case 'paypalEnv':
-          envValue = process.env.paypalEnv;
-          break;
-        case 'paymentProvider':
-          envValue = process.env.paymentProvider;
-          break;
-        case 'googleMapsApiKey':
-          envValue = process.env.googleMapsApiKey;
-          break;
-        default:
-          envValue = undefined;
-      }
-      
+      console.log(`[ENV] Trying process.env for ${key}`);
+      const envValue = process.env[key];
       if (isValidValue(envValue)) {
+        console.log(`[ENV] ✓ Using ${key} from process.env`);
         return String(envValue);
       }
     }
+    
+    console.log(`[ENV] ✗ ${key} not found, using fallback`);
   } catch (error) {
-    console.error(`Error getting environment variable ${key}:`, error);
+    console.error(`[ENV] Error getting environment variable ${key}:`, error);
   }
   
   return fallback;
@@ -152,26 +109,26 @@ export const env = {
   APP_ENV,
   
   // Supabase Configuration
-  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', getEnvVar('supabaseUrl', '')),
-  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', getEnvVar('supabaseAnonKey', '')),
+  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', ''),
+  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', ''),
   SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
   // Stripe Configuration
-  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', getEnvVar('stripePublishableKey', '')),
+  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
   STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
   STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
   
   // PayPal Configuration
-  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', getEnvVar('paypalClientId', '')),
+  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', ''),
   PAYPAL_CLIENT_SECRET: getEnvVar('PAYPAL_CLIENT_SECRET', ''),
   PAYPAL_WEBHOOK_ID: getEnvVar('PAYPAL_WEBHOOK_ID', ''),
-  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', getEnvVar('paypalEnv', isDev ? 'sandbox' : 'live')),
+  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDev ? 'sandbox' : 'live'),
   
   // Payment Provider Configuration
-  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', getEnvVar('paymentProvider', 'paypal')),
+  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'),
   
   // Google Maps Configuration
-  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', getEnvVar('googleMapsApiKey', '')),
+  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
   
   // SMTP Configuration
   SMTP_HOST: getEnvVar('SMTP_HOST', ''),
@@ -225,16 +182,16 @@ export const logger = {
 };
 
 // Log configuration status on startup
-logger.info('=== Configuration Status ===');
-logger.info('Environment:', APP_ENV);
-logger.info('Is Production:', isProduction);
-logger.info('Supabase URL:', env.SUPABASE_URL ? '✓ Set' : '✗ Missing');
-logger.info('Supabase Anon Key:', env.SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
-logger.info('Payment Provider:', env.PAYMENT_PROVIDER);
-logger.info('PayPal Client ID:', env.PAYPAL_CLIENT_ID ? '✓ Set' : '✗ Missing');
-logger.info('PayPal Environment:', env.PAYPAL_ENV);
-logger.info('Google Maps API Key:', env.GOOGLE_MAPS_API_KEY ? '✓ Set' : '✗ Missing');
-logger.info('===========================');
+logger.essential('=== Configuration Status ===');
+logger.essential('Environment:', APP_ENV);
+logger.essential('Is Production:', isProduction);
+logger.essential('Supabase URL:', env.SUPABASE_URL ? `✓ Set (${env.SUPABASE_URL.substring(0, 30)}...)` : '✗ Missing');
+logger.essential('Supabase Anon Key:', env.SUPABASE_ANON_KEY ? `✓ Set (${env.SUPABASE_ANON_KEY.substring(0, 20)}...)` : '✗ Missing');
+logger.essential('Payment Provider:', env.PAYMENT_PROVIDER);
+logger.essential('PayPal Client ID:', env.PAYPAL_CLIENT_ID ? '✓ Set' : '✗ Missing');
+logger.essential('PayPal Environment:', env.PAYPAL_ENV);
+logger.essential('Google Maps API Key:', env.GOOGLE_MAPS_API_KEY ? '✓ Set' : '✗ Missing');
+logger.essential('===========================');
 
 /**
  * Payment Configuration
