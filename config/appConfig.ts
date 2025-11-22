@@ -16,26 +16,33 @@ import Constants from 'expo-constants';
 /**
  * Get environment variable with fallback
  * Tries multiple sources in order of priority:
- * 1. process.env (for web and Node.js environments)
- * 2. Constants.expoConfig.extra (for native apps via app.json)
+ * 1. Constants.expoConfig.extra (for native apps via app.json)
+ * 2. process.env (for web and Node.js environments)
  * 3. Fallback value
  */
 function getEnvVar(key: string, fallback: string = ''): string {
-  // Try process.env first (for web and development)
+  // Try Constants.expoConfig.extra first (for native apps)
+  // This is the primary source for React Native/Expo apps
+  if (Constants.expoConfig?.extra) {
+    // Try the exact key first
+    if (Constants.expoConfig.extra[key]) {
+      return String(Constants.expoConfig.extra[key]);
+    }
+    
+    // Try camelCase version (e.g., EXPO_PUBLIC_SUPABASE_URL -> supabaseUrl)
+    const camelKey = key
+      .replace('EXPO_PUBLIC_', '')
+      .toLowerCase()
+      .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    
+    if (Constants.expoConfig.extra[camelKey]) {
+      return String(Constants.expoConfig.extra[camelKey]);
+    }
+  }
+  
+  // Try process.env (for web and development)
   if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key] as string;
-  }
-  
-  // Try Constants.expoConfig.extra (for native apps)
-  // Remove EXPO_PUBLIC_ prefix and convert to camelCase for extra lookup
-  const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
-  if (Constants.expoConfig?.extra?.[extraKey]) {
-    return Constants.expoConfig.extra[extraKey] as string;
-  }
-  
-  // Also try the original key in extra
-  if (Constants.expoConfig?.extra?.[key]) {
-    return Constants.expoConfig.extra[key] as string;
+    return String(process.env[key]);
   }
   
   // Return fallback
@@ -58,26 +65,26 @@ export const env = {
   APP_ENV,
   
   // Supabase Configuration
-  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', getEnvVar('SUPABASE_URL', '')),
-  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', getEnvVar('SUPABASE_ANON_KEY', '')),
+  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', getEnvVar('supabaseUrl', '')),
+  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', getEnvVar('supabaseAnonKey', '')),
   SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
   // Stripe Configuration (Legacy - kept for backward compatibility)
-  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
+  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', getEnvVar('stripePublishableKey', '')),
   STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
   STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
   
   // PayPal Configuration
-  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', ''),
+  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', getEnvVar('paypalClientId', '')),
   PAYPAL_CLIENT_SECRET: getEnvVar('PAYPAL_CLIENT_SECRET', ''),
   PAYPAL_WEBHOOK_ID: getEnvVar('PAYPAL_WEBHOOK_ID', ''),
-  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDev ? 'sandbox' : 'live'),
+  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', getEnvVar('paypalEnv', isDev ? 'sandbox' : 'live')),
   
   // Payment Provider Configuration
-  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'),
+  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', getEnvVar('paymentProvider', 'paypal')),
   
   // Google Maps Configuration
-  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
+  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', getEnvVar('googleMapsApiKey', '')),
   
   // SMTP Configuration
   SMTP_HOST: getEnvVar('SMTP_HOST', ''),
@@ -88,6 +95,64 @@ export const env = {
   // Admin Configuration
   ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', '').split(',').map(email => email.trim()).filter(email => email.length > 0),
 };
+
+/**
+ * Conditional Logger
+ * Only logs in development mode, suppresses logs in production
+ */
+export const logger = {
+  log: (...args: any[]) => {
+    if (isDev) {
+      console.log('[APP]', ...args);
+    }
+  },
+  
+  info: (...args: any[]) => {
+    if (isDev) {
+      console.info('[INFO]', ...args);
+    }
+  },
+  
+  warn: (...args: any[]) => {
+    // Always log warnings, even in production
+    console.warn('[WARN]', ...args);
+  },
+  
+  error: (...args: any[]) => {
+    // Always log errors, even in production
+    console.error('[ERROR]', ...args);
+  },
+  
+  debug: (...args: any[]) => {
+    if (isDev) {
+      console.debug('[DEBUG]', ...args);
+    }
+  },
+  
+  // Essential logs that should appear in production (e.g., critical errors)
+  essential: (...args: any[]) => {
+    console.log('[ESSENTIAL]', ...args);
+  },
+  
+  // Payment-specific logging (never log sensitive data in production)
+  payment: (...args: any[]) => {
+    if (isDev) {
+      console.log('[PAYMENT]', ...args);
+    }
+  },
+};
+
+// Log configuration status on startup
+logger.info('=== Configuration Status ===');
+logger.info('Environment:', APP_ENV);
+logger.info('Is Production:', isProduction);
+logger.info('Supabase URL:', env.SUPABASE_URL ? '✓ Set' : '✗ Missing');
+logger.info('Supabase Anon Key:', env.SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
+logger.info('Payment Provider:', env.PAYMENT_PROVIDER);
+logger.info('PayPal Client ID:', env.PAYPAL_CLIENT_ID ? '✓ Set' : '✗ Missing');
+logger.info('PayPal Environment:', env.PAYPAL_ENV);
+logger.info('Google Maps API Key:', env.GOOGLE_MAPS_API_KEY ? '✓ Set' : '✗ Missing');
+logger.info('===========================');
 
 /**
  * Payment Configuration
@@ -160,52 +225,6 @@ export const admin = {
 };
 
 /**
- * Conditional Logger
- * Only logs in development mode, suppresses logs in production
- */
-export const logger = {
-  log: (...args: any[]) => {
-    if (isDev) {
-      console.log('[APP]', ...args);
-    }
-  },
-  
-  info: (...args: any[]) => {
-    if (isDev) {
-      console.info('[INFO]', ...args);
-    }
-  },
-  
-  warn: (...args: any[]) => {
-    // Always log warnings, even in production
-    console.warn('[WARN]', ...args);
-  },
-  
-  error: (...args: any[]) => {
-    // Always log errors, even in production
-    console.error('[ERROR]', ...args);
-  },
-  
-  debug: (...args: any[]) => {
-    if (isDev) {
-      console.debug('[DEBUG]', ...args);
-    }
-  },
-  
-  // Essential logs that should appear in production (e.g., critical errors)
-  essential: (...args: any[]) => {
-    console.log('[ESSENTIAL]', ...args);
-  },
-  
-  // Payment-specific logging (never log sensitive data in production)
-  payment: (...args: any[]) => {
-    if (isDev) {
-      console.log('[PAYMENT]', ...args);
-    }
-  },
-};
-
-/**
  * Feature Flags
  * Enable/disable features based on environment
  */
@@ -257,13 +276,13 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   
   // Required variables
   if (!env.SUPABASE_URL || env.SUPABASE_URL === '') {
-    errors.push('SUPABASE_URL is not set');
+    errors.push('SUPABASE_URL is not set. Please set EXPO_PUBLIC_SUPABASE_URL in your environment variables.');
   } else if (!env.SUPABASE_URL.startsWith('http://') && !env.SUPABASE_URL.startsWith('https://')) {
     errors.push('SUPABASE_URL must be a valid HTTP or HTTPS URL');
   }
   
   if (!env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY === '') {
-    errors.push('SUPABASE_ANON_KEY is not set');
+    errors.push('SUPABASE_ANON_KEY is not set. Please set EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment variables.');
   }
   
   // Payment provider validation
