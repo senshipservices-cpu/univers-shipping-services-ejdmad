@@ -81,7 +81,7 @@ export default function SupabaseConnectionTest() {
     }
   };
 
-  // Auto-test on mount
+  // Auto-test on mount (moved before early return to fix React Hooks rules)
   useEffect(() => {
     if (!appConfig.isProduction) {
       testConnection();
