@@ -56,8 +56,91 @@ function getEnvVar(key: string, fallback: string = ''): string {
   }
   
   // Try process.env (for web and development)
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    const envValue = process.env[key];
+  // Using explicit checks instead of dynamic access to satisfy ESLint
+  if (typeof process !== 'undefined' && process.env) {
+    let envValue: string | undefined;
+    
+    // Explicitly check for each known environment variable
+    switch (key) {
+      case 'APP_ENV':
+        envValue = process.env.APP_ENV;
+        break;
+      case 'EXPO_PUBLIC_SUPABASE_URL':
+        envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        break;
+      case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
+        envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        break;
+      case 'SUPABASE_SERVICE_KEY':
+        envValue = process.env.SUPABASE_SERVICE_KEY;
+        break;
+      case 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY':
+        envValue = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+        break;
+      case 'STRIPE_SECRET_KEY':
+        envValue = process.env.STRIPE_SECRET_KEY;
+        break;
+      case 'STRIPE_WEBHOOK_SECRET':
+        envValue = process.env.STRIPE_WEBHOOK_SECRET;
+        break;
+      case 'EXPO_PUBLIC_PAYPAL_CLIENT_ID':
+        envValue = process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID;
+        break;
+      case 'PAYPAL_CLIENT_SECRET':
+        envValue = process.env.PAYPAL_CLIENT_SECRET;
+        break;
+      case 'PAYPAL_WEBHOOK_ID':
+        envValue = process.env.PAYPAL_WEBHOOK_ID;
+        break;
+      case 'PAYPAL_ENV':
+        envValue = process.env.PAYPAL_ENV;
+        break;
+      case 'PAYMENT_PROVIDER':
+        envValue = process.env.PAYMENT_PROVIDER;
+        break;
+      case 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY':
+        envValue = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+        break;
+      case 'SMTP_HOST':
+        envValue = process.env.SMTP_HOST;
+        break;
+      case 'SMTP_PORT':
+        envValue = process.env.SMTP_PORT;
+        break;
+      case 'SMTP_USERNAME':
+        envValue = process.env.SMTP_USERNAME;
+        break;
+      case 'SMTP_PASSWORD':
+        envValue = process.env.SMTP_PASSWORD;
+        break;
+      case 'ADMIN_EMAILS':
+        envValue = process.env.ADMIN_EMAILS;
+        break;
+      case 'supabaseUrl':
+        envValue = process.env.supabaseUrl;
+        break;
+      case 'supabaseAnonKey':
+        envValue = process.env.supabaseAnonKey;
+        break;
+      case 'stripePublishableKey':
+        envValue = process.env.stripePublishableKey;
+        break;
+      case 'paypalClientId':
+        envValue = process.env.paypalClientId;
+        break;
+      case 'paypalEnv':
+        envValue = process.env.paypalEnv;
+        break;
+      case 'paymentProvider':
+        envValue = process.env.paymentProvider;
+        break;
+      case 'googleMapsApiKey':
+        envValue = process.env.googleMapsApiKey;
+        break;
+      default:
+        envValue = undefined;
+    }
+    
     if (isValidValue(envValue)) {
       return String(envValue);
     }
