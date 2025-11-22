@@ -25,7 +25,7 @@ function getEnvVar(key: string, fallback: string = ''): string {
   // This is the primary source for React Native/Expo apps
   if (Constants.expoConfig?.extra) {
     // Try the exact key first
-    if (Constants.expoConfig.extra[key]) {
+    if (Constants.expoConfig.extra[key] && Constants.expoConfig.extra[key] !== `\${${key}}`) {
       return String(Constants.expoConfig.extra[key]);
     }
     
@@ -35,7 +35,7 @@ function getEnvVar(key: string, fallback: string = ''): string {
       .toLowerCase()
       .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
     
-    if (Constants.expoConfig.extra[camelKey]) {
+    if (Constants.expoConfig.extra[camelKey] && Constants.expoConfig.extra[camelKey] !== `\${${key}}`) {
       return String(Constants.expoConfig.extra[camelKey]);
     }
   }
