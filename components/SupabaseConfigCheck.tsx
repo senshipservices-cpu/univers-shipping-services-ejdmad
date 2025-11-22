@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import { isSupabaseConfigured, supabaseConfigErrors, supabaseConfigWarnings } from '@/app/integrations/supabase/client';
 import appConfig from '@/config/appConfig';
 
@@ -55,14 +55,14 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
 
       {/* Important Note */}
       <View style={[styles.section, styles.importantNote]}>
-        <Text style={styles.importantTitle}>📌 Important</Text>
+        <Text style={styles.importantTitle}>📌 Important - Lisez Attentivement</Text>
         <Text style={styles.importantText}>
-          Vous avez ajouté les variables dans <Text style={styles.bold}>Supabase Vault</Text>, 
-          mais ces variables sont uniquement pour les <Text style={styles.bold}>Edge Functions</Text> (code serveur).
-        </Text>
-        <Text style={styles.importantText}>
-          {'\n'}Pour votre application React Native, vous devez ajouter les variables dans 
-          <Text style={styles.bold}> Natively</Text> ou dans votre <Text style={styles.bold}>environnement local</Text>.
+          Vous avez ajouté les variables dans <Text style={styles.bold}>Supabase Vault</Text> ? 
+          C&apos;est parfait pour les <Text style={styles.bold}>Edge Functions</Text> (code serveur) ! 
+          {'\n\n'}
+          Mais votre <Text style={styles.bold}>application React Native</Text> ne peut pas accéder au Vault. 
+          {'\n\n'}
+          Vous devez <Text style={styles.bold}>AUSSI</Text> ajouter ces variables dans <Text style={styles.bold}>Natively</Text>.
         </Text>
       </View>
 
@@ -93,18 +93,19 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <View style={styles.step}>
           <Text style={styles.stepNumber}>3.</Text>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Ajoutez ces variables :</Text>
+            <Text style={styles.stepTitle}>Ajoutez ces DEUX variables :</Text>
             <View style={styles.codeBlock}>
+              <Text style={styles.codeLabel}>Nom de la variable :</Text>
               <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_URL</Text>
-              <Text style={styles.codeValue}>
-                {appConfig.env.SUPABASE_URL || 'https://votre-projet.supabase.co'}
-              </Text>
+              <Text style={styles.codeLabel}>Valeur :</Text>
+              <Text style={styles.codeValue}>https://lnfsjpuffrcyenuuoxxk.supabase.co</Text>
             </View>
             <View style={styles.codeBlock}>
+              <Text style={styles.codeLabel}>Nom de la variable :</Text>
               <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_ANON_KEY</Text>
-              <Text style={styles.codeValue}>
-                {appConfig.env.SUPABASE_ANON_KEY || 'votre-anon-key'}
-              </Text>
+              <Text style={styles.codeLabel}>Valeur :</Text>
+              <Text style={styles.codeValue}>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</Text>
+              <Text style={styles.codeHint}>(Copiez la clé complète depuis Supabase)</Text>
             </View>
           </View>
         </View>
@@ -112,9 +113,12 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <View style={styles.step}>
           <Text style={styles.stepNumber}>4.</Text>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Redémarrez l&apos;application</Text>
+            <Text style={styles.stepTitle}>Redémarrez COMPLÈTEMENT l&apos;application</Text>
             <Text style={styles.stepText}>
-              Après avoir ajouté les variables, redémarrez l&apos;application pour que les changements prennent effet
+              Après avoir ajouté les variables :{'\n'}
+              • Arrêtez l&apos;application (Stop){'\n'}
+              • Attendez 5 secondes{'\n'}
+              • Redémarrez (Start)
             </Text>
           </View>
         </View>
@@ -138,7 +142,7 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
 
         <TouchableOpacity 
           style={styles.linkButton}
-          onPress={() => Linking.openURL('https://supabase.com/dashboard/project/_/settings/api')}
+          onPress={() => Linking.openURL('https://supabase.com/dashboard/project/lnfsjpuffrcyenuuoxxk/settings/api')}
         >
           <Text style={styles.linkButtonText}>📱 Ouvrir Supabase Dashboard</Text>
         </TouchableOpacity>
@@ -160,6 +164,45 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
               {appConfig.env.SUPABASE_ANON_KEY ? '✓ Défini' : '❌ Non défini'}
             </Text>
           </View>
+        </View>
+        
+        <View style={styles.debugBox}>
+          <Text style={styles.debugTitle}>🔧 Informations de Débogage</Text>
+          <Text style={styles.debugText}>Platform: {Platform.OS}</Text>
+          <Text style={styles.debugText}>
+            Constants.expoConfig?.extra: {Constants.expoConfig?.extra ? 'Disponible' : 'Non disponible'}
+          </Text>
+          {Constants.expoConfig?.extra && (
+            <Text style={styles.debugText}>
+              Variables trouvées: {Object.keys(Constants.expoConfig.extra).join(', ')}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Troubleshooting */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🔧 Dépannage</Text>
+        
+        <View style={styles.troubleshootItem}>
+          <Text style={styles.troubleshootTitle}>❓ J&apos;ai ajouté les variables mais ça ne marche pas</Text>
+          <Text style={styles.troubleshootText}>
+            • Vérifiez que vous avez bien utilisé les noms EXACTS :{'\n'}
+            {' '} EXPO_PUBLIC_SUPABASE_URL{'\n'}
+            {' '} EXPO_PUBLIC_SUPABASE_ANON_KEY{'\n'}
+            • Redémarrez COMPLÈTEMENT l&apos;application{'\n'}
+            • Attendez 10 secondes avant de redémarrer{'\n'}
+            • Vérifiez qu&apos;il n&apos;y a pas d&apos;espaces avant/après les valeurs
+          </Text>
+        </View>
+
+        <View style={styles.troubleshootItem}>
+          <Text style={styles.troubleshootTitle}>❓ Différence entre Supabase Vault et Natively ?</Text>
+          <Text style={styles.troubleshootText}>
+            • <Text style={styles.bold}>Supabase Vault</Text> : Pour Edge Functions (serveur){'\n'}
+            • <Text style={styles.bold}>Natively Variables</Text> : Pour l&apos;app React Native (client){'\n'}
+            • Vous avez besoin des DEUX pour que tout fonctionne
+          </Text>
         </View>
       </View>
 
@@ -275,7 +318,7 @@ const styles = StyleSheet.create({
   importantText: {
     fontSize: 14,
     color: '#92400e',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   bold: {
     fontWeight: 'bold',
@@ -313,17 +356,30 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#3b82f6',
   },
+  codeLabel: {
+    fontSize: 11,
+    color: '#666',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
   codeText: {
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontSize: 13,
     color: '#1a1a1a',
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   codeValue: {
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontSize: 12,
     color: '#666',
+  },
+  codeHint: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   infoBox: {
     backgroundColor: '#eff6ff',
@@ -374,11 +430,11 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 13,
     color: '#666',
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   statusValue: {
     fontSize: 13,
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: '600',
   },
   statusSuccess: {
@@ -386,6 +442,43 @@ const styles = StyleSheet.create({
   },
   statusError: {
     color: '#dc2626',
+  },
+  debugBox: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  debugTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginBottom: 4,
+  },
+  troubleshootItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  troubleshootTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  troubleshootText: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 20,
   },
   helpText: {
     fontSize: 14,
