@@ -3,7 +3,6 @@
  * Supabase Client Configuration
  * 
  * This module initializes and exports the Supabase client for use throughout the app.
- * It handles environment variable validation and provides helpful error messages.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -17,7 +16,6 @@ function isValidValue(value: any): boolean {
   if (!value) return false;
   if (typeof value !== 'string') return false;
   if (value === '') return false;
-  // Check for placeholder patterns like ${VAR_NAME}
   if (value.startsWith('${') && value.endsWith('}')) return false;
   return true;
 }
@@ -26,47 +24,51 @@ function isValidValue(value: any): boolean {
  * Get environment variable with multiple fallback sources
  */
 function getEnvVar(key: string): string {
-  // 1. Try Constants.expoConfig.extra (Natively environment variables)
-  if (Constants.expoConfig?.extra) {
-    const exactValue = Constants.expoConfig.extra[key];
-    if (isValidValue(exactValue)) {
-      return String(exactValue);
+  try {
+    // 1. Try Constants.expoConfig.extra (Natively environment variables)
+    if (Constants.expoConfig?.extra) {
+      const exactValue = Constants.expoConfig.extra[key];
+      if (isValidValue(exactValue)) {
+        return String(exactValue);
+      }
+      
+      // Try camelCase version
+      const camelKey = key
+        .replace('EXPO_PUBLIC_', '')
+        .toLowerCase()
+        .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      
+      const camelValue = Constants.expoConfig.extra[camelKey];
+      if (isValidValue(camelValue)) {
+        return String(camelValue);
+      }
     }
     
-    // Try camelCase version
-    const camelKey = key
-      .replace('EXPO_PUBLIC_', '')
-      .toLowerCase()
-      .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-    
-    const camelValue = Constants.expoConfig.extra[camelKey];
-    if (isValidValue(camelValue)) {
-      return String(camelValue);
+    // 2. Try process.env (local development)
+    if (typeof process !== 'undefined' && process.env) {
+      let envValue: string | undefined;
+      
+      switch (key) {
+        case 'EXPO_PUBLIC_SUPABASE_URL':
+          envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
+          break;
+        case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
+          envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+          break;
+        case 'supabaseUrl':
+          envValue = process.env.supabaseUrl;
+          break;
+        case 'supabaseAnonKey':
+          envValue = process.env.supabaseAnonKey;
+          break;
+      }
+      
+      if (isValidValue(envValue)) {
+        return String(envValue);
+      }
     }
-  }
-  
-  // 2. Try process.env (local development)
-  if (typeof process !== 'undefined' && process.env) {
-    let envValue: string | undefined;
-    
-    switch (key) {
-      case 'EXPO_PUBLIC_SUPABASE_URL':
-        envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
-        break;
-      case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
-        envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-        break;
-      case 'supabaseUrl':
-        envValue = process.env.supabaseUrl;
-        break;
-      case 'supabaseAnonKey':
-        envValue = process.env.supabaseAnonKey;
-        break;
-    }
-    
-    if (isValidValue(envValue)) {
-      return String(envValue);
-    }
+  } catch (error) {
+    console.error(`Error getting environment variable ${key}:`, error);
   }
   
   return '';
