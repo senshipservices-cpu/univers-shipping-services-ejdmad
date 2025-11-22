@@ -18,11 +18,6 @@ export default function SupabaseConnectionTest() {
     details?: any;
   } | null>(null);
 
-  // Only show in development
-  if (appConfig.isProduction) {
-    return null;
-  }
-
   const testConnection = async () => {
     setTesting(true);
     setResult(null);
@@ -88,8 +83,15 @@ export default function SupabaseConnectionTest() {
 
   // Auto-test on mount
   useEffect(() => {
-    testConnection();
+    if (!appConfig.isProduction) {
+      testConnection();
+    }
   }, []);
+
+  // Only show in development
+  if (appConfig.isProduction) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
