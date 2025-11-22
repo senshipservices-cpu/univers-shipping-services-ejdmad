@@ -13,35 +13,41 @@
 
 import Constants from 'expo-constants';
 
-// Get environment from environment variables
-const APP_ENV = process.env.APP_ENV || 
-                Constants.expoConfig?.extra?.appEnv || 
-                process.env.NODE_ENV || 
-                'dev';
-
-// Environment flags
-const isProduction = APP_ENV === 'production';
-const isDev = !isProduction;
-
 /**
  * Get environment variable with fallback
- * Tries multiple sources in order of priority
+ * Tries multiple sources in order of priority:
+ * 1. process.env (for web and Node.js environments)
+ * 2. Constants.expoConfig.extra (for native apps via app.json)
+ * 3. Fallback value
  */
 function getEnvVar(key: string, fallback: string = ''): string {
   // Try process.env first (for web and development)
-  if (process.env[key]) {
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
     return process.env[key] as string;
   }
   
   // Try Constants.expoConfig.extra (for native apps)
+  // Remove EXPO_PUBLIC_ prefix and convert to camelCase for extra lookup
   const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
   if (Constants.expoConfig?.extra?.[extraKey]) {
     return Constants.expoConfig.extra[extraKey] as string;
   }
   
+  // Also try the original key in extra
+  if (Constants.expoConfig?.extra?.[key]) {
+    return Constants.expoConfig.extra[key] as string;
+  }
+  
   // Return fallback
   return fallback;
 }
+
+// Get environment from environment variables
+const APP_ENV = getEnvVar('APP_ENV', 'dev');
+
+// Environment flags
+const isProduction = APP_ENV === 'production' || APP_ENV === 'PRODUCTION';
+const isDev = !isProduction;
 
 /**
  * Environment Variables
@@ -52,10 +58,8 @@ export const env = {
   APP_ENV,
   
   // Supabase Configuration
-  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', 'https://lnfsjpuffrcyenuuoxxk.supabase.co'),
-  
-  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZnNqcHVmZnJjeWVudXVveHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MTMxNzMsImV4cCI6MjA3ODk4OTE3M30.Q-NG1rOvLUhf5j38qZB19o_ZM5CunvgjPWe85NMbmNU'),
-  
+  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', getEnvVar('SUPABASE_URL', '')),
+  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', getEnvVar('SUPABASE_ANON_KEY', '')),
   SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
   // Stripe Configuration (Legacy - kept for backward compatibility)
@@ -70,7 +74,7 @@ export const env = {
   PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDev ? 'sandbox' : 'live'),
   
   // Payment Provider Configuration
-  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'), // 'stripe' or 'paypal'
+  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'),
   
   // Google Maps Configuration
   GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
@@ -82,9 +86,7 @@ export const env = {
   SMTP_PASSWORD: getEnvVar('SMTP_PASSWORD', ''),
   
   // Admin Configuration
-  ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
-    .split(',')
-    .map(email => email.trim()),
+  ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', '').split(',').map(email => email.trim()).filter(email => email.length > 0),
 };
 
 /**
@@ -121,6 +123,39 @@ export const payment = {
       return !!env.STRIPE_PUBLIC_KEY;
     }
     return false;
+  },
+};
+
+/**
+ * SMTP Configuration
+ * Email sending configuration
+ */
+export const smtp = {
+  host: env.SMTP_HOST,
+  port: parseInt(env.SMTP_PORT, 10) || 587,
+  username: env.SMTP_USERNAME,
+  password: env.SMTP_PASSWORD,
+  
+  // Helper to check if SMTP is configured
+  isConfigured: () => {
+    return !!(env.SMTP_HOST && env.SMTP_USERNAME && env.SMTP_PASSWORD);
+  },
+};
+
+/**
+ * Admin Configuration
+ * Admin access control
+ */
+export const admin = {
+  emails: env.ADMIN_EMAILS,
+  
+  // Check if an email is an admin email
+  isAdminEmail: (email: string): boolean => {
+    if (!email) return false;
+    const normalizedEmail = email.toLowerCase().trim();
+    return env.ADMIN_EMAILS.some(adminEmail => 
+      adminEmail.toLowerCase().trim() === normalizedEmail
+    );
   },
 };
 
@@ -286,8 +321,13 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   }
   
   // SMTP validation
-  if (!env.SMTP_HOST && isProduction) {
-    warnings.push('SMTP configuration is not set - email features will not work');
+  if (!smtp.isConfigured() && isProduction) {
+    warnings.push('SMTP configuration is not complete - email features will not work');
+  }
+  
+  // Admin emails validation
+  if (env.ADMIN_EMAILS.length === 0) {
+    warnings.push('ADMIN_EMAILS is not set - no admin access will be available');
   }
   
   return {
@@ -315,6 +355,13 @@ const appConfig = {
   
   // Payment configuration
   payment,
+  
+  // SMTP configuration
+  smtp,
+  
+  // Admin configuration
+  admin,
+  adminEmails: env.ADMIN_EMAILS, // Alias for backward compatibility
   
   // Logger
   logger,
