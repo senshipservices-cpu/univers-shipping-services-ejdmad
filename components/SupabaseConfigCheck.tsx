@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { isSupabaseConfigured, supabaseConfigErrors, supabaseConfigWarnings } from '@/app/integrations/supabase/client';
 import appConfig from '@/config/appConfig';
@@ -13,29 +13,11 @@ import appConfig from '@/config/appConfig';
  */
 export default function SupabaseConfigCheck({ children }: { children: React.ReactNode }) {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
-  const [refreshCount, setRefreshCount] = useState(0);
-
-  // Check configuration on mount and periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshCount(prev => prev + 1);
-    }, 5000); // Check every 5 seconds
-
-    return () => clearInterval(interval);
-  }, []);
 
   // If Supabase is properly configured, render children normally
   if (isSupabaseConfigured) {
     return <>{children}</>;
   }
-
-  const handleRefresh = () => {
-    Alert.alert(
-      '🔄 Rafraîchissement',
-      'Pour que les variables soient chargées, vous devez :\n\n1. ARRÊTER l\'application (bouton STOP)\n2. Attendre 10 secondes\n3. REDÉMARRER l\'application (bouton START)\n\nUn simple rafraîchissement ne suffit pas !',
-      [{ text: 'OK' }]
-    );
-  };
 
   // Otherwise, show configuration guide
   return (
@@ -63,97 +45,55 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <View style={styles.procedureBox}>
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>1️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                <Text style={styles.bold}>ARRÊTEZ</Text> l&apos;application
-              </Text>
-              <Text style={styles.procedureHint}>
-                Cliquez sur le bouton STOP dans Natively (en haut à droite)
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              <Text style={styles.bold}>ARRÊTEZ</Text> l&apos;application (bouton STOP dans Natively)
+            </Text>
           </View>
           
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>2️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                Allez dans Settings ⚙️ → Environment Variables
-              </Text>
-              <Text style={styles.procedureHint}>
-                Dans le menu de Natively
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              Allez dans Settings ⚙️ → Environment Variables
+            </Text>
           </View>
           
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>3️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                Ajoutez vos variables (voir ci-dessous)
-              </Text>
-              <Text style={styles.procedureHint}>
-                EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              Ajoutez vos variables (voir ci-dessous)
+            </Text>
           </View>
           
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>4️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                Cliquez sur <Text style={styles.bold}>SAVE</Text>
-              </Text>
-              <Text style={styles.procedureHint}>
-                L&apos;écran d&apos;erreur qui apparaît est NORMAL
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              Cliquez sur <Text style={styles.bold}>SAVE</Text>
+            </Text>
           </View>
           
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>5️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                Attendez <Text style={styles.bold}>10 secondes</Text>
-              </Text>
-              <Text style={styles.procedureHint}>
-                Laissez le temps au système de sauvegarder
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              Attendez <Text style={styles.bold}>10 secondes</Text>
+            </Text>
           </View>
           
           <View style={styles.procedureStep}>
             <Text style={styles.procedureNumber}>6️⃣</Text>
-            <View style={styles.procedureContent}>
-              <Text style={styles.procedureText}>
-                Cliquez sur <Text style={styles.bold}>START</Text> pour redémarrer
-              </Text>
-              <Text style={styles.procedureHint}>
-                Les variables seront maintenant chargées !
-              </Text>
-            </View>
+            <Text style={styles.procedureText}>
+              Cliquez sur <Text style={styles.bold}>START</Text> pour redémarrer
+            </Text>
           </View>
         </View>
 
         <View style={styles.warningBox}>
           <Text style={styles.warningIcon}>⚠️</Text>
           <Text style={styles.warningBoxText}>
-            <Text style={styles.bold}>ATTENTION :</Text>
-            {'\n\n'}
-            • <Text style={styles.bold}>NE PAS</Text> sauvegarder pendant que l&apos;app tourne
+            <Text style={styles.bold}>NE PAS</Text> sauvegarder pendant que l&apos;app est en cours d&apos;exécution !
             {'\n'}
-            • <Text style={styles.bold}>TOUJOURS</Text> arrêter l&apos;app AVANT de sauvegarder
-            {'\n'}
-            • <Text style={styles.bold}>ATTENDRE</Text> 10 secondes après la sauvegarde
-            {'\n'}
-            • <Text style={styles.bold}>REDÉMARRER</Text> complètement l&apos;application
+            Cela provoque l&apos;écran d&apos;erreur que vous voyez.
           </Text>
         </View>
-
-        <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-          <Text style={styles.refreshButtonText}>
-            🔄 Pourquoi je vois toujours cet écran ?
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Errors Section */}
@@ -249,7 +189,7 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
 
       {/* Current Configuration Status */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📊 État Actuel (Refresh #{refreshCount})</Text>
+        <Text style={styles.sectionTitle}>📊 État Actuel</Text>
         <View style={styles.statusGrid}>
           <View style={styles.statusItem}>
             <Text style={styles.statusLabel}>SUPABASE_URL:</Text>
@@ -265,27 +205,12 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
           </View>
         </View>
         
-        <View style={styles.statusNote}>
-          <Text style={styles.statusNoteText}>
-            ℹ️ Si les variables sont toujours &quot;Non défini&quot; après avoir suivi la procédure,
-            cela signifie que l&apos;application n&apos;a pas été redémarrée correctement.
-            {'\n\n'}
-            Assurez-vous de :
-            {'\n'}
-            1. Cliquer sur STOP (pas juste fermer l&apos;app)
-            {'\n'}
-            2. Attendre que l&apos;app soit complètement arrêtée
-            {'\n'}
-            3. Cliquer sur START pour un nouveau démarrage
-          </Text>
-        </View>
-        
         <TouchableOpacity 
           style={styles.debugToggle}
           onPress={() => setShowDebugInfo(!showDebugInfo)}
         >
           <Text style={styles.debugToggleText}>
-            {showDebugInfo ? '▼' : '▶'} Informations de Débogage Avancées
+            {showDebugInfo ? '▼' : '▶'} Informations de Débogage
           </Text>
         </TouchableOpacity>
 
@@ -304,24 +229,7 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
                 <Text style={styles.debugText}>
                   Noms: {Object.keys(Constants.expoConfig.extra).join(', ')}
                 </Text>
-                <Text style={styles.debugText}>
-                  Valeurs (premières lettres):
-                </Text>
-                {Object.entries(Constants.expoConfig.extra).map(([key, value]) => (
-                  <Text key={key} style={styles.debugText}>
-                    • {key}: {typeof value === 'string' ? value.substring(0, 20) + '...' : typeof value}
-                  </Text>
-                ))}
               </>
-            )}
-            {!Constants.expoConfig?.extra && (
-              <Text style={styles.debugText}>
-                ⚠️ Constants.expoConfig.extra n&apos;est pas disponible.
-                {'\n'}
-                Cela signifie que les variables d&apos;environnement ne sont pas chargées.
-                {'\n'}
-                Suivez la procédure ci-dessus pour les ajouter.
-              </Text>
             )}
           </View>
         )}
@@ -348,24 +256,7 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
             • Les noms sont EXACTS (avec EXPO_PUBLIC_){'\n'}
             • Pas d&apos;espaces avant/après les valeurs{'\n'}
             • Vous avez bien attendu 10 secondes entre Stop et Start{'\n'}
-            • Vous avez fait un redémarrage COMPLET (pas juste un reload){'\n'}
-            • Regardez les logs ci-dessus pour voir si les variables sont détectées{'\n'}
-            • Vérifiez que vous êtes dans Settings → Environment Variables (pas dans Supabase Vault)
-          </Text>
-        </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ Où se trouve le bouton STOP dans Natively ?</Text>
-          <Text style={styles.faqAnswer}>
-            Le bouton STOP se trouve en haut à droite de l&apos;interface Natively, à côté du bouton de rafraîchissement.
-            {'\n\n'}
-            Si vous ne le voyez pas, essayez de :
-            {'\n'}
-            • Regarder dans la barre d&apos;outils en haut
-            {'\n'}
-            • Chercher un bouton rouge ou un icône d&apos;arrêt
-            {'\n'}
-            • Utiliser le menu principal de Natively
+            • Vous avez fait un redémarrage COMPLET (pas juste un reload)
           </Text>
         </View>
 
@@ -387,27 +278,6 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
             <Text style={styles.successLog}>✓ Supabase client initialized successfully</Text>
             {'\n\n'}
             Et cet écran de configuration disparaîtra automatiquement ! 🎉
-            {'\n\n'}
-            Dans la section &quot;État Actuel&quot; ci-dessus, les deux variables devraient afficher &quot;✓ Défini&quot;.
-          </Text>
-        </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ Je vois toujours cet écran après avoir tout fait</Text>
-          <Text style={styles.faqAnswer}>
-            Si vous voyez toujours cet écran après avoir suivi TOUTES les étapes :
-            {'\n\n'}
-            1. Vérifiez la section &quot;État Actuel&quot; ci-dessus
-            {'\n'}
-            2. Si les variables sont &quot;Non défini&quot;, elles n&apos;ont pas été chargées
-            {'\n'}
-            3. Assurez-vous d&apos;avoir cliqué sur STOP (pas juste fermé l&apos;app)
-            {'\n'}
-            4. Attendez 10-15 secondes après STOP
-            {'\n'}
-            5. Cliquez sur START pour un redémarrage complet
-            {'\n'}
-            6. Si ça ne marche toujours pas, essayez de redémarrer Natively complètement
           </Text>
         </View>
       </View>
@@ -431,8 +301,6 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <Text style={styles.footerEmoji}>🎯</Text>
         <Text style={styles.footerText}>
           Suivez la procédure ci-dessus et tout fonctionnera parfaitement !
-          {'\n\n'}
-          <Text style={styles.bold}>Rappel :</Text> STOP → Sauvegarder → Attendre → START
         </Text>
       </View>
     </ScrollView>
@@ -522,21 +390,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
     width: 40,
   },
-  procedureContent: {
-    flex: 1,
-  },
   procedureText: {
+    flex: 1,
     fontSize: 15,
     color: '#1a1a1a',
     lineHeight: 22,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  procedureHint: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-    fontStyle: 'italic',
   },
   warningBox: {
     flexDirection: 'row',
@@ -545,7 +403,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#f59e0b',
-    marginBottom: 12,
   },
   warningIcon: {
     fontSize: 24,
@@ -556,17 +413,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#92400e',
     lineHeight: 20,
-  },
-  refreshButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  refreshButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
@@ -735,19 +581,6 @@ const styles = StyleSheet.create({
   },
   statusError: {
     color: '#dc2626',
-  },
-  statusNote: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#3b82f6',
-  },
-  statusNoteText: {
-    fontSize: 13,
-    color: '#1e40af',
-    lineHeight: 20,
   },
   debugToggle: {
     backgroundColor: '#f3f4f6',
