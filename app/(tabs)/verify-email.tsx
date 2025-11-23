@@ -11,27 +11,41 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { supabase } from '@/app/integrations/supabase/client';
 
 export default function VerifyEmailScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isEmailVerified } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [checkingVerification, setCheckingVerification] = useState(true);
 
-  // Check if email is already verified
+  // Check if email is already verified on mount and periodically
   useEffect(() => {
     const checkEmailVerification = async () => {
-      if (user?.email_confirmed_at) {
+      console.log('Checking email verification status...');
+      console.log('User:', user?.email);
+      console.log('Email confirmed at:', user?.email_confirmed_at);
+      console.log('isEmailVerified():', isEmailVerified());
+
+      if (isEmailVerified()) {
         console.log('Email already verified, redirecting to dashboard');
         router.replace('/(tabs)/client-dashboard');
+      } else {
+        console.log('Email not verified yet');
+        setCheckingVerification(false);
       }
     };
 
     checkEmailVerification();
-  }, [user, router]);
+
+    // Check every 5 seconds if email has been verified
+    const interval = setInterval(checkEmailVerification, 5000);
+
+    return () => clearInterval(interval);
+  }, [user, isEmailVerified, router]);
 
   // Cooldown timer
   useEffect(() => {
@@ -92,8 +106,15 @@ export default function VerifyEmailScreen() {
     setLoading(true);
     
     try {
+      console.log('Manually checking verification status...');
+      
       // Refresh the session to get the latest user data
       const { data, error } = await supabase.auth.refreshSession();
+      
+      console.log('Refresh session result:', {
+        error: error ? error.message : null,
+        email_confirmed_at: data.user?.email_confirmed_at
+      });
       
       if (error) {
         console.error('Refresh session error:', error);
@@ -122,6 +143,23 @@ export default function VerifyEmailScreen() {
       setLoading(false);
     }
   };
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/login" />;
+  }
+
+  // Show loading while checking verification status
+  if (checkingVerification) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Vérification en cours...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -235,6 +273,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.text,
   },
   content: {
     flex: 1,

@@ -17,7 +17,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function LoginScreen() {
-  const { signIn, signInWithGoogle, loading: authLoading, user } = useAuth();
+  const { signIn, signInWithGoogle, loading: authLoading, user, isEmailVerified } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [email, setEmail] = useState('');
@@ -25,10 +25,17 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect to client dashboard if already logged in
+  // Redirect to appropriate screen if already logged in
   useEffect(() => {
     if (user) {
-      console.log('User already logged in, checking for return destination');
+      console.log('User already logged in, checking email verification and return destination');
+      
+      // Check if email is verified
+      if (!isEmailVerified()) {
+        console.log('Email not verified, redirecting to verify-email');
+        router.replace('/(tabs)/verify-email');
+        return;
+      }
       
       // Check if there's a return destination
       const returnTo = params.returnTo as string;
@@ -48,7 +55,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)/client-dashboard');
       }
     }
-  }, [user, router, params]);
+  }, [user, isEmailVerified, router, params]);
 
   const handleLogin = async () => {
     console.log('=== LOGIN BUTTON CLICKED ===');
@@ -96,24 +103,8 @@ export default function LoginScreen() {
         
         Alert.alert('Erreur de connexion', errorMessage);
       } else {
-        // Success - check for return destination
-        console.log('Login successful');
-        
-        const returnTo = params.returnTo as string;
-        const plan = params.plan as string;
-        
-        if (returnTo === 'subscription-confirm' && plan) {
-          console.log('Redirecting to subscription-confirm with plan:', plan);
-          router.replace({
-            pathname: '/(tabs)/subscription-confirm',
-            params: { plan }
-          });
-        } else if (returnTo === 'pricing') {
-          console.log('Redirecting to pricing');
-          router.replace('/(tabs)/pricing');
-        } else {
-          router.replace('/(tabs)/client-dashboard');
-        }
+        // Success - navigation will be handled by useEffect
+        console.log('Login successful, waiting for redirect...');
       }
     } catch (error) {
       console.error('Login exception:', error);
@@ -145,7 +136,7 @@ export default function LoginScreen() {
         
         Alert.alert('Erreur de connexion', errorMessage);
       }
-      // Success will be handled by the OAuth redirect
+      // Success will be handled by the OAuth redirect and useEffect
     } catch (error) {
       console.error('Google sign-in exception:', error);
       Alert.alert('Erreur', 'Une erreur inattendue est survenue');

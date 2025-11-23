@@ -95,13 +95,31 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, [user?.id, fetchClient]);
 
   const isEmailVerified = useCallback(() => {
-    return !!user?.email_confirmed_at;
+    // Check if user exists and has email_confirmed_at field
+    if (!user) {
+      console.log('isEmailVerified: No user');
+      return false;
+    }
+
+    // If email_confirmed_at exists and is not null, email is verified
+    const isVerified = !!user.email_confirmed_at;
+    console.log('isEmailVerified check:', {
+      userId: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at,
+      isVerified
+    });
+
+    return isVerified;
   }, [user]);
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
+      console.log('Initial session:', session ? 'Found' : 'Not found');
+      if (session) {
+        console.log('Session user email_confirmed_at:', session.user.email_confirmed_at);
+      }
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -114,7 +132,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session);
+      console.log('Auth state changed:', _event);
+      if (session) {
+        console.log('New session user email_confirmed_at:', session.user.email_confirmed_at);
+      }
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -142,7 +163,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         return { error };
       }
       
-      console.log('Sign in successful:', data);
+      console.log('Sign in successful');
+      console.log('User email_confirmed_at:', data.user?.email_confirmed_at);
       
       // Fetch client record after successful sign in
       if (data.user?.id) {
