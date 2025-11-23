@@ -101,7 +101,7 @@ export default function FreightQuoteScreen() {
     if (user && client) {
       setFormData(prev => ({
         ...prev,
-        clientName: client.contact_name || "",
+        clientName: client.contact_name || client.company_name || "",
         clientEmail: user.email || "",
       }));
     }
@@ -124,56 +124,73 @@ export default function FreightQuoteScreen() {
   }, [user, client, serviceId, serviceName]);
 
   const handleSubmit = async () => {
-    // Validation
-    if (!formData.clientName.trim()) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez entrer votre nom");
+    // Determine if user is logged in
+    const isLoggedIn = !!(user && client);
+
+    // Validation - cargo_type is always required
+    if (!formData.cargoType.trim()) {
+      Alert.alert(
+        t.common.error || "Erreur",
+        "Le champ 'Type de cargo' est obligatoire."
+      );
       return;
     }
 
-    if (!formData.clientEmail.trim()) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez entrer votre email");
-      return;
+    // If user is NOT logged in, client_name and client_email are required
+    if (!isLoggedIn) {
+      if (!formData.clientName.trim()) {
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Veuillez entrer votre nom."
+        );
+        return;
+      }
+
+      if (!formData.clientEmail.trim()) {
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Veuillez entrer votre email."
+        );
+        return;
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.clientEmail)) {
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Veuillez entrer un email valide."
+        );
+        return;
+      }
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.clientEmail)) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez entrer un email valide");
-      return;
-    }
-
+    // Validate ports
     if (!formData.originPort) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez sélectionner un port d'origine");
+      Alert.alert(
+        t.common.error || "Erreur",
+        "Veuillez sélectionner un port d'origine."
+      );
       return;
     }
 
     if (!formData.destinationPort) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez sélectionner un port de destination");
-      return;
-    }
-
-    if (!formData.cargoType.trim()) {
-      Alert.alert(t.common.error || "Erreur", "Veuillez spécifier le type de cargo");
+      Alert.alert(
+        t.common.error || "Erreur",
+        "Veuillez sélectionner un port de destination."
+      );
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Prepare volume_details with service info and cargo details
+      // Prepare volume_details combining cargo_volume and details
       let volumeDetailsText = '';
       
       // Add cargo volume if provided
       if (formData.cargoVolume.trim()) {
         volumeDetailsText += formData.cargoVolume.trim();
-      }
-      
-      // Add service reference if available
-      if (serviceId && serviceName) {
-        if (volumeDetailsText) {
-          volumeDetailsText += '\n\n';
-        }
-        volumeDetailsText += `Service demandé: ${serviceName}`;
       }
       
       // Add additional details if provided
@@ -184,17 +201,23 @@ export default function FreightQuoteScreen() {
         volumeDetailsText += formData.details.trim();
       }
 
-      // Prepare quote data - matching database schema exactly
+      // Prepare quote data according to requirements
       const quoteData: any = {
-        client: client?.id || null, // UUID or NULL for non-logged-in users
-        client_name: formData.clientName.trim(),
-        client_email: formData.clientEmail.trim(),
-        origin_port: formData.originPort.id,
-        destination_port: formData.destinationPort.id,
+        // Technical fields
+        status: 'received', // Default status (database enum value)
+        created_at: new Date().toISOString(), // Current timestamp
+        
+        // User authentication conditional fields
+        client: isLoggedIn ? client.id : null, // client_id if logged in, null otherwise
+        client_email: isLoggedIn ? user.email : formData.clientEmail.trim(),
+        client_name: isLoggedIn ? (client.contact_name || client.company_name) : formData.clientName.trim(),
+        
+        // Form fields mapped to collection
         cargo_type: formData.cargoType.trim(),
         volume_details: volumeDetailsText || null,
+        origin_port: formData.originPort.id,
+        destination_port: formData.destinationPort.id,
         service_id: serviceId || null,
-        status: 'received', // This is the correct enum value
       };
 
       console.log('Submitting freight quote with data:', quoteData);
@@ -210,7 +233,7 @@ export default function FreightQuoteScreen() {
         console.error('Error submitting quote:', error);
         Alert.alert(
           t.common.error || "Erreur",
-          "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer."
+          "Une erreur est survenue, merci de réessayer."
         );
         setIsSubmitting(false);
         return;
@@ -228,12 +251,12 @@ export default function FreightQuoteScreen() {
         details: `Quote created for ${formData.cargoType}`,
       });
 
-      // Send emails via Edge Function
+      // Send emails via Edge Function (optional - don't fail if emails fail)
       try {
         const emailPayload = {
           quoteId: data.id,
-          clientName: formData.clientName,
-          clientEmail: formData.clientEmail,
+          clientName: quoteData.client_name,
+          clientEmail: quoteData.client_email,
           serviceName: serviceName || undefined,
           originPort: `${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}`,
           destinationPort: `${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}`,
@@ -258,12 +281,12 @@ export default function FreightQuoteScreen() {
         // Don't fail the quote creation if emails fail
       }
 
-      // Handle redirection based on authentication status
-      if (user && client) {
-        // User is logged in - redirect to client dashboard
+      // Success handling based on authentication status
+      if (isLoggedIn) {
+        // User is logged in - show success message and redirect to client dashboard
         Alert.alert(
           "Demande envoyée !",
-          t.feedbackMessages.quoteSubmitted || "Votre demande de devis a été envoyée avec succès. Notre équipe vous contactera sous peu.",
+          "Votre demande de devis a bien été envoyée.",
           [
             {
               text: "OK",
@@ -279,7 +302,7 @@ export default function FreightQuoteScreen() {
       console.error('Exception submitting quote:', error);
       Alert.alert(
         t.common.error || "Erreur",
-        "Une erreur s'est produite. Veuillez réessayer."
+        "Une erreur est survenue, merci de réessayer."
       );
     } finally {
       setIsSubmitting(false);
@@ -329,7 +352,7 @@ export default function FreightQuoteScreen() {
               />
             </View>
             <Text style={[styles.successTitle, { color: theme.colors.text }]}>
-              Merci, votre demande de devis a été envoyée !
+              Votre demande de devis a bien été envoyée.
             </Text>
             <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
               Vous recevrez une réponse par email sous 24 à 48 heures ouvrables.
@@ -446,7 +469,7 @@ export default function FreightQuoteScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Nom complet *
+              Nom complet {!isLoggedIn && '*'}
             </Text>
             <TextInput
               style={[styles.input, { 
@@ -469,7 +492,7 @@ export default function FreightQuoteScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Email *
+              Email {!isLoggedIn && '*'}
             </Text>
             <TextInput
               style={[styles.input, { 
