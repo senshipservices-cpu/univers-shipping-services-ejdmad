@@ -243,11 +243,23 @@ export default function FreightQuoteScreen() {
       console.log('Submitting freight quote with data:', quoteData);
 
       // Create the freight quote
-      const { data, error } = await supabase
-        .from('freight_quotes')
-        .insert([quoteData])
-        .select()
-        .single();
+      // For anonymous users, we don't use .select() to avoid needing SELECT permissions
+      let insertResult;
+      if (isLoggedIn) {
+        // Authenticated users can use .select() to get the created record
+        insertResult = await supabase
+          .from('freight_quotes')
+          .insert([quoteData])
+          .select()
+          .single();
+      } else {
+        // Anonymous users: just insert without selecting
+        insertResult = await supabase
+          .from('freight_quotes')
+          .insert([quoteData]);
+      }
+
+      const { data, error } = insertResult;
 
       if (error) {
         console.error('Error submitting quote:', error);
@@ -267,14 +279,14 @@ export default function FreightQuoteScreen() {
         userId: user?.id || null,
         clientId: client?.id || null,
         serviceId: serviceId || null,
-        quoteId: data.id,
+        quoteId: data?.id || null,
         details: `Quote created for ${formData.cargoType}`,
       });
 
       // Send emails via Edge Function (optional - don't fail if emails fail)
       try {
         const emailPayload = {
-          quoteId: data.id,
+          quoteId: data?.id || 'unknown',
           clientName: quoteData.client_name,
           clientEmail: quoteData.client_email,
           serviceName: serviceName || undefined,
