@@ -160,31 +160,44 @@ export default function FreightQuoteScreen() {
     setIsSubmitting(true);
 
     try {
-      // Prepare quote data
+      // Prepare volume_details with service info and cargo details
+      let volumeDetailsText = '';
+      
+      // Add cargo volume if provided
+      if (formData.cargoVolume.trim()) {
+        volumeDetailsText += formData.cargoVolume.trim();
+      }
+      
+      // Add service reference if available
+      if (serviceId && serviceName) {
+        if (volumeDetailsText) {
+          volumeDetailsText += '\n\n';
+        }
+        volumeDetailsText += `Service demandé: ${serviceName}`;
+      }
+      
+      // Add additional details if provided
+      if (formData.details.trim()) {
+        if (volumeDetailsText) {
+          volumeDetailsText += '\n\n';
+        }
+        volumeDetailsText += formData.details.trim();
+      }
+
+      // Prepare quote data - matching database schema exactly
       const quoteData: any = {
-        client: client?.id || null,
-        client_name: formData.clientName,
-        client_email: formData.clientEmail,
+        client: client?.id || null, // UUID or NULL for non-logged-in users
+        client_name: formData.clientName.trim(),
+        client_email: formData.clientEmail.trim(),
         origin_port: formData.originPort.id,
         destination_port: formData.destinationPort.id,
-        cargo_type: formData.cargoType,
-        volume_details: formData.cargoVolume || null,
-        status: 'received',
+        cargo_type: formData.cargoType.trim(),
+        volume_details: volumeDetailsText || null,
         service_id: serviceId || null,
-        created_at: new Date().toISOString(),
+        status: 'received', // This is the correct enum value
       };
 
-      // Add service reference in details if service_id is provided
-      if (serviceId && serviceName) {
-        const detailsText = `Service: ${serviceName}${formData.details ? '\n' + formData.details : ''}`;
-        quoteData.volume_details = formData.cargoVolume 
-          ? `${formData.cargoVolume}\n\n${detailsText}`
-          : detailsText;
-      } else if (formData.details) {
-        quoteData.volume_details = formData.cargoVolume 
-          ? `${formData.cargoVolume}\n\n${formData.details}`
-          : formData.details;
-      }
+      console.log('Submitting freight quote with data:', quoteData);
 
       // Create the freight quote
       const { data, error } = await supabase
@@ -250,7 +263,7 @@ export default function FreightQuoteScreen() {
         // User is logged in - redirect to client dashboard
         Alert.alert(
           "Demande envoyée !",
-          t.feedbackMessages.quoteSubmitted,
+          t.feedbackMessages.quoteSubmitted || "Votre demande de devis a été envoyée avec succès. Notre équipe vous contactera sous peu.",
           [
             {
               text: "OK",
@@ -376,6 +389,9 @@ export default function FreightQuoteScreen() {
     );
   }
 
+  // Determine if fields should be editable
+  const isLoggedIn = !!(user && client);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
@@ -442,7 +458,13 @@ export default function FreightQuoteScreen() {
               onChangeText={(text) => setFormData({ ...formData, clientName: text })}
               placeholder="Votre nom"
               placeholderTextColor={colors.textSecondary}
+              editable={true}
             />
+            {isLoggedIn && formData.clientName && (
+              <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+                ✓ Pré-rempli depuis votre profil
+              </Text>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -461,7 +483,13 @@ export default function FreightQuoteScreen() {
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={true}
             />
+            {isLoggedIn && formData.clientEmail && (
+              <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+                ✓ Pré-rempli depuis votre compte
+              </Text>
+            )}
           </View>
 
           <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
@@ -870,6 +898,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   textArea: {
     borderWidth: 1,
