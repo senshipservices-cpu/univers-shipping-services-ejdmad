@@ -12,7 +12,7 @@ import * as Haptics from 'expo-haptics';
 export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
 
   const languageOptions = [
     { code: 'fr' as Language, flag: '🇫🇷', name: 'Français' },
@@ -22,8 +22,13 @@ export default function ProfileScreen() {
   ];
 
   const handleLanguageChange = async (lang: Language) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await setLanguage(lang);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await setLanguage(lang);
+      console.log('Language changed to:', lang);
+    } catch (error) {
+      console.error('Error changing language:', error);
+    }
   };
 
   return (
