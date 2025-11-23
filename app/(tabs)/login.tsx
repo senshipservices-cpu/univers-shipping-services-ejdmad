@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Redirect to appropriate screen if already logged in
   useEffect(() => {
@@ -63,15 +64,19 @@ export default function LoginScreen() {
     console.log('Password length:', password.length);
     console.log('Loading state:', loading);
 
+    // Clear any previous error messages
+    setErrorMessage(null);
+
+    // Validate email and password
     if (!email || !password) {
-      Alert.alert('Erreur', 'Veuillez entrer votre email et mot de passe');
+      setErrorMessage('Veuillez entrer votre email et votre mot de passe');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
+      setErrorMessage('Veuillez entrer une adresse email valide');
       return;
     }
 
@@ -87,28 +92,28 @@ export default function LoginScreen() {
         console.error('Login error:', error);
         
         // Handle specific error messages
-        let errorMessage = 'Une erreur est survenue lors de la connexion';
+        let errorMsg = 'Une erreur est survenue lors de la connexion';
         
         if (error.message) {
           if (error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Email ou mot de passe incorrect';
+            errorMsg = 'Email ou mot de passe incorrect';
           } else if (error.message.includes('Email not confirmed')) {
-            errorMessage = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.';
+            errorMsg = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.';
           } else if (error.message.includes('User not found')) {
-            errorMessage = 'Aucun compte trouvé avec cet email';
+            errorMsg = 'Aucun compte trouvé avec cet email';
           } else {
-            errorMessage = error.message;
+            errorMsg = error.message;
           }
         }
         
-        Alert.alert('Erreur de connexion', errorMessage);
+        setErrorMessage(errorMsg);
       } else {
         // Success - navigation will be handled by useEffect
         console.log('Login successful, waiting for redirect...');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login exception:', error);
-      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+      setErrorMessage('Une erreur inattendue est survenue lors de la connexion. Merci de réessayer.');
     } finally {
       setLoading(false);
     }
@@ -117,6 +122,9 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     console.log('=== GOOGLE SIGN-IN BUTTON CLICKED ===');
     console.log('Loading state:', loading);
+
+    // Clear any previous error messages
+    setErrorMessage(null);
 
     setLoading(true);
     
@@ -128,18 +136,18 @@ export default function LoginScreen() {
       if (error) {
         console.error('Google sign-in error:', error);
         
-        let errorMessage = 'Une erreur est survenue lors de la connexion avec Google';
+        let errorMsg = 'Une erreur est survenue lors de la connexion avec Google';
         
         if (error.message) {
-          errorMessage = error.message;
+          errorMsg = error.message;
         }
         
-        Alert.alert('Erreur de connexion', errorMessage);
+        setErrorMessage(errorMsg);
       }
       // Success will be handled by the OAuth redirect and useEffect
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign-in exception:', error);
-      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+      setErrorMessage('Une erreur inattendue est survenue lors de la connexion avec Google. Merci de réessayer.');
     } finally {
       setLoading(false);
     }
@@ -162,6 +170,20 @@ export default function LoginScreen() {
         </Text>
       </View>
 
+      {/* Error Message Display */}
+      {errorMessage && (
+        <View style={styles.errorContainer}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle.fill"
+            android_material_icon_name="error"
+            size={20}
+            color={colors.error}
+            style={styles.errorIcon}
+          />
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
+
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
@@ -176,7 +198,10 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setErrorMessage(null);
+              }}
               placeholder="votre@email.com"
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
@@ -200,7 +225,10 @@ export default function LoginScreen() {
             <TextInput
               style={[styles.input, styles.passwordInput]}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                setErrorMessage(null);
+              }}
               placeholder="Entrez votre mot de passe"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPassword}
@@ -321,6 +349,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     lineHeight: 24,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error + '15',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.error + '30',
+  },
+  errorIcon: {
+    marginRight: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.error,
+    lineHeight: 20,
   },
   form: {
     marginBottom: 24,

@@ -402,7 +402,7 @@ export default function ClientDashboardScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-            {t('common.loading')}
+            Chargement...
           </Text>
         </View>
       </View>
