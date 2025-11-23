@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { isSupabaseConfigured, supabaseConfigErrors, supabaseConfigWarnings } from '@/app/integrations/supabase/client';
@@ -12,8 +12,6 @@ import appConfig from '@/config/appConfig';
  * helpful guidance if configuration is missing or invalid.
  */
 export default function SupabaseConfigCheck({ children }: { children: React.ReactNode }) {
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
-
   // If Supabase is properly configured, render children normally
   if (isSupabaseConfigured) {
     return <>{children}</>;
@@ -28,72 +26,6 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <Text style={styles.subtitle}>
           Votre application nécessite une configuration Supabase
         </Text>
-      </View>
-
-      {/* CRITICAL: Hot Reload Warning - Most Important Section */}
-      <View style={[styles.section, styles.criticalSection]}>
-        <Text style={styles.criticalIcon}>🔥</Text>
-        <Text style={styles.criticalTitle}>IMPORTANT : Procédure de Configuration</Text>
-        <Text style={styles.criticalText}>
-          L&apos;écran d&apos;erreur que vous voyez après &quot;Sauvegarder&quot; est NORMAL !
-          {'\n\n'}
-          C&apos;est le <Text style={styles.bold}>hot reload</Text> qui cause ce problème.
-          {'\n\n'}
-          <Text style={styles.bold}>✅ PROCÉDURE CORRECTE :</Text>
-        </Text>
-        
-        <View style={styles.procedureBox}>
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>1️⃣</Text>
-            <Text style={styles.procedureText}>
-              <Text style={styles.bold}>ARRÊTEZ</Text> l&apos;application (bouton STOP dans Natively)
-            </Text>
-          </View>
-          
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>2️⃣</Text>
-            <Text style={styles.procedureText}>
-              Allez dans Settings ⚙️ → Environment Variables
-            </Text>
-          </View>
-          
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>3️⃣</Text>
-            <Text style={styles.procedureText}>
-              Ajoutez vos variables (voir ci-dessous)
-            </Text>
-          </View>
-          
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>4️⃣</Text>
-            <Text style={styles.procedureText}>
-              Cliquez sur <Text style={styles.bold}>SAVE</Text>
-            </Text>
-          </View>
-          
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>5️⃣</Text>
-            <Text style={styles.procedureText}>
-              Attendez <Text style={styles.bold}>10 secondes</Text>
-            </Text>
-          </View>
-          
-          <View style={styles.procedureStep}>
-            <Text style={styles.procedureNumber}>6️⃣</Text>
-            <Text style={styles.procedureText}>
-              Cliquez sur <Text style={styles.bold}>START</Text> pour redémarrer
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.warningBox}>
-          <Text style={styles.warningIcon}>⚠️</Text>
-          <Text style={styles.warningBoxText}>
-            <Text style={styles.bold}>NE PAS</Text> sauvegarder pendant que l&apos;app est en cours d&apos;exécution !
-            {'\n'}
-            Cela provoque l&apos;écran d&apos;erreur que vous voyez.
-          </Text>
-        </View>
       </View>
 
       {/* Errors Section */}
@@ -122,57 +54,103 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         </View>
       )}
 
-      {/* Important Note about Vault vs Natively */}
+      {/* Hot Reload Warning */}
+      <View style={[styles.section, styles.hotReloadWarning]}>
+        <Text style={styles.hotReloadTitle}>🔥 Problème de Hot Reload</Text>
+        <Text style={styles.hotReloadText}>
+          L&apos;écran d&apos;erreur que vous voyez apparaît souvent lors du <Text style={styles.bold}>hot reload</Text> (rechargement automatique).
+          {'\n\n'}
+          Cela ne signifie PAS que vos variables ne sont pas configurées !
+          {'\n\n'}
+          <Text style={styles.bold}>Solution :</Text> Après avoir sauvegardé les variables, vous DEVEZ faire un <Text style={styles.bold}>redémarrage complet</Text> de l&apos;application.
+        </Text>
+      </View>
+
+      {/* Important Note */}
       <View style={[styles.section, styles.importantNote]}>
-        <Text style={styles.importantTitle}>📌 Supabase Vault vs Natively Variables</Text>
+        <Text style={styles.importantTitle}>📌 Important - Lisez Attentivement</Text>
         <Text style={styles.importantText}>
-          <Text style={styles.bold}>Supabase Vault</Text> = Pour Edge Functions (code serveur)
+          Vous avez ajouté les variables dans <Text style={styles.bold}>Supabase Vault</Text> ? 
+          C&apos;est parfait pour les <Text style={styles.bold}>Edge Functions</Text> (code serveur) ! 
           {'\n\n'}
-          <Text style={styles.bold}>Natively Variables</Text> = Pour l&apos;app React Native (code client)
+          Mais votre <Text style={styles.bold}>application React Native</Text> ne peut pas accéder au Vault. 
           {'\n\n'}
-          Vous avez besoin des <Text style={styles.bold}>DEUX</Text> !
-          {'\n\n'}
-          Si vous avez déjà ajouté les variables dans Supabase Vault, c&apos;est parfait pour les Edge Functions.
-          Maintenant, vous devez <Text style={styles.bold}>AUSSI</Text> les ajouter dans Natively.
+          Vous devez <Text style={styles.bold}>AUSSI</Text> ajouter ces variables dans <Text style={styles.bold}>Natively</Text>.
         </Text>
       </View>
 
       {/* Setup Instructions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🚀 Variables à Ajouter dans Natively</Text>
+        <Text style={styles.sectionTitle}>🚀 Configuration dans Natively</Text>
         
-        <View style={styles.variableCard}>
-          <Text style={styles.variableTitle}>Variable 1 :</Text>
-          <View style={styles.codeBlock}>
-            <Text style={styles.codeLabel}>Nom :</Text>
-            <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_URL</Text>
-            <Text style={styles.codeLabel}>Valeur :</Text>
-            <Text style={styles.codeValue}>https://lnfsjpuffrcyenuuoxxk.supabase.co</Text>
+        <View style={styles.step}>
+          <Text style={styles.stepNumber}>1.</Text>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Ouvrez les Paramètres du Projet</Text>
+            <Text style={styles.stepText}>
+              Dans Natively, cliquez sur l&apos;icône ⚙️ (Settings) en haut à droite
+            </Text>
           </View>
         </View>
 
-        <View style={styles.variableCard}>
-          <Text style={styles.variableTitle}>Variable 2 :</Text>
-          <View style={styles.codeBlock}>
-            <Text style={styles.codeLabel}>Nom :</Text>
-            <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_ANON_KEY</Text>
-            <Text style={styles.codeLabel}>Valeur :</Text>
-            <Text style={styles.codeValue}>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</Text>
-            <Text style={styles.codeHint}>(Copiez la clé complète depuis Supabase)</Text>
+        <View style={styles.step}>
+          <Text style={styles.stepNumber}>2.</Text>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Allez dans &quot;Environment Variables&quot;</Text>
+            <Text style={styles.stepText}>
+              Trouvez la section des variables d&apos;environnement
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.step}>
+          <Text style={styles.stepNumber}>3.</Text>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Ajoutez ces DEUX variables :</Text>
+            <View style={styles.codeBlock}>
+              <Text style={styles.codeLabel}>Nom de la variable :</Text>
+              <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_URL</Text>
+              <Text style={styles.codeLabel}>Valeur :</Text>
+              <Text style={styles.codeValue}>https://lnfsjpuffrcyenuuoxxk.supabase.co</Text>
+            </View>
+            <View style={styles.codeBlock}>
+              <Text style={styles.codeLabel}>Nom de la variable :</Text>
+              <Text style={styles.codeText}>EXPO_PUBLIC_SUPABASE_ANON_KEY</Text>
+              <Text style={styles.codeLabel}>Valeur :</Text>
+              <Text style={styles.codeValue}>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</Text>
+              <Text style={styles.codeHint}>(Copiez la clé complète depuis Supabase)</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.step}>
+          <Text style={styles.stepNumber}>4.</Text>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>⚠️ IMPORTANT : Redémarrage Complet</Text>
+            <Text style={[styles.stepText, styles.criticalText]}>
+              Après avoir ajouté les variables :{'\n'}
+              {'\n'}
+              1. Cliquez sur <Text style={styles.bold}>STOP</Text> (arrêter l&apos;application){'\n'}
+              2. Attendez <Text style={styles.bold}>10 secondes complètes</Text>{'\n'}
+              3. Cliquez sur <Text style={styles.bold}>START</Text> (redémarrer){'\n'}
+              {'\n'}
+              ⚠️ Ne cliquez PAS sur &quot;Save&quot; pendant que l&apos;app tourne !{'\n'}
+              ⚠️ Le hot reload ne suffit PAS - il faut un redémarrage complet !
+            </Text>
           </View>
         </View>
       </View>
 
       {/* Where to find values */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🔍 Où Trouver Ces Valeurs ?</Text>
+        <Text style={styles.sectionTitle}>🔍 Où trouver ces valeurs ?</Text>
         
         <View style={styles.infoBox}>
           <Text style={styles.infoTitle}>Dans Supabase Dashboard :</Text>
           <Text style={styles.infoText}>
             1. Allez sur votre projet Supabase{'\n'}
-            2. Cliquez sur Settings (⚙️){'\n'}
-            3. Allez dans API{'\n'}
+            2. Cliquez sur &quot;Settings&quot; (⚙️) dans la barre latérale{'\n'}
+            3. Allez dans &quot;API&quot;{'\n'}
             4. Copiez :
           </Text>
           <Text style={styles.infoItem}>   • Project URL → EXPO_PUBLIC_SUPABASE_URL</Text>
@@ -205,88 +183,65 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
           </View>
         </View>
         
-        <TouchableOpacity 
-          style={styles.debugToggle}
-          onPress={() => setShowDebugInfo(!showDebugInfo)}
-        >
-          <Text style={styles.debugToggleText}>
-            {showDebugInfo ? '▼' : '▶'} Informations de Débogage
+        <View style={styles.debugBox}>
+          <Text style={styles.debugTitle}>🔧 Informations de Débogage</Text>
+          <Text style={styles.debugText}>Platform: {Platform.OS}</Text>
+          <Text style={styles.debugText}>
+            Constants.expoConfig?.extra: {Constants.expoConfig?.extra ? 'Disponible' : 'Non disponible'}
           </Text>
-        </TouchableOpacity>
-
-        {showDebugInfo && (
-          <View style={styles.debugBox}>
-            <Text style={styles.debugTitle}>🔧 Debug Info</Text>
-            <Text style={styles.debugText}>Platform: {Platform.OS}</Text>
+          {Constants.expoConfig?.extra && (
             <Text style={styles.debugText}>
-              Constants.expoConfig?.extra: {Constants.expoConfig?.extra ? 'Disponible' : 'Non disponible'}
+              Variables trouvées: {Object.keys(Constants.expoConfig.extra).join(', ')}
             </Text>
-            {Constants.expoConfig?.extra && (
-              <>
-                <Text style={styles.debugText}>
-                  Variables trouvées: {Object.keys(Constants.expoConfig.extra).length}
-                </Text>
-                <Text style={styles.debugText}>
-                  Noms: {Object.keys(Constants.expoConfig.extra).join(', ')}
-                </Text>
-              </>
-            )}
-          </View>
-        )}
+          )}
+        </View>
       </View>
 
       {/* Troubleshooting */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🔧 Questions Fréquentes</Text>
+        <Text style={styles.sectionTitle}>🔧 Dépannage</Text>
         
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ Pourquoi l&apos;écran d&apos;erreur apparaît quand je clique sur Save ?</Text>
-          <Text style={styles.faqAnswer}>
-            C&apos;est le <Text style={styles.bold}>hot reload</Text> qui essaie de recharger l&apos;app immédiatement.
-            Les nouvelles variables ne sont pas encore disponibles dans le processus en cours.
-            {'\n\n'}
-            <Text style={styles.bold}>Solution :</Text> Arrêtez l&apos;app AVANT de sauvegarder, puis redémarrez après.
-          </Text>
-        </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ J&apos;ai suivi la procédure mais ça ne marche toujours pas</Text>
-          <Text style={styles.faqAnswer}>
-            Vérifiez :{'\n'}
-            • Les noms sont EXACTS (avec EXPO_PUBLIC_){'\n'}
-            • Pas d&apos;espaces avant/après les valeurs{'\n'}
-            • Vous avez bien attendu 10 secondes entre Stop et Start{'\n'}
-            • Vous avez fait un redémarrage COMPLET (pas juste un reload)
-          </Text>
-        </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ Quelle est la différence entre Vault et Natively ?</Text>
-          <Text style={styles.faqAnswer}>
-            • <Text style={styles.bold}>Supabase Vault</Text> : Variables pour Edge Functions (serveur){'\n'}
-            • <Text style={styles.bold}>Natively Variables</Text> : Variables pour React Native (client){'\n'}
+        <View style={styles.troubleshootItem}>
+          <Text style={styles.troubleshootTitle}>❓ L&apos;écran d&apos;erreur apparaît quand je clique sur Save</Text>
+          <Text style={styles.troubleshootText}>
+            C&apos;est NORMAL ! C&apos;est le hot reload qui cause ce problème.{'\n'}
             {'\n'}
-            Les deux sont nécessaires pour une application complète.
+            <Text style={styles.bold}>Solution :</Text>{'\n'}
+            • N&apos;essayez PAS de sauvegarder pendant que l&apos;app tourne{'\n'}
+            • Arrêtez l&apos;app AVANT de sauvegarder les variables{'\n'}
+            • Sauvegardez les variables{'\n'}
+            • Attendez 10 secondes{'\n'}
+            • Redémarrez l&apos;app
           </Text>
         </View>
 
-        <View style={styles.faqItem}>
-          <Text style={styles.faqQuestion}>❓ Comment savoir si ça a marché ?</Text>
-          <Text style={styles.faqAnswer}>
-            Après le redémarrage, vous devriez voir dans les logs :{'\n'}
-            {'\n'}
-            <Text style={styles.successLog}>✓ Supabase client initialized successfully</Text>
-            {'\n\n'}
-            Et cet écran de configuration disparaîtra automatiquement ! 🎉
+        <View style={styles.troubleshootItem}>
+          <Text style={styles.troubleshootTitle}>❓ J&apos;ai ajouté les variables mais ça ne marche pas</Text>
+          <Text style={styles.troubleshootText}>
+            • Vérifiez que vous avez bien utilisé les noms EXACTS :{'\n'}
+            {' '} EXPO_PUBLIC_SUPABASE_URL{'\n'}
+            {' '} EXPO_PUBLIC_SUPABASE_ANON_KEY{'\n'}
+            • Faites un redémarrage COMPLET (pas juste un reload){'\n'}
+            • Attendez 10 secondes entre Stop et Start{'\n'}
+            • Vérifiez qu&apos;il n&apos;y a pas d&apos;espaces avant/après les valeurs
+          </Text>
+        </View>
+
+        <View style={styles.troubleshootItem}>
+          <Text style={styles.troubleshootTitle}>❓ Différence entre Supabase Vault et Natively ?</Text>
+          <Text style={styles.troubleshootText}>
+            • <Text style={styles.bold}>Supabase Vault</Text> : Pour Edge Functions (serveur){'\n'}
+            • <Text style={styles.bold}>Natively Variables</Text> : Pour l&apos;app React Native (client){'\n'}
+            • Vous avez besoin des DEUX pour que tout fonctionne
           </Text>
         </View>
       </View>
 
       {/* Help Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>💡 Besoin d&apos;Aide ?</Text>
+        <Text style={styles.sectionTitle}>💡 Besoin d&apos;aide ?</Text>
         <Text style={styles.helpText}>
-          Si vous avez des questions, consultez la documentation :
+          Si vous avez des questions, consultez la documentation ou contactez le support.
         </Text>
         <TouchableOpacity 
           style={styles.linkButton}
@@ -294,14 +249,6 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         >
           <Text style={styles.linkButtonText}>📚 Documentation Supabase</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerEmoji}>🎯</Text>
-        <Text style={styles.footerText}>
-          Suivez la procédure ci-dessus et tout fonctionnera parfaitement !
-        </Text>
       </View>
     </ScrollView>
   );
@@ -348,72 +295,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  criticalSection: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 3,
-    borderColor: '#dc2626',
-  },
-  criticalIcon: {
-    fontSize: 48,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  criticalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#991b1b',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  criticalText: {
-    fontSize: 15,
-    color: '#991b1b',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  procedureBox: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  procedureStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#fee2e2',
-  },
-  procedureNumber: {
-    fontSize: 24,
-    marginRight: 12,
-    width: 40,
-  },
-  procedureText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1a1a1a',
-    lineHeight: 22,
-  },
-  warningBox: {
-    flexDirection: 'row',
-    backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-  },
-  warningIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  warningBoxText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#92400e',
-    lineHeight: 20,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -454,43 +335,80 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  importantNote: {
-    backgroundColor: '#eff6ff',
+  hotReloadWarning: {
+    backgroundColor: '#fee2e2',
     borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
+    borderLeftColor: '#dc2626',
+  },
+  hotReloadTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#991b1b',
+    marginBottom: 8,
+  },
+  hotReloadText: {
+    fontSize: 14,
+    color: '#991b1b',
+    lineHeight: 22,
+  },
+  importantNote: {
+    backgroundColor: '#fef3c7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
   },
   importantTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: '#92400e',
     marginBottom: 8,
   },
   importantText: {
     fontSize: 14,
-    color: '#1e40af',
+    color: '#92400e',
     lineHeight: 22,
   },
   bold: {
     fontWeight: 'bold',
   },
-  variableCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+  step: {
+    flexDirection: 'row',
+    marginBottom: 20,
   },
-  variableTitle: {
-    fontSize: 14,
+  stepNumber: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#374151',
-    marginBottom: 8,
+    color: '#3b82f6',
+    marginRight: 12,
+    width: 30,
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  stepText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  criticalText: {
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#f59e0b',
+    color: '#92400e',
+    fontWeight: '500',
   },
   codeBlock: {
     backgroundColor: '#f3f4f6',
     borderRadius: 6,
     padding: 12,
+    marginTop: 8,
     borderLeftWidth: 3,
     borderLeftColor: '#3b82f6',
   },
@@ -556,7 +474,6 @@ const styles = StyleSheet.create({
   },
   statusGrid: {
     gap: 12,
-    marginBottom: 16,
   },
   statusItem: {
     flexDirection: 'row',
@@ -582,21 +499,11 @@ const styles = StyleSheet.create({
   statusError: {
     color: '#dc2626',
   },
-  debugToggle: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 8,
-  },
-  debugToggleText: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '600',
-  },
   debugBox: {
     backgroundColor: '#f9fafb',
     borderRadius: 8,
     padding: 12,
+    marginTop: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -612,51 +519,27 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginBottom: 4,
   },
-  faqItem: {
-    marginBottom: 20,
-    paddingBottom: 20,
+  troubleshootItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  faqQuestion: {
-    fontSize: 15,
+  troubleshootTitle: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1a1a1a',
     marginBottom: 8,
   },
-  faqAnswer: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
-  },
-  successLog: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  troubleshootText: {
     fontSize: 13,
-    color: '#16a34a',
-    fontWeight: 'bold',
-    backgroundColor: '#f0fdf4',
-    padding: 8,
-    borderRadius: 4,
+    color: '#666',
+    lineHeight: 20,
   },
   helpText: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
     marginBottom: 12,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    marginTop: 8,
-  },
-  footerEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  footerText: {
-    fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });
