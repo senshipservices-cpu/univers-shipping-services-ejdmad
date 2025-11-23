@@ -1,10 +1,11 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Language } from '@/i18n/translations';
 import { colors } from '@/styles/commonStyles';
 import * as Haptics from 'expo-haptics';
@@ -15,6 +16,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { language, setLanguage } = useLanguage();
+  const { signOut, user } = useAuth();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const languageOptions = [
     { code: 'fr' as Language, flag: '🇫🇷', name: 'Français' },
@@ -33,10 +37,64 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      setLogoutError(null);
+      
+      console.log('Starting logout process...');
+      await signOut();
+      
+      console.log('Logout successful, redirecting to home...');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Navigate to home page after successful logout
+      router.replace('/(tabs)/(home)/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setLogoutError('La déconnexion a échoué, merci de réessayer.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert(
+      language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
+      language === 'fr' ? 'Êtes-vous sûr de vouloir vous déconnecter ?' : language === 'es' ? '¿Está seguro de que desea cerrar sesión?' : language === 'ar' ? 'هل أنت متأكد أنك تريد تسجيل الخروج؟' : 'Are you sure you want to logout?',
+      [
+        {
+          text: language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'ar' ? 'إلغاء' : 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
+          style: 'destructive',
+          onPress: handleLogout,
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <Text style={styles.headerTitle}>Settings</Text>
+        {user && (
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={confirmLogout}
+            disabled={isLoggingOut}
+          >
+            <IconSymbol
+              ios_icon_name="rectangle.portrait.and.arrow.right"
+              android_material_icon_name="logout"
+              size={24}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -44,6 +102,18 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {logoutError && (
+          <View style={styles.errorContainer}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="error"
+              size={20}
+              color="#ef4444"
+            />
+            <Text style={styles.errorText}>{logoutError}</Text>
+          </View>
+        )}
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <IconSymbol
@@ -144,6 +214,30 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </GlassView>
         </View>
+
+        {user && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[styles.logoutButtonLarge, { opacity: isLoggingOut ? 0.6 : 1 }]}
+              onPress={confirmLogout}
+              activeOpacity={0.7}
+              disabled={isLoggingOut}
+            >
+              <IconSymbol
+                ios_icon_name="rectangle.portrait.and.arrow.right"
+                android_material_icon_name="logout"
+                size={24}
+                color="#ffffff"
+              />
+              <Text style={styles.logoutButtonText}>
+                {isLoggingOut 
+                  ? (language === 'fr' ? 'Déconnexion...' : language === 'es' ? 'Cerrando sesión...' : language === 'ar' ? 'جاري تسجيل الخروج...' : 'Logging out...')
+                  : (language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout')
+                }
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -157,12 +251,21 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#ffffff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   scrollView: {
     flex: 1,
@@ -171,6 +274,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 120,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fee2e2',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#991b1b',
+    fontWeight: '600',
   },
   section: {
     marginBottom: 32,
@@ -249,5 +367,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 12,
+  },
+  logoutButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#ef4444',
+    gap: 12,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

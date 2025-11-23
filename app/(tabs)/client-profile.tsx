@@ -25,10 +25,12 @@ export default function ClientProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t, language } = useLanguage();
-  const { user, isEmailVerified } = useAuth();
+  const { user, isEmailVerified, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [formData, setFormData] = useState({
     company_name: '',
     contact_name: '',
@@ -126,6 +128,44 @@ export default function ClientProfileScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      setLogoutError(null);
+      
+      console.log('Starting logout process...');
+      await signOut();
+      
+      console.log('Logout successful, redirecting to login...');
+      
+      // Navigate to login page after successful logout
+      router.replace('/(tabs)/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setLogoutError('La déconnexion a échoué, merci de réessayer.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert(
+      language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
+      language === 'fr' ? 'Êtes-vous sûr de vouloir vous déconnecter ?' : language === 'es' ? '¿Está seguro de que desea cerrar sesión?' : language === 'ar' ? 'هل أنت متأكد أنك تريد تسجيل الخروج؟' : 'Are you sure you want to logout?',
+      [
+        {
+          text: language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'ar' ? 'إلغاء' : 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
+          style: 'destructive',
+          onPress: handleLogout,
+        },
+      ]
+    );
+  };
+
   const handleBackToDashboard = () => {
     router.push('/(tabs)/client-dashboard');
   };
@@ -181,7 +221,18 @@ export default function ClientProfileScreen() {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
           {t.clientSpace.myProfile}
         </Text>
-        <View style={{ width: 28 }} />
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={confirmLogout}
+          disabled={isLoggingOut}
+        >
+          <IconSymbol
+            ios_icon_name="rectangle.portrait.and.arrow.right"
+            android_material_icon_name="logout"
+            size={24}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -189,6 +240,18 @@ export default function ClientProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {logoutError && (
+          <View style={styles.errorContainer}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="error"
+              size={20}
+              color="#ef4444"
+            />
+            <Text style={styles.errorText}>{logoutError}</Text>
+          </View>
+        )}
+
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
@@ -451,6 +514,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    padding: 4,
   },
   scrollView: {
     flex: 1,
@@ -466,6 +534,22 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fee2e2',
+    padding: 16,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    gap: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#991b1b',
+    fontWeight: '600',
   },
   profileHeader: {
     alignItems: 'center',
