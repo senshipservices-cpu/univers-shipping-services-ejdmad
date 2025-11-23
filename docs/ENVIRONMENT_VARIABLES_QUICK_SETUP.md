@@ -1,220 +1,209 @@
 
-# Environment Variables Quick Setup
+# Environment Variables - Quick Setup Guide
 
-## Quick Copy-Paste List for Natively
+## Step 1: Copy Environment Variables Template
 
-Use this checklist when setting up environment variables in Natively's Environment Variables tab.
+Copy the `.env.example` file to `.env`:
 
-## ✅ Setup Checklist
-
-### 1. General Configuration (2 variables)
-
-```
-Name: APP_ENV
-Value: dev (or production)
-Type: Secret
+```bash
+cp .env.example .env
 ```
 
-```
-Name: ADMIN_EMAILS
-Value: cheikh@universalshipping.com
-Type: Secret
-```
+## Step 2: Fill in Your Values
 
-### 2. Supabase Configuration (3 variables)
+Edit the `.env` file with your actual values:
 
-```
-Name: SUPABASE_URL
-Value: https://lnfsjpuffrcyenuuoxxk.supabase.co
-Type: Public
-```
+```bash
+# =============================================================================
+# GENERAL CONFIGURATION
+# =============================================================================
 
-```
-Name: SUPABASE_ANON_KEY
-Value: [Paste from Supabase Dashboard → Project Settings → API]
-Type: Public
-```
-
-```
-Name: SUPABASE_SERVICE_KEY
-Value: [Paste from Supabase Dashboard → Project Settings → API]
-Type: Secret ⚠️
-```
-
-### 3. PayPal Configuration (5 variables)
-
-```
-Name: PAYMENT_PROVIDER
-Value: paypal
-Type: Secret
-```
-
-```
-Name: PAYPAL_ENV
-Value: sandbox (or live for production)
-Type: Secret
-```
-
-```
-Name: PAYPAL_CLIENT_ID
-Value: [Paste from PayPal Developer Dashboard]
-Type: Public
-```
-
-```
-Name: PAYPAL_CLIENT_SECRET
-Value: [Paste from PayPal Developer Dashboard]
-Type: Secret ⚠️
-```
-
-```
-Name: PAYPAL_WEBHOOK_ID
-Value: [Paste from PayPal Developer Dashboard → Webhooks]
-Type: Secret ⚠️
-```
-
-### 4. Google Maps Configuration (1 variable)
-
-```
-Name: GOOGLE_MAPS_API_KEY
-Value: [Paste from Google Cloud Console]
-Type: Public
-```
-
-### 5. SMTP Configuration (4 variables)
-
-```
-Name: SMTP_HOST
-Value: smtp.gmail.com
-Type: Secret
-```
-
-```
-Name: SMTP_PORT
-Value: 587
-Type: Secret
-```
-
-```
-Name: SMTP_USERNAME
-Value: [Your email address]
-Type: Secret ⚠️
-```
-
-```
-Name: SMTP_PASSWORD
-Value: [Your SMTP password or App Password]
-Type: Secret ⚠️
-```
-
-## 📋 Total: 15 Variables
-
-- ✓ 2 General Configuration
-- ✓ 3 Supabase Configuration
-- ✓ 5 PayPal Configuration
-- ✓ 1 Google Maps Configuration
-- ✓ 4 SMTP Configuration
-
-## 🔑 Where to Get Values
-
-### Supabase Keys
-1. Go to: https://supabase.com/dashboard/project/lnfsjpuffrcyenuuoxxk
-2. Navigate to: **Project Settings** → **API**
-3. Copy:
-   - Project URL → `SUPABASE_URL`
-   - anon public → `SUPABASE_ANON_KEY`
-   - service_role → `SUPABASE_SERVICE_KEY`
-
-### PayPal Keys
-1. Go to: https://developer.paypal.com/dashboard/
-2. Navigate to: **Apps & Credentials**
-3. Select: **Sandbox** (for dev) or **Live** (for production)
-4. Copy:
-   - Client ID → `PAYPAL_CLIENT_ID`
-   - Secret → `PAYPAL_CLIENT_SECRET`
-5. For Webhook ID:
-   - Go to **Webhooks** section
-   - Create webhook with URL: `https://lnfsjpuffrcyenuuoxxk.supabase.co/functions/v1/paypal-webhook`
-   - Copy Webhook ID → `PAYPAL_WEBHOOK_ID`
-
-### Google Maps Key
-1. Go to: https://console.cloud.google.com/
-2. Navigate to: **APIs & Services** → **Credentials**
-3. Create or select API key
-4. Copy: API Key → `GOOGLE_MAPS_API_KEY`
-
-### SMTP Password (Gmail)
-1. Go to: https://myaccount.google.com/security
-2. Enable: **2-Step Verification**
-3. Navigate to: **App Passwords**
-4. Generate: New app password for "Mail"
-5. Copy: Generated password → `SMTP_PASSWORD`
-
-## ⚙️ Environment-Specific Values
-
-### For Development/Testing:
-```
 APP_ENV=dev
+ADMIN_EMAILS=your-admin-email@example.com,another-admin@example.com
+
+# =============================================================================
+# SUPABASE CONFIGURATION
+# =============================================================================
+
+EXPO_PUBLIC_SUPABASE_URL=https://lnfsjpuffrcyenuuoxxk.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_SERVICE_KEY=your_service_role_key_here
+
+# =============================================================================
+# PAYMENT CONFIGURATION
+# =============================================================================
+
+PAYMENT_PROVIDER=paypal
+
+# =============================================================================
+# PAYPAL CONFIGURATION
+# =============================================================================
+
 PAYPAL_ENV=sandbox
-PAYPAL_CLIENT_ID=<sandbox_client_id>
-PAYPAL_CLIENT_SECRET=<sandbox_client_secret>
-PAYPAL_WEBHOOK_ID=<sandbox_webhook_id>
+EXPO_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id_here
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret_here
+PAYPAL_WEBHOOK_ID=your_paypal_webhook_id_here
+
+# =============================================================================
+# GOOGLE MAPS CONFIGURATION
+# =============================================================================
+
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# =============================================================================
+# SMTP CONFIGURATION (Email Notifications)
+# =============================================================================
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=noreply@universalshipping.com
+SMTP_PASSWORD=your_smtp_password_here
 ```
 
-### For Production:
+## Step 3: Configure in Natively
+
+1. Go to your Natively project
+2. Click on **Environment Variables** tab
+3. Add each variable:
+
+### Public Variables (Safe to expose to frontend)
+
+| Variable | Value | Secret? |
+|----------|-------|---------|
+| `EXPO_PUBLIC_SUPABASE_URL` | `https://lnfsjpuffrcyenuuoxxk.supabase.co` | No |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Your anon key | No |
+| `EXPO_PUBLIC_PAYPAL_CLIENT_ID` | Your PayPal client ID | No |
+| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Your Google Maps API key | No |
+
+### Private Variables (Backend only - mark as Secret)
+
+| Variable | Value | Secret? |
+|----------|-------|---------|
+| `APP_ENV` | `dev` or `production` | No |
+| `ADMIN_EMAILS` | `admin1@example.com,admin2@example.com` | No |
+| `PAYMENT_PROVIDER` | `paypal` | No |
+| `PAYPAL_ENV` | `sandbox` or `live` | No |
+| `SUPABASE_SERVICE_KEY` | Your service role key | **Yes** |
+| `PAYPAL_CLIENT_SECRET` | Your PayPal client secret | **Yes** |
+| `PAYPAL_WEBHOOK_ID` | Your PayPal webhook ID | **Yes** |
+| `SMTP_HOST` | `smtp.gmail.com` | No |
+| `SMTP_PORT` | `587` | No |
+| `SMTP_USERNAME` | Your SMTP username | No |
+| `SMTP_PASSWORD` | Your SMTP password | **Yes** |
+
+## Step 4: Configure Supabase Edge Functions
+
+1. Go to Supabase Dashboard → Project Settings → Edge Functions
+2. Add these variables (all are secrets):
+
+```bash
+SUPABASE_SERVICE_KEY=your_service_role_key_here
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret_here
+PAYPAL_WEBHOOK_ID=your_paypal_webhook_id_here
+PAYPAL_ENV=sandbox
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=noreply@universalshipping.com
+SMTP_PASSWORD=your_smtp_password_here
+APP_ENV=dev
+ADMIN_EMAILS=admin1@example.com,admin2@example.com
 ```
-APP_ENV=production
-PAYPAL_ENV=live
-PAYPAL_CLIENT_ID=<live_client_id>
-PAYPAL_CLIENT_SECRET=<live_client_secret>
-PAYPAL_WEBHOOK_ID=<live_webhook_id>
+
+## Step 5: Verify Configuration
+
+Run the app in development mode and check the ConfigStatus component:
+
+```typescript
+import { ConfigStatus } from '@/components/ConfigStatus';
+
+// Add to your development screen
+<ConfigStatus />
 ```
 
-## ⚠️ Important Notes
+Or manually verify:
 
-1. **Never expose Secret variables** - Mark them as Secret in Natively
-2. **Match environments** - sandbox for dev, live for production
-3. **Use App Password for Gmail** - Not your regular password
-4. **No spaces** - Ensure no extra spaces in variable names or values
-5. **Case-sensitive** - Variable names must match exactly
-6. **Restart required** - Restart app after adding variables
+```typescript
+import appConfig from '@/config/appConfig';
 
-## ✅ Verification
+const { valid, errors, warnings } = appConfig.validateConfig();
+console.log('Valid:', valid);
+console.log('Errors:', errors);
+console.log('Warnings:', warnings);
+```
 
-After setting all variables, verify:
+## Common Issues
 
-1. **Count**: All 15 variables are present
-2. **Types**: Secret variables marked as Secret
-3. **Values**: No typos or extra spaces
-4. **Consistency**: `APP_ENV` matches `PAYPAL_ENV` (dev→sandbox, production→live)
+### Issue: "SUPABASE_URL is not set"
 
-## 🔧 Also Set in Supabase
+**Solution:** Make sure you're using the correct variable name:
+- Frontend: `EXPO_PUBLIC_SUPABASE_URL`
+- Backend: `SUPABASE_URL`
 
-Don't forget to set these in Supabase Dashboard for Edge Functions:
+### Issue: "Admin access denied"
 
-**Supabase Dashboard** → **Project Settings** → **Edge Functions** → **Environment Variables**
+**Solution:** 
+1. Check that `ADMIN_EMAILS` is set
+2. Verify your email is in the list
+3. Make sure there are no spaces in the comma-separated list
+4. Example: `admin1@example.com,admin2@example.com` ✅
+5. Wrong: `admin1@example.com, admin2@example.com` ❌ (space after comma)
 
-Add these SECRET variables:
-- `SUPABASE_SERVICE_KEY`
-- `PAYPAL_CLIENT_SECRET`
-- `PAYPAL_WEBHOOK_ID`
-- `PAYPAL_ENV`
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USERNAME`
-- `SMTP_PASSWORD`
-- `APP_ENV`
-- `ADMIN_EMAILS`
-- `PAYMENT_PROVIDER`
+### Issue: "PayPal authentication failed"
 
-## 📚 Full Documentation
+**Solution:**
+1. Verify `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are correct
+2. Check that `PAYPAL_ENV` matches your credentials (sandbox vs live)
+3. Make sure credentials are from the correct environment in PayPal Dashboard
 
-For detailed setup instructions, see:
-- `docs/NATIVELY_ENVIRONMENT_SETUP.md` - Complete step-by-step guide
+### Issue: "Email not sending"
+
+**Solution:**
+1. Verify all SMTP variables are set
+2. For Gmail, use an App Password (not your regular password)
+3. Enable "Less secure app access" or use OAuth2
+
+## Production Deployment
+
+When deploying to production:
+
+1. **Change environment:**
+   ```bash
+   APP_ENV=production
+   PAYPAL_ENV=live
+   ```
+
+2. **Use live credentials:**
+   - PayPal: Use credentials from "Live" tab in PayPal Dashboard
+   - SMTP: Use production email server
+
+3. **Verify all variables are set:**
+   ```typescript
+   const { valid, errors } = appConfig.validateConfig();
+   if (!valid) {
+     console.error('Configuration errors:', errors);
+   }
+   ```
+
+4. **Test thoroughly:**
+   - Test admin access
+   - Test payment flow
+   - Test email sending
+   - Verify all features work
+
+## Security Reminders
+
+- ✅ Never commit `.env` to version control
+- ✅ Use different credentials for dev and production
+- ✅ Rotate credentials every 3-6 months
+- ✅ Mark sensitive variables as "Secret" in Natively
+- ✅ Use sandbox credentials for development
+- ✅ Restrict API keys to specific domains/apps
+- ✅ Monitor API usage and set up billing alerts
+
+## Need Help?
+
+See the full documentation:
+- `docs/ENVIRONMENT_VARIABLES_IMPLEMENTATION.md` - Complete implementation details
 - `docs/ENVIRONMENT_VARIABLES_REFERENCE.md` - Full variable reference
 - `docs/PAYPAL_CONFIGURATION.md` - PayPal-specific setup
-
----
-
-**Last Updated:** January 2025  
-**Quick Reference Version:** 1.0.0
+- `.env.example` - Template with all variables
