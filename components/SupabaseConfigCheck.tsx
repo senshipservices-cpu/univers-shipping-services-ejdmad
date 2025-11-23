@@ -54,18 +54,6 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         </View>
       )}
 
-      {/* Hot Reload Warning */}
-      <View style={[styles.section, styles.hotReloadWarning]}>
-        <Text style={styles.hotReloadTitle}>🔥 Problème de Hot Reload</Text>
-        <Text style={styles.hotReloadText}>
-          L&apos;écran d&apos;erreur que vous voyez apparaît souvent lors du <Text style={styles.bold}>hot reload</Text> (rechargement automatique).
-          {'\n\n'}
-          Cela ne signifie PAS que vos variables ne sont pas configurées !
-          {'\n\n'}
-          <Text style={styles.bold}>Solution :</Text> Après avoir sauvegardé les variables, vous DEVEZ faire un <Text style={styles.bold}>redémarrage complet</Text> de l&apos;application.
-        </Text>
-      </View>
-
       {/* Important Note */}
       <View style={[styles.section, styles.importantNote]}>
         <Text style={styles.importantTitle}>📌 Important - Lisez Attentivement</Text>
@@ -126,16 +114,12 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <View style={styles.step}>
           <Text style={styles.stepNumber}>4.</Text>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>⚠️ IMPORTANT : Redémarrage Complet</Text>
-            <Text style={[styles.stepText, styles.criticalText]}>
+            <Text style={styles.stepTitle}>Redémarrez COMPLÈTEMENT l&apos;application</Text>
+            <Text style={styles.stepText}>
               Après avoir ajouté les variables :{'\n'}
-              {'\n'}
-              1. Cliquez sur <Text style={styles.bold}>STOP</Text> (arrêter l&apos;application){'\n'}
-              2. Attendez <Text style={styles.bold}>10 secondes complètes</Text>{'\n'}
-              3. Cliquez sur <Text style={styles.bold}>START</Text> (redémarrer){'\n'}
-              {'\n'}
-              ⚠️ Ne cliquez PAS sur &quot;Save&quot; pendant que l&apos;app tourne !{'\n'}
-              ⚠️ Le hot reload ne suffit PAS - il faut un redémarrage complet !
+              • Arrêtez l&apos;application (Stop){'\n'}
+              • Attendez 5 secondes{'\n'}
+              • Redémarrez (Start)
             </Text>
           </View>
         </View>
@@ -202,27 +186,13 @@ export default function SupabaseConfigCheck({ children }: { children: React.Reac
         <Text style={styles.sectionTitle}>🔧 Dépannage</Text>
         
         <View style={styles.troubleshootItem}>
-          <Text style={styles.troubleshootTitle}>❓ L&apos;écran d&apos;erreur apparaît quand je clique sur Save</Text>
-          <Text style={styles.troubleshootText}>
-            C&apos;est NORMAL ! C&apos;est le hot reload qui cause ce problème.{'\n'}
-            {'\n'}
-            <Text style={styles.bold}>Solution :</Text>{'\n'}
-            • N&apos;essayez PAS de sauvegarder pendant que l&apos;app tourne{'\n'}
-            • Arrêtez l&apos;app AVANT de sauvegarder les variables{'\n'}
-            • Sauvegardez les variables{'\n'}
-            • Attendez 10 secondes{'\n'}
-            • Redémarrez l&apos;app
-          </Text>
-        </View>
-
-        <View style={styles.troubleshootItem}>
           <Text style={styles.troubleshootTitle}>❓ J&apos;ai ajouté les variables mais ça ne marche pas</Text>
           <Text style={styles.troubleshootText}>
             • Vérifiez que vous avez bien utilisé les noms EXACTS :{'\n'}
             {' '} EXPO_PUBLIC_SUPABASE_URL{'\n'}
             {' '} EXPO_PUBLIC_SUPABASE_ANON_KEY{'\n'}
-            • Faites un redémarrage COMPLET (pas juste un reload){'\n'}
-            • Attendez 10 secondes entre Stop et Start{'\n'}
+            • Redémarrez COMPLÈTEMENT l&apos;application{'\n'}
+            • Attendez 10 secondes avant de redémarrer{'\n'}
             • Vérifiez qu&apos;il n&apos;y a pas d&apos;espaces avant/après les valeurs
           </Text>
         </View>
@@ -335,22 +305,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  hotReloadWarning: {
-    backgroundColor: '#fee2e2',
-    borderLeftWidth: 4,
-    borderLeftColor: '#dc2626',
-  },
-  hotReloadTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#991b1b',
-    marginBottom: 8,
-  },
-  hotReloadText: {
-    fontSize: 14,
-    color: '#991b1b',
-    lineHeight: 22,
-  },
   importantNote: {
     backgroundColor: '#fef3c7',
     borderLeftWidth: 4,
@@ -394,15 +348,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-  },
-  criticalText: {
-    backgroundColor: '#fef3c7',
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#f59e0b',
-    color: '#92400e',
-    fontWeight: '500',
   },
   codeBlock: {
     backgroundColor: '#f3f4f6',

@@ -2,12 +2,20 @@
 /**
  * Application Configuration
  * Centralized configuration for environment-specific settings
+ * 
+ * This module provides:
+ * - Environment detection (dev/staging vs production)
+ * - Conditional logging based on environment
+ * - Access to environment variables
+ * - Feature flags based on environment
+ * - Payment provider configuration (Stripe/PayPal)
  */
 
 import Constants from 'expo-constants';
 
 /**
  * Check if a value is a valid environment variable value
+ * Returns false for empty strings, undefined, null, or placeholder values
  */
 function isValidValue(value: any): boolean {
   if (!value) return false;
@@ -20,121 +28,125 @@ function isValidValue(value: any): boolean {
 
 /**
  * Get environment variable with fallback
- * Tries multiple sources in order of priority
+ * Tries multiple sources in order of priority:
+ * 1. Constants.expoConfig.extra (for native apps via app.json)
+ * 2. process.env (for web and Node.js environments)
+ * 3. Fallback value
  */
 function getEnvVar(key: string, fallback: string = ''): string {
-  try {
-    // Try Constants.expoConfig.extra first (for Natively environment variables)
-    if (Constants.expoConfig?.extra) {
-      const exactValue = Constants.expoConfig.extra[key];
-      if (isValidValue(exactValue)) {
-        return String(exactValue);
-      }
-      
-      // Try camelCase version
-      const camelKey = key
-        .replace('EXPO_PUBLIC_', '')
-        .toLowerCase()
-        .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      
-      const camelValue = Constants.expoConfig.extra[camelKey];
-      if (isValidValue(camelValue)) {
-        return String(camelValue);
-      }
+  // Try Constants.expoConfig.extra first (for native apps)
+  // This is the primary source for React Native/Expo apps
+  if (Constants.expoConfig?.extra) {
+    // Try the exact key first
+    const exactValue = Constants.expoConfig.extra[key];
+    if (isValidValue(exactValue)) {
+      return String(exactValue);
     }
     
-    // Try process.env (for local development)
-    if (typeof process !== 'undefined' && process.env) {
-      let envValue: string | undefined;
-      
-      switch (key) {
-        case 'APP_ENV':
-          envValue = process.env.APP_ENV;
-          break;
-        case 'EXPO_PUBLIC_SUPABASE_URL':
-          envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
-          break;
-        case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
-          envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-          break;
-        case 'SUPABASE_SERVICE_KEY':
-          envValue = process.env.SUPABASE_SERVICE_KEY;
-          break;
-        case 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY':
-          envValue = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-          break;
-        case 'STRIPE_SECRET_KEY':
-          envValue = process.env.STRIPE_SECRET_KEY;
-          break;
-        case 'STRIPE_WEBHOOK_SECRET':
-          envValue = process.env.STRIPE_WEBHOOK_SECRET;
-          break;
-        case 'EXPO_PUBLIC_PAYPAL_CLIENT_ID':
-          envValue = process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID;
-          break;
-        case 'PAYPAL_CLIENT_SECRET':
-          envValue = process.env.PAYPAL_CLIENT_SECRET;
-          break;
-        case 'PAYPAL_WEBHOOK_ID':
-          envValue = process.env.PAYPAL_WEBHOOK_ID;
-          break;
-        case 'PAYPAL_ENV':
-          envValue = process.env.PAYPAL_ENV;
-          break;
-        case 'PAYMENT_PROVIDER':
-          envValue = process.env.PAYMENT_PROVIDER;
-          break;
-        case 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY':
-          envValue = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-          break;
-        case 'SMTP_HOST':
-          envValue = process.env.SMTP_HOST;
-          break;
-        case 'SMTP_PORT':
-          envValue = process.env.SMTP_PORT;
-          break;
-        case 'SMTP_USERNAME':
-          envValue = process.env.SMTP_USERNAME;
-          break;
-        case 'SMTP_PASSWORD':
-          envValue = process.env.SMTP_PASSWORD;
-          break;
-        case 'ADMIN_EMAILS':
-          envValue = process.env.ADMIN_EMAILS;
-          break;
-        case 'supabaseUrl':
-          envValue = process.env.supabaseUrl;
-          break;
-        case 'supabaseAnonKey':
-          envValue = process.env.supabaseAnonKey;
-          break;
-        case 'stripePublishableKey':
-          envValue = process.env.stripePublishableKey;
-          break;
-        case 'paypalClientId':
-          envValue = process.env.paypalClientId;
-          break;
-        case 'paypalEnv':
-          envValue = process.env.paypalEnv;
-          break;
-        case 'paymentProvider':
-          envValue = process.env.paymentProvider;
-          break;
-        case 'googleMapsApiKey':
-          envValue = process.env.googleMapsApiKey;
-          break;
-        default:
-          envValue = undefined;
-      }
-      
-      if (isValidValue(envValue)) {
-        return String(envValue);
-      }
+    // Try camelCase version (e.g., EXPO_PUBLIC_SUPABASE_URL -> supabaseUrl)
+    const camelKey = key
+      .replace('EXPO_PUBLIC_', '')
+      .toLowerCase()
+      .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    
+    const camelValue = Constants.expoConfig.extra[camelKey];
+    if (isValidValue(camelValue)) {
+      return String(camelValue);
     }
-  } catch (error) {
-    console.error(`Error getting environment variable ${key}:`, error);
   }
   
+  // Try process.env (for web and development)
+  // Using explicit checks instead of dynamic access to satisfy ESLint
+  if (typeof process !== 'undefined' && process.env) {
+    let envValue: string | undefined;
+    
+    // Explicitly check for each known environment variable
+    switch (key) {
+      case 'APP_ENV':
+        envValue = process.env.APP_ENV;
+        break;
+      case 'EXPO_PUBLIC_SUPABASE_URL':
+        envValue = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        break;
+      case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
+        envValue = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        break;
+      case 'SUPABASE_SERVICE_KEY':
+        envValue = process.env.SUPABASE_SERVICE_KEY;
+        break;
+      case 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY':
+        envValue = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+        break;
+      case 'STRIPE_SECRET_KEY':
+        envValue = process.env.STRIPE_SECRET_KEY;
+        break;
+      case 'STRIPE_WEBHOOK_SECRET':
+        envValue = process.env.STRIPE_WEBHOOK_SECRET;
+        break;
+      case 'EXPO_PUBLIC_PAYPAL_CLIENT_ID':
+        envValue = process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID;
+        break;
+      case 'PAYPAL_CLIENT_SECRET':
+        envValue = process.env.PAYPAL_CLIENT_SECRET;
+        break;
+      case 'PAYPAL_WEBHOOK_ID':
+        envValue = process.env.PAYPAL_WEBHOOK_ID;
+        break;
+      case 'PAYPAL_ENV':
+        envValue = process.env.PAYPAL_ENV;
+        break;
+      case 'PAYMENT_PROVIDER':
+        envValue = process.env.PAYMENT_PROVIDER;
+        break;
+      case 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY':
+        envValue = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+        break;
+      case 'SMTP_HOST':
+        envValue = process.env.SMTP_HOST;
+        break;
+      case 'SMTP_PORT':
+        envValue = process.env.SMTP_PORT;
+        break;
+      case 'SMTP_USERNAME':
+        envValue = process.env.SMTP_USERNAME;
+        break;
+      case 'SMTP_PASSWORD':
+        envValue = process.env.SMTP_PASSWORD;
+        break;
+      case 'ADMIN_EMAILS':
+        envValue = process.env.ADMIN_EMAILS;
+        break;
+      case 'supabaseUrl':
+        envValue = process.env.supabaseUrl;
+        break;
+      case 'supabaseAnonKey':
+        envValue = process.env.supabaseAnonKey;
+        break;
+      case 'stripePublishableKey':
+        envValue = process.env.stripePublishableKey;
+        break;
+      case 'paypalClientId':
+        envValue = process.env.paypalClientId;
+        break;
+      case 'paypalEnv':
+        envValue = process.env.paypalEnv;
+        break;
+      case 'paymentProvider':
+        envValue = process.env.paymentProvider;
+        break;
+      case 'googleMapsApiKey':
+        envValue = process.env.googleMapsApiKey;
+        break;
+      default:
+        envValue = undefined;
+    }
+    
+    if (isValidValue(envValue)) {
+      return String(envValue);
+    }
+  }
+  
+  // Return fallback
   return fallback;
 }
 
@@ -147,8 +159,10 @@ const isDev = !isProduction;
 
 /**
  * Environment Variables
+ * All sensitive keys should be accessed through this configuration
  */
 export const env = {
+  // App Environment
   APP_ENV,
   
   // Supabase Configuration
@@ -156,7 +170,7 @@ export const env = {
   SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', getEnvVar('supabaseAnonKey', '')),
   SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
   
-  // Stripe Configuration
+  // Stripe Configuration (Legacy - kept for backward compatibility)
   STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', getEnvVar('stripePublishableKey', '')),
   STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
   STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
@@ -185,6 +199,7 @@ export const env = {
 
 /**
  * Conditional Logger
+ * Only logs in development mode, suppresses logs in production
  */
 export const logger = {
   log: (...args: any[]) => {
@@ -200,10 +215,12 @@ export const logger = {
   },
   
   warn: (...args: any[]) => {
+    // Always log warnings, even in production
     console.warn('[WARN]', ...args);
   },
   
   error: (...args: any[]) => {
+    // Always log errors, even in production
     console.error('[ERROR]', ...args);
   },
   
@@ -213,10 +230,12 @@ export const logger = {
     }
   },
   
+  // Essential logs that should appear in production (e.g., critical errors)
   essential: (...args: any[]) => {
     console.log('[ESSENTIAL]', ...args);
   },
   
+  // Payment-specific logging (never log sensitive data in production)
   payment: (...args: any[]) => {
     if (isDev) {
       console.log('[PAYMENT]', ...args);
@@ -238,10 +257,13 @@ logger.info('===========================');
 
 /**
  * Payment Configuration
+ * Centralized payment provider settings
  */
 export const payment = {
+  // Active payment provider
   provider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
   
+  // PayPal configuration
   paypal: {
     clientId: env.PAYPAL_CLIENT_ID,
     environment: env.PAYPAL_ENV as 'sandbox' | 'live',
@@ -252,12 +274,14 @@ export const payment = {
       : 'https://api-m.paypal.com',
   },
   
+  // Stripe configuration (legacy)
   stripe: {
     publishableKey: env.STRIPE_PUBLIC_KEY,
     isTestMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_test_'),
     isLiveMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_live_'),
   },
   
+  // Helper to check if payment provider is configured
   isConfigured: () => {
     if (env.PAYMENT_PROVIDER === 'paypal') {
       return !!env.PAYPAL_CLIENT_ID;
@@ -270,6 +294,7 @@ export const payment = {
 
 /**
  * SMTP Configuration
+ * Email sending configuration
  */
 export const smtp = {
   host: env.SMTP_HOST,
@@ -277,6 +302,7 @@ export const smtp = {
   username: env.SMTP_USERNAME,
   password: env.SMTP_PASSWORD,
   
+  // Helper to check if SMTP is configured
   isConfigured: () => {
     return !!(env.SMTP_HOST && env.SMTP_USERNAME && env.SMTP_PASSWORD);
   },
@@ -284,10 +310,12 @@ export const smtp = {
 
 /**
  * Admin Configuration
+ * Admin access control
  */
 export const admin = {
   emails: env.ADMIN_EMAILS,
   
+  // Check if an email is an admin email
   isAdminEmail: (email: string): boolean => {
     if (!email) return false;
     const normalizedEmail = email.toLowerCase().trim();
@@ -299,34 +327,49 @@ export const admin = {
 
 /**
  * Feature Flags
+ * Enable/disable features based on environment
  */
 export const features = {
+  // Payment features
   enableStripePayments: env.PAYMENT_PROVIDER === 'stripe' && !!env.STRIPE_PUBLIC_KEY,
   enablePayPalPayments: env.PAYMENT_PROVIDER === 'paypal' && !!env.PAYPAL_CLIENT_ID,
   enableTestMode: isDev,
+  
+  // Logging and debugging
   enableVerboseLogging: isDev,
   enableErrorReporting: isProduction,
+  
+  // API features
   enableRateLimiting: isProduction,
   enableCaching: isProduction,
+  
+  // UI features
   showDebugInfo: isDev,
   enableBetaFeatures: isDev,
 };
 
 /**
  * API Configuration
+ * Backend URLs and endpoints based on environment
  */
 export const api = {
+  // Supabase
   supabaseUrl: env.SUPABASE_URL,
   supabaseAnonKey: env.SUPABASE_ANON_KEY,
+  
+  // Payment providers
   paypalClientId: env.PAYPAL_CLIENT_ID,
   paypalApiUrl: payment.paypal.apiUrl,
   stripePublicKey: env.STRIPE_PUBLIC_KEY,
-  defaultTimeout: isProduction ? 30000 : 60000,
-  uploadTimeout: isProduction ? 120000 : 300000,
+  
+  // Timeouts
+  defaultTimeout: isProduction ? 30000 : 60000, // 30s prod, 60s dev
+  uploadTimeout: isProduction ? 120000 : 300000, // 2min prod, 5min dev
 };
 
 /**
  * Validation
+ * Check if required environment variables are set
  */
 export const validateConfig = (): { valid: boolean; errors: string[]; warnings: string[] } => {
   const errors: string[] = [];
@@ -361,6 +404,7 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
       warnings.push('PAYPAL_WEBHOOK_ID is not set - webhook verification will be limited');
     }
     
+    // Environment consistency check
     if (isProduction && env.PAYPAL_ENV === 'sandbox') {
       warnings.push('Using PayPal SANDBOX in production environment - this should be changed to "live"');
     }
@@ -391,14 +435,17 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
     }
   }
   
+  // Google Maps validation
   if (!env.GOOGLE_MAPS_API_KEY && isDev) {
     warnings.push('GOOGLE_MAPS_API_KEY is not set - map features will be limited');
   }
   
+  // SMTP validation
   if (!smtp.isConfigured() && isProduction) {
     warnings.push('SMTP configuration is not complete - email features will not work');
   }
   
+  // Admin emails validation
   if (env.ADMIN_EMAILS.length === 0) {
     warnings.push('ADMIN_EMAILS is not set - no admin access will be available');
   }
@@ -414,19 +461,38 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
  * Main Configuration Export
  */
 const appConfig = {
+  // Environment
   appEnv: APP_ENV,
   isProduction,
   isDev,
+  
+  // Payment provider
   paymentProvider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
   paypalEnv: env.PAYPAL_ENV as 'sandbox' | 'live',
+  
+  // Environment variables
   env,
+  
+  // Payment configuration
   payment,
+  
+  // SMTP configuration
   smtp,
+  
+  // Admin configuration
   admin,
-  adminEmails: env.ADMIN_EMAILS,
+  adminEmails: env.ADMIN_EMAILS, // Alias for backward compatibility
+  
+  // Logger
   logger,
+  
+  // Features
   features,
+  
+  // API configuration
   api,
+  
+  // Validation
   validateConfig,
 };
 
