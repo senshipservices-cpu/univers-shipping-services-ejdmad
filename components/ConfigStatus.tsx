@@ -1,98 +1,292 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { isSupabaseConfigured } from '@/app/integrations/supabase/client';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { IconSymbol } from './IconSymbol';
+import appConfig from '@/config/appConfig';
+import { getConfigStatus, VerificationResult } from '@/config/configVerification';
+import { colors } from '@/styles/commonStyles';
 
-/**
- * ConfigStatus Component
- * 
- * Shows a dismissible banner at the top of the app when Supabase is not configured.
- * This provides a non-intrusive way to inform users about configuration issues.
- */
-export default function ConfigStatus() {
-  const [dismissed, setDismissed] = React.useState(false);
+interface ConfigStatusProps {
+  onClose?: () => void;
+}
 
-  // Don't show if configured or dismissed
-  if (isSupabaseConfigured || dismissed) {
-    return null;
+export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
+  const theme = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<{
+    overall: 'healthy' | 'degraded' | 'critical';
+    results: VerificationResult[];
+  } | null>(null);
+
+  useEffect(() => {
+    checkConfig();
+  }, []);
+
+  const checkConfig = async () => {
+    setLoading(true);
+    try {
+      const configStatus = await getConfigStatus();
+      setStatus(configStatus);
+    } catch (error) {
+      appConfig.logger.error('Failed to check config status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: 'success' | 'warning' | 'error'): string => {
+    switch (status) {
+      case 'success':
+        return colors.success;
+      case 'warning':
+        return '#f59e0b';
+      case 'error':
+        return colors.error;
+    }
+  };
+
+  const getStatusIcon = (status: 'success' | 'warning' | 'error'): { ios: string; android: string } => {
+    switch (status) {
+      case 'success':
+        return { ios: 'checkmark.circle.fill', android: 'check_circle' };
+      case 'warning':
+        return { ios: 'exclamationmark.triangle.fill', android: 'warning' };
+      case 'error':
+        return { ios: 'xmark.circle.fill', android: 'error' };
+    }
+  };
+
+  const getOverallStatusColor = (): string => {
+    if (!status) return colors.textSecondary;
+    switch (status.overall) {
+      case 'healthy':
+        return colors.success;
+      case 'degraded':
+        return '#f59e0b';
+      case 'critical':
+        return colors.error;
+    }
+  };
+
+  if (!appConfig.isDev) {
+    return null; // Only show in development mode
   }
 
   return (
-    <View style={styles.banner}>
-      <View style={styles.content}>
-        <Text style={styles.icon}>⚙️</Text>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>Configuration Requise</Text>
-          <Text style={styles.message}>
-            Ajoutez les variables d&apos;environnement dans Natively Settings
+    <View style={[styles.container, { backgroundColor: theme.colors.card }]}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <IconSymbol
+            ios_icon_name="gear"
+            android_material_icon_name="settings"
+            size={24}
+            color={theme.colors.text}
+          />
+          <Text style={[styles.title, { color: theme.colors.text }]}>
+            Configuration Status
           </Text>
-          <TouchableOpacity 
-            style={styles.helpButton}
-            onPress={() => Linking.openURL('https://docs.supabase.com/guides/getting-started')}
-          >
-            <Text style={styles.helpButtonText}>📚 Guide de Configuration</Text>
-          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.dismissButton}
-          onPress={() => setDismissed(true)}
-        >
-          <Text style={styles.dismissText}>✕</Text>
-        </TouchableOpacity>
+        {onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <IconSymbol
+              ios_icon_name="xmark"
+              android_material_icon_name="close"
+              size={20}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        )}
       </View>
+
+      <View style={styles.envInfo}>
+        <Text style={[styles.envLabel, { color: colors.textSecondary }]}>
+          Environment:
+        </Text>
+        <View style={[styles.envBadge, { backgroundColor: appConfig.isProduction ? colors.error : colors.primary }]}>
+          <Text style={styles.envText}>
+            {appConfig.appEnv.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Checking configuration...
+          </Text>
+        </View>
+      ) : status ? (
+        <>
+          <View style={[styles.overallStatus, { backgroundColor: getOverallStatusColor() + '15' }]}>
+            <Text style={[styles.overallStatusText, { color: getOverallStatusColor() }]}>
+              Overall Status: {status.overall.toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.resultsList}>
+            {status.results.map((result, index) => {
+              const statusColor = getStatusColor(result.status);
+              const statusIcon = getStatusIcon(result.status);
+
+              return (
+                <View key={index} style={[styles.resultItem, { borderLeftColor: statusColor }]}>
+                  <View style={styles.resultHeader}>
+                    <IconSymbol
+                      ios_icon_name={statusIcon.ios}
+                      android_material_icon_name={statusIcon.android}
+                      size={20}
+                      color={statusColor}
+                    />
+                    <Text style={[styles.resultService, { color: theme.colors.text }]}>
+                      {result.service}
+                    </Text>
+                  </View>
+                  <Text style={[styles.resultMessage, { color: colors.textSecondary }]}>
+                    {result.message}
+                  </Text>
+                  {result.details && appConfig.isDev && (
+                    <View style={styles.resultDetails}>
+                      <Text style={[styles.detailsText, { color: colors.textSecondary }]}>
+                        {JSON.stringify(result.details, null, 2)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.refreshButton, { backgroundColor: colors.primary }]}
+            onPress={checkConfig}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.clockwise"
+              android_material_icon_name="refresh"
+              size={18}
+              color="#ffffff"
+            />
+            <Text style={styles.refreshButtonText}>Refresh</Text>
+          </TouchableOpacity>
+        </>
+      ) : null}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: '#fef3c7',
-    borderBottomWidth: 2,
-    borderBottomColor: '#f59e0b',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  container: {
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    elevation: 3,
   },
-  content: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  icon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  textContainer: {
-    flex: 1,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  envInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  envLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#92400e',
-    marginBottom: 2,
-  },
-  message: {
-    fontSize: 12,
-    color: '#92400e',
-    marginBottom: 6,
-  },
-  helpButton: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  helpButtonText: {
-    color: '#fff',
-    fontSize: 11,
     fontWeight: '600',
   },
-  dismissButton: {
-    padding: 8,
-    marginLeft: 8,
+  envBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  dismissText: {
-    fontSize: 20,
-    color: '#92400e',
-    fontWeight: 'bold',
+  envText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  overallStatus: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  overallStatusText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  resultsList: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  resultItem: {
+    padding: 12,
+    borderLeftWidth: 4,
+    backgroundColor: colors.background + '50',
+    borderRadius: 8,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  resultService: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  resultMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  resultDetails: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: colors.background,
+    borderRadius: 4,
+  },
+  detailsText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

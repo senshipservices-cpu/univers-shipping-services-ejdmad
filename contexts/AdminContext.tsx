@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import appConfig from '@/config/appConfig';
 
 interface AdminContextType {
   adminEmails: string[];
@@ -10,26 +9,22 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
+// Global admin emails list - Must match across all admin-related components
+const ADMIN_EMAILS = [
+  'cheikh@uss.com',
+  'admin@uss.com',
+  'admin@3sglobal.com',
+  'admin_email@gmail.com',
+];
+
 export function AdminProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
-  // Get admin emails from appConfig (environment variables)
-  const adminEmails = appConfig.admin.emails;
-
-  // Check if current user is admin using appConfig helper
-  const isAdmin = user?.email ? appConfig.admin.isAdminEmail(user.email) : false;
-
-  // Log admin status in development
-  if (appConfig.isDev && user?.email) {
-    appConfig.logger.debug('Admin check:', {
-      userEmail: user.email,
-      isAdmin,
-      configuredAdminEmails: adminEmails,
-    });
-  }
+  // Check if current user is admin
+  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
 
   const value: AdminContextType = {
-    adminEmails,
+    adminEmails: ADMIN_EMAILS,
     isAdmin,
   };
 
