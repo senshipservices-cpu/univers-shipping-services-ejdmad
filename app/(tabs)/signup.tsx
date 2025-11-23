@@ -98,6 +98,7 @@ export default function SignupScreen() {
       );
       
       console.log('Signup result:', error ? 'Error' : 'Success');
+      console.log('Signup error details:', error);
 
       if (error) {
         console.error('Signup error:', error);
@@ -111,7 +112,10 @@ export default function SignupScreen() {
             errorMessage = 'Le mot de passe doit contenir au moins 6 caractères';
           } else if (error.message.includes('Invalid email')) {
             errorMessage = 'Adresse email invalide';
+          } else if (error.message.includes('Database error')) {
+            errorMessage = 'Erreur de base de données. Veuillez réessayer dans quelques instants.';
           } else {
+            // Show the actual error message from Supabase
             errorMessage = error.message;
           }
         }
@@ -130,10 +134,12 @@ export default function SignupScreen() {
           ]
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup exception:', error);
-      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+      const errorMessage = error?.message || 'Une erreur inattendue est survenue';
+      Alert.alert('Erreur', errorMessage);
     } finally {
+      console.log('Signup process completed, setting loading to false');
       setLoading(false);
     }
   };
