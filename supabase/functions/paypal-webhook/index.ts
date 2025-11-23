@@ -1,5 +1,6 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @deno-types="npm:@supabase/supabase-js@2"
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
     // Create Supabase admin client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SERVICE_ROLE_KEY') ?? ''
     );
 
     // Verify webhook signature if webhook ID is configured

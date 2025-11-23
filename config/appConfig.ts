@@ -52,11 +52,13 @@ export const env = {
   APP_ENV,
   
   // Supabase Configuration
+  // Note: Using EXPO_PUBLIC_ prefix for frontend-accessible variables
   SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', 'https://lnfsjpuffrcyenuuoxxk.supabase.co'),
   
   SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZnNqcHVmZnJjeWVudXVveHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MTMxNzMsImV4cCI6MjA3ODk4OTE3M30.Q-NG1rOvLUhf5j38qZB19o_ZM5CunvgjPWe85NMbmNU'),
   
-  SUPABASE_SERVICE_KEY: getEnvVar('SUPABASE_SERVICE_KEY', ''),
+  // Service key is backend-only (no EXPO_PUBLIC prefix)
+  SUPABASE_SERVICE_KEY: getEnvVar('SERVICE_ROLE_KEY', ''),
   
   // Stripe Configuration (Legacy - kept for backward compatibility)
   STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
@@ -222,13 +224,13 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   
   // Required variables
   if (!env.SUPABASE_URL || env.SUPABASE_URL === '') {
-    errors.push('SUPABASE_URL is not set');
+    errors.push('EXPO_PUBLIC_SUPABASE_URL is not set');
   } else if (!env.SUPABASE_URL.startsWith('http://') && !env.SUPABASE_URL.startsWith('https://')) {
-    errors.push('SUPABASE_URL must be a valid HTTP or HTTPS URL');
+    errors.push('EXPO_PUBLIC_SUPABASE_URL must be a valid HTTP or HTTPS URL');
   }
   
   if (!env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY === '') {
-    errors.push('SUPABASE_ANON_KEY is not set');
+    errors.push('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set');
   }
   
   // Payment provider validation
@@ -238,7 +240,7 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   
   if (env.PAYMENT_PROVIDER === 'paypal') {
     if (!env.PAYPAL_CLIENT_ID) {
-      errors.push('PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
+      errors.push('EXPO_PUBLIC_PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
     }
     
     if (!env.PAYPAL_CLIENT_SECRET && isProduction) {
@@ -259,7 +261,7 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
     }
   } else if (env.PAYMENT_PROVIDER === 'stripe') {
     if (!env.STRIPE_PUBLIC_KEY) {
-      warnings.push('STRIPE_PUBLIC_KEY is not set but Stripe is the active payment provider');
+      warnings.push('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set but Stripe is the active payment provider');
     }
     
     if (env.STRIPE_PUBLIC_KEY) {
@@ -282,7 +284,7 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   
   // Google Maps validation
   if (!env.GOOGLE_MAPS_API_KEY && isDev) {
-    warnings.push('GOOGLE_MAPS_API_KEY is not set - map features will be limited');
+    warnings.push('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set - map features will be limited');
   }
   
   // SMTP validation
