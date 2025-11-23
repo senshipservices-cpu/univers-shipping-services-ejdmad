@@ -9,8 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
 import { logEvent } from "@/utils/eventLogger";
-import { FAQSection, FAQItem } from "@/components/FAQSection";
-import { HowItWorksSection, HowItWorksStep } from "@/components/HowItWorksSection";
+import { FAQSection } from "@/components/FAQSection";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 
 interface Port {
@@ -35,17 +35,16 @@ export default function FreightQuoteScreen() {
   const [showOriginPortPicker, setShowOriginPortPicker] = useState(false);
   const [showDestinationPortPicker, setShowDestinationPortPicker] = useState(false);
   const [portSearchQuery, setPortSearchQuery] = useState("");
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
   const [formData, setFormData] = useState({
-    clientName: client?.contact_name || "",
-    clientEmail: user?.email || "",
+    clientName: "",
+    clientEmail: "",
     originPort: null as Port | null,
     destinationPort: null as Port | null,
     cargoType: "",
-    volumeDetails: "",
-    incoterm: "",
-    desiredEta: "",
-    additionalNotes: "",
+    cargoVolume: "",
+    details: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -98,11 +97,12 @@ export default function FreightQuoteScreen() {
   }, [serviceId, fetchServiceName, loadPorts]);
 
   useEffect(() => {
-    if (client) {
+    // Pre-fill client information if user is logged in
+    if (user && client) {
       setFormData(prev => ({
         ...prev,
         clientName: client.contact_name || "",
-        clientEmail: user?.email || "",
+        clientEmail: user.email || "",
       }));
     }
   }, [client, user]);
@@ -135,6 +135,13 @@ export default function FreightQuoteScreen() {
       return;
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.clientEmail)) {
+      Alert.alert(t.common.error || "Erreur", "Veuillez entrer un email valide");
+      return;
+    }
+
     if (!formData.originPort) {
       Alert.alert(t.common.error || "Erreur", "Veuillez sélectionner un port d'origine");
       return;
@@ -153,6 +160,7 @@ export default function FreightQuoteScreen() {
     setIsSubmitting(true);
 
     try {
+      // Prepare quote data
       const quoteData: any = {
         client: client?.id || null,
         client_name: formData.clientName,
@@ -160,18 +168,25 @@ export default function FreightQuoteScreen() {
         origin_port: formData.originPort.id,
         destination_port: formData.destinationPort.id,
         cargo_type: formData.cargoType,
-        volume_details: formData.volumeDetails || null,
-        incoterm: formData.incoterm || null,
-        desired_eta: formData.desiredEta || null,
+        volume_details: formData.cargoVolume || null,
         status: 'received',
         service_id: serviceId || null,
+        created_at: new Date().toISOString(),
       };
 
-      // Add service reference in notes if service_id is provided
+      // Add service reference in details if service_id is provided
       if (serviceId && serviceName) {
-        quoteData.volume_details = `Service: ${serviceName}\n${formData.volumeDetails || ''}`;
+        const detailsText = `Service: ${serviceName}${formData.details ? '\n' + formData.details : ''}`;
+        quoteData.volume_details = formData.cargoVolume 
+          ? `${formData.cargoVolume}\n\n${detailsText}`
+          : detailsText;
+      } else if (formData.details) {
+        quoteData.volume_details = formData.cargoVolume 
+          ? `${formData.cargoVolume}\n\n${formData.details}`
+          : formData.details;
       }
 
+      // Create the freight quote
       const { data, error } = await supabase
         .from('freight_quotes')
         .insert([quoteData])
@@ -200,16 +215,53 @@ export default function FreightQuoteScreen() {
         details: `Quote created for ${formData.cargoType}`,
       });
 
-      Alert.alert(
-        "Demande envoyée !",
-        t.feedbackMessages.quoteSubmitted,
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      // Send emails via Edge Function
+      try {
+        const emailPayload = {
+          quoteId: data.id,
+          clientName: formData.clientName,
+          clientEmail: formData.clientEmail,
+          serviceName: serviceName || undefined,
+          originPort: `${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}`,
+          destinationPort: `${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}`,
+          cargoType: formData.cargoType,
+          cargoVolume: formData.cargoVolume || undefined,
+          details: formData.details || undefined,
+        };
+
+        const { data: emailData, error: emailError } = await supabase.functions.invoke(
+          'send-freight-quote-emails',
+          { body: emailPayload }
+        );
+
+        if (emailError) {
+          console.error('Error sending emails:', emailError);
+          // Don't fail the quote creation if emails fail
+        } else {
+          console.log('Emails sent successfully:', emailData);
+        }
+      } catch (emailException) {
+        console.error('Exception sending emails:', emailException);
+        // Don't fail the quote creation if emails fail
+      }
+
+      // Handle redirection based on authentication status
+      if (user && client) {
+        // User is logged in - redirect to client dashboard
+        Alert.alert(
+          "Demande envoyée !",
+          t.feedbackMessages.quoteSubmitted,
+          [
+            {
+              text: "OK",
+              onPress: () => router.push('/(tabs)/client-dashboard'),
+            },
+          ]
+        );
+      } else {
+        // User is not logged in - show success message on the same page
+        setShowSuccessMessage(true);
+      }
     } catch (error) {
       console.error('Exception submitting quote:', error);
       Alert.alert(
@@ -226,6 +278,103 @@ export default function FreightQuoteScreen() {
       .toLowerCase()
       .includes(portSearchQuery.toLowerCase())
   );
+
+  // Success message component for non-logged-in users
+  if (showSuccessMessage) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <IconSymbol
+              ios_icon_name="chevron.left"
+              android_material_icon_name="chevron_left"
+              size={28}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Demande de devis
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.successContainer}>
+            <View style={[styles.successIconContainer, { backgroundColor: colors.success + '20' }]}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check_circle"
+                size={80}
+                color={colors.success}
+              />
+            </View>
+            <Text style={[styles.successTitle, { color: theme.colors.text }]}>
+              Merci, votre demande de devis a été envoyée !
+            </Text>
+            <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+              Vous recevrez une réponse par email sous 24 à 48 heures ouvrables.
+            </Text>
+            <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+              Notre équipe d&apos;experts va analyser votre demande et vous envoyer un devis détaillé.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(tabs)/(home)/')}
+            >
+              <Text style={styles.primaryButtonText}>Retour à l&apos;accueil</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.secondaryButton, { borderColor: colors.border }]}
+              onPress={() => router.push('/(tabs)/client-space')}
+            >
+              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+                Créer un compte pour suivre mes devis
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Confidence Banner */}
+          <ConfidenceBanner
+            blocks={[
+              {
+                icon: { ios: 'headphones', android: 'support_agent' },
+                title: t.confidenceBanner.block1Title,
+                description: t.confidenceBanner.block1Desc,
+                color: colors.primary,
+              },
+              {
+                icon: { ios: 'checkmark.seal.fill', android: 'verified_user' },
+                title: t.confidenceBanner.block2Title,
+                description: t.confidenceBanner.block2Desc,
+                color: colors.secondary,
+              },
+              {
+                icon: { ios: 'shield.checkered', android: 'security' },
+                title: t.confidenceBanner.block3Title,
+                description: t.confidenceBanner.block3Desc,
+                color: colors.accent,
+              },
+              {
+                icon: { ios: 'star.fill', android: 'star' },
+                title: t.confidenceBanner.block4Title,
+                description: t.confidenceBanner.block4Desc,
+                color: colors.success,
+              },
+            ]}
+          />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -394,8 +543,8 @@ export default function FreightQuoteScreen() {
                 color: theme.colors.text,
                 borderColor: colors.border,
               }]}
-              value={formData.volumeDetails}
-              onChangeText={(text) => setFormData({ ...formData, volumeDetails: text })}
+              value={formData.cargoVolume}
+              onChangeText={(text) => setFormData({ ...formData, cargoVolume: text })}
               placeholder="Ex: 2 x 40HC, 25 tonnes, dimensions spéciales..."
               placeholderTextColor={colors.textSecondary}
               multiline
@@ -405,41 +554,7 @@ export default function FreightQuoteScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Incoterm
-            </Text>
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: theme.colors.card,
-                color: theme.colors.text,
-                borderColor: colors.border,
-              }]}
-              value={formData.incoterm}
-              onChangeText={(text) => setFormData({ ...formData, incoterm: text })}
-              placeholder="Ex: FOB, CIF, EXW..."
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Date souhaitée (ETA)
-            </Text>
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: theme.colors.card,
-                color: theme.colors.text,
-                borderColor: colors.border,
-              }]}
-              value={formData.desiredEta}
-              onChangeText={(text) => setFormData({ ...formData, desiredEta: text })}
-              placeholder="Ex: Fin janvier 2025"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Notes additionnelles
+              Remarques additionnelles
             </Text>
             <TextInput
               style={[styles.textArea, { 
@@ -447,8 +562,8 @@ export default function FreightQuoteScreen() {
                 color: theme.colors.text,
                 borderColor: colors.border,
               }]}
-              value={formData.additionalNotes}
-              onChangeText={(text) => setFormData({ ...formData, additionalNotes: text })}
+              value={formData.details}
+              onChangeText={(text) => setFormData({ ...formData, details: text })}
               placeholder="Informations complémentaires..."
               placeholderTextColor={colors.textSecondary}
               multiline
@@ -466,7 +581,7 @@ export default function FreightQuoteScreen() {
             disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
-              {isSubmitting ? "Envoi en cours..." : "Envoyer la demande"}
+              {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande de devis"}
             </Text>
             {!isSubmitting && (
               <IconSymbol
@@ -840,5 +955,50 @@ const styles = StyleSheet.create({
   },
   modalItemText: {
     fontSize: 16,
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 60,
+    gap: 20,
+  },
+  successIconContainer: {
+    borderRadius: 100,
+    padding: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  successMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  primaryButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginTop: 12,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
