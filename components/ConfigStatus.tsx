@@ -1,261 +1,292 @@
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { IconSymbol } from './IconSymbol';
 import appConfig from '@/config/appConfig';
+import { getConfigStatus, VerificationResult } from '@/config/configVerification';
 import { colors } from '@/styles/commonStyles';
 
-/**
- * ConfigStatus Component
- * Displays the current configuration status and helps debug environment variable issues
- * Only visible in development mode
- */
-export default function ConfigStatus() {
-  const [isExpanded, setIsExpanded] = useState(false);
+interface ConfigStatusProps {
+  onClose?: () => void;
+}
 
-  // Only show in development
-  if (appConfig.isProduction) {
-    return null;
+export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
+  const theme = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<{
+    overall: 'healthy' | 'degraded' | 'critical';
+    results: VerificationResult[];
+  } | null>(null);
+
+  useEffect(() => {
+    checkConfig();
+  }, []);
+
+  const checkConfig = async () => {
+    setLoading(true);
+    try {
+      const configStatus = await getConfigStatus();
+      setStatus(configStatus);
+    } catch (error) {
+      appConfig.logger.error('Failed to check config status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: 'success' | 'warning' | 'error'): string => {
+    switch (status) {
+      case 'success':
+        return colors.success;
+      case 'warning':
+        return '#f59e0b';
+      case 'error':
+        return colors.error;
+    }
+  };
+
+  const getStatusIcon = (status: 'success' | 'warning' | 'error'): { ios: string; android: string } => {
+    switch (status) {
+      case 'success':
+        return { ios: 'checkmark.circle.fill', android: 'check_circle' };
+      case 'warning':
+        return { ios: 'exclamationmark.triangle.fill', android: 'warning' };
+      case 'error':
+        return { ios: 'xmark.circle.fill', android: 'error' };
+    }
+  };
+
+  const getOverallStatusColor = (): string => {
+    if (!status) return colors.textSecondary;
+    switch (status.overall) {
+      case 'healthy':
+        return colors.success;
+      case 'degraded':
+        return '#f59e0b';
+      case 'critical':
+        return colors.error;
+    }
+  };
+
+  if (!appConfig.isDev) {
+    return null; // Only show in development mode
   }
 
-  const validation = appConfig.validateConfig();
-
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={[
-          styles.header,
-          validation.valid ? styles.headerSuccess : styles.headerError,
-        ]}
-        onPress={() => setIsExpanded(!isExpanded)}
-      >
-        <Text style={styles.headerText}>
-          {validation.valid ? '✓' : '⚠'} Configuration Status
+    <View style={[styles.container, { backgroundColor: theme.colors.card }]}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <IconSymbol
+            ios_icon_name="gear"
+            android_material_icon_name="settings"
+            size={24}
+            color={theme.colors.text}
+          />
+          <Text style={[styles.title, { color: theme.colors.text }]}>
+            Configuration Status
+          </Text>
+        </View>
+        {onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <IconSymbol
+              ios_icon_name="xmark"
+              android_material_icon_name="close"
+              size={20}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.envInfo}>
+        <Text style={[styles.envLabel, { color: colors.textSecondary }]}>
+          Environment:
         </Text>
-        <Text style={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</Text>
-      </TouchableOpacity>
+        <View style={[styles.envBadge, { backgroundColor: appConfig.isProduction ? colors.error : colors.primary }]}>
+          <Text style={styles.envText}>
+            {appConfig.appEnv.toUpperCase()}
+          </Text>
+        </View>
+      </View>
 
-      {isExpanded && (
-        <ScrollView style={styles.content}>
-          {/* Errors */}
-          {validation.errors.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>❌ Errors ({validation.errors.length})</Text>
-              {validation.errors.map((error, index) => (
-                <Text key={index} style={styles.errorText}>
-                  • {error}
-                </Text>
-              ))}
-            </View>
-          )}
-
-          {/* Warnings */}
-          {validation.warnings.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>⚠️ Warnings ({validation.warnings.length})</Text>
-              {validation.warnings.map((warning, index) => (
-                <Text key={index} style={styles.warningText}>
-                  • {warning}
-                </Text>
-              ))}
-            </View>
-          )}
-
-          {/* Environment */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🌍 Environment</Text>
-            <ConfigItem label="APP_ENV" value={appConfig.env.APP_ENV} />
-            <ConfigItem label="Is Production" value={appConfig.isProduction ? 'Yes' : 'No'} />
-          </View>
-
-          {/* Supabase */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🗄️ Supabase</Text>
-            <ConfigItem
-              label="URL"
-              value={appConfig.env.SUPABASE_URL}
-              isSet={!!appConfig.env.SUPABASE_URL}
-            />
-            <ConfigItem
-              label="Anon Key"
-              value={appConfig.env.SUPABASE_ANON_KEY ? '••••••••' : 'Not set'}
-              isSet={!!appConfig.env.SUPABASE_ANON_KEY}
-            />
-          </View>
-
-          {/* Payment */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💳 Payment</Text>
-            <ConfigItem label="Provider" value={appConfig.env.PAYMENT_PROVIDER} />
-            {appConfig.env.PAYMENT_PROVIDER === 'paypal' && (
-              <>
-                <ConfigItem label="PayPal Environment" value={appConfig.env.PAYPAL_ENV} />
-                <ConfigItem
-                  label="PayPal Client ID"
-                  value={appConfig.env.PAYPAL_CLIENT_ID ? '••••••••' : 'Not set'}
-                  isSet={!!appConfig.env.PAYPAL_CLIENT_ID}
-                />
-              </>
-            )}
-          </View>
-
-          {/* Google Maps */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🗺️ Google Maps</Text>
-            <ConfigItem
-              label="API Key"
-              value={appConfig.env.GOOGLE_MAPS_API_KEY ? '••••••••' : 'Not set'}
-              isSet={!!appConfig.env.GOOGLE_MAPS_API_KEY}
-            />
-          </View>
-
-          {/* SMTP */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📧 SMTP</Text>
-            <ConfigItem
-              label="Configured"
-              value={appConfig.smtp.isConfigured() ? 'Yes' : 'No'}
-              isSet={appConfig.smtp.isConfigured()}
-            />
-            {appConfig.smtp.isConfigured() && (
-              <>
-                <ConfigItem label="Host" value={appConfig.env.SMTP_HOST} />
-                <ConfigItem label="Port" value={appConfig.env.SMTP_PORT} />
-              </>
-            )}
-          </View>
-
-          {/* Admin */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>👤 Admin</Text>
-            <ConfigItem
-              label="Admin Emails"
-              value={appConfig.env.ADMIN_EMAILS.length > 0 ? appConfig.env.ADMIN_EMAILS.join(', ') : 'None'}
-              isSet={appConfig.env.ADMIN_EMAILS.length > 0}
-            />
-          </View>
-
-          {/* Help */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ℹ️ Help</Text>
-            <Text style={styles.helpText}>
-              To fix configuration issues:
-            </Text>
-            <Text style={styles.helpText}>
-              1. Go to Natively → Environment Variables tab
-            </Text>
-            <Text style={styles.helpText}>
-              2. Add missing variables (see .env.example)
-            </Text>
-            <Text style={styles.helpText}>
-              3. Restart the app
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Checking configuration...
+          </Text>
+        </View>
+      ) : status ? (
+        <>
+          <View style={[styles.overallStatus, { backgroundColor: getOverallStatusColor() + '15' }]}>
+            <Text style={[styles.overallStatusText, { color: getOverallStatusColor() }]}>
+              Overall Status: {status.overall.toUpperCase()}
             </Text>
           </View>
-        </ScrollView>
-      )}
+
+          <View style={styles.resultsList}>
+            {status.results.map((result, index) => {
+              const statusColor = getStatusColor(result.status);
+              const statusIcon = getStatusIcon(result.status);
+
+              return (
+                <View key={index} style={[styles.resultItem, { borderLeftColor: statusColor }]}>
+                  <View style={styles.resultHeader}>
+                    <IconSymbol
+                      ios_icon_name={statusIcon.ios}
+                      android_material_icon_name={statusIcon.android}
+                      size={20}
+                      color={statusColor}
+                    />
+                    <Text style={[styles.resultService, { color: theme.colors.text }]}>
+                      {result.service}
+                    </Text>
+                  </View>
+                  <Text style={[styles.resultMessage, { color: colors.textSecondary }]}>
+                    {result.message}
+                  </Text>
+                  {result.details && appConfig.isDev && (
+                    <View style={styles.resultDetails}>
+                      <Text style={[styles.detailsText, { color: colors.textSecondary }]}>
+                        {JSON.stringify(result.details, null, 2)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.refreshButton, { backgroundColor: colors.primary }]}
+            onPress={checkConfig}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.clockwise"
+              android_material_icon_name="refresh"
+              size={18}
+              color="#ffffff"
+            />
+            <Text style={styles.refreshButtonText}>Refresh</Text>
+          </TouchableOpacity>
+        </>
+      ) : null}
     </View>
   );
-}
-
-interface ConfigItemProps {
-  label: string;
-  value: string;
-  isSet?: boolean;
-}
-
-function ConfigItem({ label, value, isSet }: ConfigItemProps) {
-  const status = isSet !== undefined ? (isSet ? '✓' : '✗') : '';
-  const statusColor = isSet !== undefined ? (isSet ? colors.success : colors.error) : colors.text;
-
-  return (
-    <View style={styles.configItem}>
-      <Text style={styles.configLabel}>
-        {status && <Text style={[styles.configStatus, { color: statusColor }]}>{status} </Text>}
-        {label}:
-      </Text>
-      <Text style={styles.configValue} numberOfLines={1}>
-        {value || 'Not set'}
-      </Text>
-    </View>
-  );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
-    margin: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    elevation: 3,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  headerSuccess: {
-    backgroundColor: colors.success + '20',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  headerError: {
-    backgroundColor: colors.error + '20',
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  headerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+  closeButton: {
+    padding: 4,
   },
-  expandIcon: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  content: {
-    maxHeight: 400,
-    padding: 12,
-    backgroundColor: colors.background,
-  },
-  section: {
+  envInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 13,
+  envLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
   },
-  errorText: {
-    fontSize: 12,
-    color: colors.error,
-    marginBottom: 4,
-  },
-  warningText: {
-    fontSize: 12,
-    color: colors.warning,
-    marginBottom: 4,
-  },
-  configItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  envBadge: {
+    paddingHorizontal: 12,
     paddingVertical: 4,
+    borderRadius: 12,
   },
-  configLabel: {
+  envText: {
     fontSize: 12,
-    color: colors.textSecondary,
-    flex: 1,
+    fontWeight: '700',
+    color: '#ffffff',
   },
-  configStatus: {
-    fontWeight: '600',
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 20,
   },
-  configValue: {
-    fontSize: 12,
-    color: colors.text,
-    flex: 1,
-    textAlign: 'right',
+  loadingText: {
+    fontSize: 14,
   },
-  helpText: {
-    fontSize: 11,
-    color: colors.textSecondary,
+  overallStatus: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  overallStatusText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  resultsList: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  resultItem: {
+    padding: 12,
+    borderLeftWidth: 4,
+    backgroundColor: colors.background + '50',
+    borderRadius: 8,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 4,
+  },
+  resultService: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  resultMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  resultDetails: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: colors.background,
+    borderRadius: 4,
+  },
+  detailsText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

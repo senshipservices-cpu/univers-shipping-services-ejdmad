@@ -13,7 +13,6 @@ import { FeaturedServices } from "@/components/FeaturedServices";
 import { ClientProfileSolutions } from "@/components/ClientProfileSolutions";
 import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { MicroCopy } from "@/components/MicroCopy";
-import { ConfigStatus } from "@/components/ConfigStatus";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -217,9 +216,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Configuration Status (Development Only) */}
-        <ConfigStatus />
-
         {/* Hero Section with Logo */}
         <View style={styles.heroLogoSection}>
           <Logo width={180} showText={true} textSize="large" />

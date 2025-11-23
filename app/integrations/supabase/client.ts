@@ -10,53 +10,25 @@ const SUPABASE_ANON_KEY = appConfig.env.SUPABASE_ANON_KEY;
 
 // Validate configuration
 if (!SUPABASE_URL || SUPABASE_URL === '') {
-  console.error('===========================================');
-  console.error('❌ SUPABASE URL IS MISSING');
-  console.error('===========================================');
-  console.error('Please set EXPO_PUBLIC_SUPABASE_URL in your environment variables.');
-  console.error('');
-  console.error('In Natively:');
-  console.error('1. Go to Environment Variables tab');
-  console.error('2. Add variable: EXPO_PUBLIC_SUPABASE_URL');
-  console.error('3. Set value to: https://lnfsjpuffrcyenuuoxxk.supabase.co');
-  console.error('');
-  console.error('For local development:');
-  console.error('1. Copy .env.example to .env');
-  console.error('2. Set EXPO_PUBLIC_SUPABASE_URL=https://lnfsjpuffrcyenuuoxxk.supabase.co');
-  console.error('===========================================');
-  throw new Error('Supabase URL is missing. Please configure EXPO_PUBLIC_SUPABASE_URL in your environment variables.');
+  appConfig.logger.error('Supabase URL is missing!');
+  appConfig.logger.error('Please set EXPO_PUBLIC_SUPABASE_URL in your environment');
+  throw new Error('Supabase URL is missing');
 }
 
 if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
-  console.error('===========================================');
-  console.error('❌ INVALID SUPABASE URL');
-  console.error('===========================================');
-  console.error('Current value:', SUPABASE_URL);
-  console.error('URL must start with http:// or https://');
-  console.error('Expected format: https://lnfsjpuffrcyenuuoxxk.supabase.co');
-  console.error('===========================================');
+  appConfig.logger.error('Invalid Supabase URL:', SUPABASE_URL);
+  appConfig.logger.error('URL must start with http:// or https://');
   throw new Error('Invalid Supabase URL: Must be a valid HTTP or HTTPS URL');
 }
 
 if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === '') {
-  console.error('===========================================');
-  console.error('❌ SUPABASE ANON KEY IS MISSING');
-  console.error('===========================================');
-  console.error('Please set EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment variables.');
-  console.error('');
-  console.error('In Natively:');
-  console.error('1. Go to Environment Variables tab');
-  console.error('2. Add variable: EXPO_PUBLIC_SUPABASE_ANON_KEY');
-  console.error('3. Set value to your Supabase anonymous key');
-  console.error('');
-  console.error('Get your key from:');
-  console.error('Supabase Dashboard → Project Settings → API → anon public');
-  console.error('===========================================');
-  throw new Error('Supabase Anon Key is missing. Please configure EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment variables.');
+  appConfig.logger.error('Supabase Anon Key is missing!');
+  appConfig.logger.error('Please set EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment');
+  throw new Error('Supabase Anon Key is missing');
 }
 
-console.log('✓ Supabase configuration validated');
-console.log('✓ Initializing Supabase client...');
+appConfig.logger.info('Initializing Supabase client');
+appConfig.logger.debug('Supabase URL:', SUPABASE_URL);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -70,4 +42,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
   },
 });
 
-console.log('✓ Supabase client initialized successfully');
+appConfig.logger.info('Supabase client initialized successfully');
