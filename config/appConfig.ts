@@ -24,58 +24,6 @@ function isValidValue(value: any): boolean {
 }
 
 /**
- * Get environment variable from process.env with explicit key access
- * This avoids dynamic access which triggers ESLint errors
- */
-function getProcessEnvVar(key: string): string | undefined {
-  if (typeof process === 'undefined' || !process.env) {
-    return undefined;
-  }
-  
-  // Explicitly access known environment variables to avoid dynamic access
-  switch (key) {
-    case 'APP_ENV':
-      return process.env.APP_ENV;
-    case 'EXPO_PUBLIC_SUPABASE_URL':
-      return process.env.EXPO_PUBLIC_SUPABASE_URL;
-    case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
-      return process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    case 'SUPABASE_SERVICE_KEY':
-      return process.env.SUPABASE_SERVICE_KEY;
-    case 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY':
-      return process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    case 'STRIPE_SECRET_KEY':
-      return process.env.STRIPE_SECRET_KEY;
-    case 'STRIPE_WEBHOOK_SECRET':
-      return process.env.STRIPE_WEBHOOK_SECRET;
-    case 'EXPO_PUBLIC_PAYPAL_CLIENT_ID':
-      return process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID;
-    case 'PAYPAL_CLIENT_SECRET':
-      return process.env.PAYPAL_CLIENT_SECRET;
-    case 'PAYPAL_WEBHOOK_ID':
-      return process.env.PAYPAL_WEBHOOK_ID;
-    case 'PAYPAL_ENV':
-      return process.env.PAYPAL_ENV;
-    case 'PAYMENT_PROVIDER':
-      return process.env.PAYMENT_PROVIDER;
-    case 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY':
-      return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-    case 'SMTP_HOST':
-      return process.env.SMTP_HOST;
-    case 'SMTP_PORT':
-      return process.env.SMTP_PORT;
-    case 'SMTP_USERNAME':
-      return process.env.SMTP_USERNAME;
-    case 'SMTP_PASSWORD':
-      return process.env.SMTP_PASSWORD;
-    case 'ADMIN_EMAILS':
-      return process.env.ADMIN_EMAILS;
-    default:
-      return undefined;
-  }
-}
-
-/**
  * Get environment variable with fallback
  * Simplified version that works better with Natively
  */
@@ -129,12 +77,14 @@ function getEnvVar(key: string, fallback: string = ''): string {
       console.log(`[ENV] Constants.expoConfig.extra NOT available`);
     }
     
-    // Try process.env (for local development) with explicit access
-    console.log(`[ENV] Trying process.env for ${key}`);
-    const envValue = getProcessEnvVar(key);
-    if (isValidValue(envValue)) {
-      console.log(`[ENV] ✓ Using ${key} from process.env`);
-      return String(envValue);
+    // Try process.env (for local development)
+    if (typeof process !== 'undefined' && process.env) {
+      console.log(`[ENV] Trying process.env for ${key}`);
+      const envValue = process.env[key];
+      if (isValidValue(envValue)) {
+        console.log(`[ENV] ✓ Using ${key} from process.env`);
+        return String(envValue);
+      }
     }
     
     console.log(`[ENV] ✗ ${key} not found, using fallback`);

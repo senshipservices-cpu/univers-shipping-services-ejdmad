@@ -26,26 +26,6 @@ function isValidValue(value: any): boolean {
 }
 
 /**
- * Get environment variable from process.env with explicit key access
- * This avoids dynamic access which triggers ESLint errors
- */
-function getProcessEnvVar(key: string): string | undefined {
-  if (typeof process === 'undefined' || !process.env) {
-    return undefined;
-  }
-  
-  // Explicitly access known environment variables to avoid dynamic access
-  switch (key) {
-    case 'EXPO_PUBLIC_SUPABASE_URL':
-      return process.env.EXPO_PUBLIC_SUPABASE_URL;
-    case 'EXPO_PUBLIC_SUPABASE_ANON_KEY':
-      return process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    default:
-      return undefined;
-  }
-}
-
-/**
  * Get environment variable with multiple fallback sources
  * Simplified version that works better with Natively
  */
@@ -98,12 +78,14 @@ function getEnvVar(key: string): string {
       console.log(`[SUPABASE] Constants.expoConfig.extra NOT available`);
     }
     
-    // Try process.env (for local development) with explicit access
-    console.log(`[SUPABASE] Trying process.env for ${key}`);
-    const envValue = getProcessEnvVar(key);
-    if (isValidValue(envValue)) {
-      console.log(`[SUPABASE] ✓ Using ${key} from process.env`);
-      return String(envValue);
+    // Try process.env (for local development)
+    if (typeof process !== 'undefined' && process.env) {
+      console.log(`[SUPABASE] Trying process.env for ${key}`);
+      const envValue = process.env[key];
+      if (isValidValue(envValue)) {
+        console.log(`[SUPABASE] ✓ Using ${key} from process.env`);
+        return String(envValue);
+      }
     }
     
     console.log(`[SUPABASE] ✗ ${key} not found`);
