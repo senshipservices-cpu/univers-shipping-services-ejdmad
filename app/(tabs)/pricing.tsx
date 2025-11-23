@@ -39,7 +39,7 @@ export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user, session } = useAuth();
+  const { user, session, client } = useAuth();
   const params = useLocalSearchParams();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ export default function PricingScreen() {
   };
 
   const handleSelectPlan = async (plan: PricingPlan) => {
-    appConfig.logger.info('Plan selected:', plan.code, 'User:', user?.id);
+    appConfig.logger.info('Plan selected:', plan.code, 'User:', user?.id, 'Session:', !!session);
 
     // Determine plan type from plan code
     const planType = plan.code.toLowerCase().includes('basic') ? 'basic' :
@@ -92,8 +92,18 @@ export default function PricingScreen() {
                      plan.code.toLowerCase().includes('digital_portal') ? 'digital_portal' :
                      plan.code.toLowerCase().includes('agent') ? 'agent_listing' : null;
 
-    // Check if user is authenticated
+    appConfig.logger.info('Determined plan type:', planType);
+
+    // Handle Agent Listing plan - redirect to become_agent (no authentication required)
+    if (planType === 'agent_listing') {
+      appConfig.logger.info('Redirecting to become_agent');
+      router.push('/(tabs)/become-agent');
+      return;
+    }
+
+    // Check if user is authenticated for other plans
     if (!user || !session) {
+      appConfig.logger.info('User not authenticated, showing login prompt');
       Alert.alert(
         'Connexion requise',
         'Veuillez vous connecter pour souscrire à un plan.',
@@ -103,9 +113,13 @@ export default function PricingScreen() {
             text: 'Se connecter', 
             onPress: () => {
               // Store the plan to redirect back after login
+              appConfig.logger.info('Redirecting to login with plan:', planType);
               router.push({
                 pathname: '/(tabs)/login',
-                params: { returnTo: 'pricing', plan: planType }
+                params: { 
+                  returnTo: 'pricing',
+                  plan: planType 
+                }
               });
             }
           }
@@ -117,31 +131,27 @@ export default function PricingScreen() {
     try {
       setProcessingPlan(plan.code);
 
+      // Check if client profile exists
+      if (!client) {
+        appConfig.logger.warn('Client profile not found');
+        Alert.alert(
+          'Profil incomplet',
+          'Veuillez compléter votre profil client avant de souscrire.',
+          [
+            {
+              text: 'Compléter mon profil',
+              onPress: () => router.push('/(tabs)/client-profile'),
+            },
+          ]
+        );
+        setProcessingPlan(null);
+        return;
+      }
+
       // Handle Basic plan - create subscription directly and redirect to dashboard
       if (planType === 'basic') {
-        appConfig.logger.info('Creating basic subscription directly');
+        appConfig.logger.info('Creating basic subscription directly for client:', client.id);
         
-        // Get client record
-        const { data: clientData, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (clientError || !clientData) {
-          Alert.alert(
-            'Profil incomplet',
-            'Veuillez compléter votre profil client avant de souscrire.',
-            [
-              {
-                text: 'Compléter mon profil',
-                onPress: () => router.push('/(tabs)/client-profile'),
-              },
-            ]
-          );
-          return;
-        }
-
         // Create basic subscription
         const startDate = new Date();
         const endDate = new Date();
@@ -150,7 +160,7 @@ export default function PricingScreen() {
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
           .insert({
-            client: clientData.id,
+            client: client.id,
             user_id: user.id,
             plan_type: 'basic',
             plan_code: plan.code,
@@ -165,8 +175,11 @@ export default function PricingScreen() {
         if (subscriptionError) {
           appConfig.logger.error('Error creating basic subscription:', subscriptionError);
           Alert.alert('Erreur', 'Impossible de créer votre abonnement. Veuillez réessayer.');
+          setProcessingPlan(null);
           return;
         }
+
+        appConfig.logger.info('Basic subscription created successfully');
 
         // Redirect to client dashboard with success message
         Alert.alert(
@@ -179,23 +192,18 @@ export default function PricingScreen() {
             },
           ]
         );
+        setProcessingPlan(null);
         return;
       }
 
-      // Handle Premium and Enterprise plans - redirect to subscription_confirm
+      // Handle Premium, Enterprise, and Digital Portal plans - redirect to subscription_confirm
       if (planType === 'premium_tracking' || planType === 'enterprise_logistics' || planType === 'digital_portal') {
         appConfig.logger.info('Redirecting to subscription_confirm for plan:', planType);
         router.push({
           pathname: '/(tabs)/subscription-confirm',
           params: { plan: planType }
         });
-        return;
-      }
-
-      // Handle Agent Listing plan - redirect to become_agent
-      if (planType === 'agent_listing') {
-        appConfig.logger.info('Redirecting to become_agent');
-        router.push('/(tabs)/become-agent');
+        setProcessingPlan(null);
         return;
       }
 
@@ -218,6 +226,7 @@ export default function PricingScreen() {
           'Erreur',
           'Impossible de créer la session de paiement. Veuillez réessayer.'
         );
+        setProcessingPlan(null);
         return;
       }
 
@@ -418,7 +427,7 @@ export default function PricingScreen() {
                       {isProcessing ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
-                        <>
+                        <React.Fragment>
                           <Text style={styles.selectButtonText}>
                             {plan.billing_period === 'one_time' ? 'Acheter maintenant' : 'Choisir ce plan'}
                           </Text>
@@ -428,7 +437,7 @@ export default function PricingScreen() {
                             size={18}
                             color="#ffffff"
                           />
-                        </>
+                        </React.Fragment>
                       )}
                     </TouchableOpacity>
                     {isPopular && (

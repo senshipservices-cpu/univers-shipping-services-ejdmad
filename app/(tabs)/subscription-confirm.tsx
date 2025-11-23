@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import appConfig from "@/config/appConfig";
 
 type PlanType = 'basic' | 'premium_tracking' | 'enterprise_logistics' | 'agent_listing' | 'digital_portal';
 
@@ -116,16 +117,21 @@ export default function SubscriptionConfirmScreen() {
 
     const plan = plans[planType];
     if (plan) {
+      appConfig.logger.info('Loaded plan details:', plan);
       setPlanDetails(plan);
     } else {
+      appConfig.logger.error('Invalid plan type:', planType);
       Alert.alert('Erreur', 'Plan invalide');
       router.back();
     }
   }, [planType, router]);
 
   useEffect(() => {
+    appConfig.logger.info('SubscriptionConfirm mounted with plan:', planType, 'User:', user?.id, 'Client:', client?.id);
+
     // Check if user is logged in
     if (!user) {
+      appConfig.logger.warn('User not authenticated, redirecting to login');
       Alert.alert(
         'Connexion requise',
         'Vous devez être connecté pour souscrire à un abonnement.',
@@ -151,6 +157,7 @@ export default function SubscriptionConfirmScreen() {
     }
 
     if (!client) {
+      appConfig.logger.warn('Client profile not found, redirecting to profile');
       Alert.alert(
         'Profil incomplet',
         'Veuillez compléter votre profil client avant de souscrire.',
@@ -174,12 +181,13 @@ export default function SubscriptionConfirmScreen() {
 
   const handleConfirmSubscription = async () => {
     if (!client || !planDetails) {
-      console.log('Missing client or plan details');
+      appConfig.logger.error('Missing client or plan details');
       return;
     }
 
     try {
       setLoading(true);
+      appConfig.logger.info('Creating subscription for client:', client.id, 'plan:', planDetails.id);
 
       // Calculate start and end dates
       const startDate = new Date();
@@ -192,61 +200,42 @@ export default function SubscriptionConfirmScreen() {
         endDate.setDate(endDate.getDate() + 30);
       }
 
-      console.log('Creating subscription with:', {
+      const subscriptionData = {
         client: client.id,
+        user_id: user?.id || null,
         plan_type: planDetails.id,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
-        is_active: planDetails.id === 'basic', // Basic plan is active immediately
-        status: planDetails.id === 'basic' ? 'active' : 'pending',
-      });
+        is_active: false, // Always false for Premium/Enterprise/Digital Portal (pending payment)
+        status: 'pending',
+        payment_provider: 'manual',
+        notes: `Subscription created via app on ${new Date().toISOString()}`,
+      };
+
+      appConfig.logger.info('Creating subscription with data:', subscriptionData);
 
       // Create subscription
       const { data: subscription, error: subscriptionError } = await supabase
         .from('subscriptions')
-        .insert({
-          client: client.id,
-          user_id: user?.id || null,
-          plan_type: planDetails.id,
-          start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0],
-          is_active: planDetails.id === 'basic', // Basic plan is active immediately
-          status: planDetails.id === 'basic' ? 'active' : 'pending',
-          payment_provider: 'manual',
-          notes: `Subscription created via app on ${new Date().toISOString()}`,
-        })
+        .insert(subscriptionData)
         .select()
         .single();
 
       if (subscriptionError) {
-        console.error('Error creating subscription:', subscriptionError);
+        appConfig.logger.error('Error creating subscription:', subscriptionError);
         throw subscriptionError;
       }
 
-      console.log('Subscription created successfully:', subscription);
+      appConfig.logger.info('Subscription created successfully:', subscription);
 
       // Refresh client data
       await refreshClient();
 
-      // Handle redirection based on plan type
-      if (planDetails.id === 'basic') {
-        // Basic plan: redirect to client dashboard with welcome message
-        Alert.alert(
-          'Bienvenue !',
-          'Votre abonnement Basic a été activé avec succès. Vous pouvez maintenant accéder à tous les services de base.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/(tabs)/client-dashboard'),
-            },
-          ]
-        );
-      } else {
-        // Other plans: redirect to subscription_pending
-        router.replace('/(tabs)/subscription-pending');
-      }
+      // Redirect to subscription_pending
+      appConfig.logger.info('Redirecting to subscription-pending');
+      router.replace('/(tabs)/subscription-pending');
     } catch (error) {
-      console.error('Error confirming subscription:', error);
+      appConfig.logger.error('Error confirming subscription:', error);
       Alert.alert(
         'Erreur',
         'Une erreur est survenue lors de la création de votre abonnement. Veuillez réessayer ou contacter notre support.'
@@ -371,10 +360,10 @@ export default function SubscriptionConfirmScreen() {
               Processus de souscription
             </Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              {planDetails.id === 'basic' 
-                ? '1. Votre abonnement sera activé immédiatement\n2. Vous aurez accès à tous les services de base\n3. Vous recevrez un email de confirmation'
-                : '1. Votre demande sera enregistrée en statut "En attente"\n2. Notre équipe vous contactera pour finaliser le paiement\n3. Une fois le paiement confirmé, votre abonnement sera activé\n4. Vous recevrez un email de confirmation'
-              }
+              1. Votre demande sera enregistrée en statut &quot;En attente&quot;{'\n'}
+              2. Notre équipe vous contactera pour finaliser le paiement{'\n'}
+              3. Une fois le paiement confirmé, votre abonnement sera activé{'\n'}
+              4. Vous recevrez un email de confirmation
             </Text>
           </View>
         </View>
@@ -450,7 +439,7 @@ export default function SubscriptionConfirmScreen() {
           ) : (
             <React.Fragment>
               <Text style={styles.confirmButtonText}>
-                Confirmer ma demande d&apos;abonnement
+                Confirmer mon abonnement
               </Text>
               <IconSymbol
                 ios_icon_name="arrow.right"
