@@ -6,6 +6,7 @@ import { IconSymbol } from './IconSymbol';
 import appConfig from '@/config/appConfig';
 import { getConfigStatus, VerificationResult } from '@/config/configVerification';
 import { colors } from '@/styles/commonStyles';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ConfigStatusProps {
   onClose?: () => void;
@@ -13,6 +14,7 @@ interface ConfigStatusProps {
 
 export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
   const theme = useTheme();
+  const { user, currentUserIsAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{
     overall: 'healthy' | 'degraded' | 'critical';
@@ -69,7 +71,7 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
     }
   };
 
-  if (!appConfig.isDev) {
+  if (!appConfig.isDevelopment) {
     return null; // Only show in development mode
   }
 
@@ -99,13 +101,72 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
         )}
       </View>
 
+      {/* Environment Badge */}
       <View style={styles.envInfo}>
         <Text style={[styles.envLabel, { color: colors.textSecondary }]}>
           Environment:
         </Text>
-        <View style={[styles.envBadge, { backgroundColor: appConfig.isProduction ? colors.error : colors.primary }]}>
+        <View style={[
+          styles.envBadge, 
+          { backgroundColor: appConfig.isProduction ? '#10b981' : '#f59e0b' }
+        ]}>
           <Text style={styles.envText}>
             {appConfig.appEnv.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      {/* Security Section */}
+      <View style={[styles.securitySection, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.securityHeader}>
+          <IconSymbol
+            ios_icon_name="shield.lefthalf.filled"
+            android_material_icon_name="security"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={[styles.securityTitle, { color: theme.colors.text }]}>
+            Sécurité
+          </Text>
+        </View>
+        
+        <View style={styles.securityContent}>
+          <View style={styles.securityRow}>
+            <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>
+              Utilisateur:
+            </Text>
+            <Text style={[styles.securityValue, { color: theme.colors.text }]}>
+              {user?.email || 'Non connecté'}
+            </Text>
+          </View>
+          
+          <View style={styles.securityRow}>
+            <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>
+              Statut:
+            </Text>
+            <View style={[
+              styles.roleBadge,
+              { backgroundColor: currentUserIsAdmin ? colors.primary + '20' : colors.textSecondary + '20' }
+            ]}>
+              <IconSymbol
+                ios_icon_name={currentUserIsAdmin ? 'star.fill' : 'person.fill'}
+                android_material_icon_name={currentUserIsAdmin ? 'star' : 'person'}
+                size={14}
+                color={currentUserIsAdmin ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[
+                styles.roleText,
+                { color: currentUserIsAdmin ? colors.primary : colors.textSecondary }
+              ]}>
+                {currentUserIsAdmin ? 'Admin' : 'Client'}
+              </Text>
+            </View>
+          </View>
+          
+          <Text style={[styles.securityNote, { color: colors.textSecondary }]}>
+            {currentUserIsAdmin 
+              ? 'Vous avez accès à toutes les fonctionnalités administratives.'
+              : 'Certaines actions sont réservées à l\'équipe Universal Shipping Services.'}
           </Text>
         </View>
       </View>
@@ -146,7 +207,7 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
                   <Text style={[styles.resultMessage, { color: colors.textSecondary }]}>
                     {result.message}
                   </Text>
-                  {result.details && appConfig.isDev && (
+                  {result.details && appConfig.isDevelopment && (
                     <View style={styles.resultDetails}>
                       <Text style={[styles.detailsText, { color: colors.textSecondary }]}>
                         {JSON.stringify(result.details, null, 2)}
@@ -222,6 +283,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  securitySection: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  securityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  securityTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  securityContent: {
+    gap: 8,
+  },
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  securityLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  securityValue: {
+    fontSize: 14,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8,
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roleText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  securityNote: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   loadingContainer: {
     flexDirection: 'row',

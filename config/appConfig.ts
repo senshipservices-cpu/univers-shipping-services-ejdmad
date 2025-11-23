@@ -9,6 +9,7 @@
  * - Access to environment variables
  * - Feature flags based on environment
  * - Payment provider configuration (Stripe/PayPal)
+ * - Admin role management
  */
 
 import Constants from 'expo-constants';
@@ -21,7 +22,7 @@ const APP_ENV = process.env.APP_ENV ||
 
 // Environment flags
 const isProduction = APP_ENV === 'production';
-const isDev = !isProduction;
+const isDevelopment = !isProduction;
 
 /**
  * Get environment variable with fallback
@@ -69,7 +70,7 @@ export const env = {
   PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', ''),
   PAYPAL_CLIENT_SECRET: getEnvVar('PAYPAL_CLIENT_SECRET', ''),
   PAYPAL_WEBHOOK_ID: getEnvVar('PAYPAL_WEBHOOK_ID', ''),
-  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDev ? 'sandbox' : 'live'),
+  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDevelopment ? 'sandbox' : 'live'),
   
   // Payment Provider Configuration
   PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'), // 'stripe' or 'paypal'
@@ -86,7 +87,17 @@ export const env = {
   // Admin Configuration
   ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
     .split(',')
-    .map(email => email.trim()),
+    .map(email => email.trim().toLowerCase()),
+};
+
+/**
+ * Admin Role Management
+ * Check if a user email is in the admin list
+ */
+export const isAdmin = (userEmail: string | null | undefined): boolean => {
+  if (!userEmail) return false;
+  const normalizedEmail = userEmail.trim().toLowerCase();
+  return env.ADMIN_EMAILS.includes(normalizedEmail);
 };
 
 /**
@@ -132,13 +143,13 @@ export const payment = {
  */
 export const logger = {
   log: (...args: any[]) => {
-    if (isDev) {
+    if (isDevelopment) {
       console.log('[APP]', ...args);
     }
   },
   
   info: (...args: any[]) => {
-    if (isDev) {
+    if (isDevelopment) {
       console.info('[INFO]', ...args);
     }
   },
@@ -154,7 +165,7 @@ export const logger = {
   },
   
   debug: (...args: any[]) => {
-    if (isDev) {
+    if (isDevelopment) {
       console.debug('[DEBUG]', ...args);
     }
   },
@@ -166,7 +177,7 @@ export const logger = {
   
   // Payment-specific logging (never log sensitive data in production)
   payment: (...args: any[]) => {
-    if (isDev) {
+    if (isDevelopment) {
       console.log('[PAYMENT]', ...args);
     }
   },
@@ -180,10 +191,10 @@ export const features = {
   // Payment features
   enableStripePayments: env.PAYMENT_PROVIDER === 'stripe' && !!env.STRIPE_PUBLIC_KEY,
   enablePayPalPayments: env.PAYMENT_PROVIDER === 'paypal' && !!env.PAYPAL_CLIENT_ID,
-  enableTestMode: isDev,
+  enableTestMode: isDevelopment,
   
   // Logging and debugging
-  enableVerboseLogging: isDev,
+  enableVerboseLogging: isDevelopment,
   enableErrorReporting: isProduction,
   
   // API features
@@ -191,8 +202,8 @@ export const features = {
   enableCaching: isProduction,
   
   // UI features
-  showDebugInfo: isDev,
-  enableBetaFeatures: isDev,
+  showDebugInfo: isDevelopment,
+  enableBetaFeatures: isDevelopment,
 };
 
 /**
@@ -283,13 +294,18 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
   }
   
   // Google Maps validation
-  if (!env.GOOGLE_MAPS_API_KEY && isDev) {
+  if (!env.GOOGLE_MAPS_API_KEY && isDevelopment) {
     warnings.push('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set - map features will be limited');
   }
   
   // SMTP validation
   if (!env.SMTP_HOST && isProduction) {
     warnings.push('SMTP configuration is not set - email features will not work');
+  }
+  
+  // Admin emails validation
+  if (env.ADMIN_EMAILS.length === 0 || (env.ADMIN_EMAILS.length === 1 && env.ADMIN_EMAILS[0] === '')) {
+    warnings.push('ADMIN_EMAILS is not set - no admin users configured');
   }
   
   return {
@@ -306,7 +322,7 @@ const appConfig = {
   // Environment
   appEnv: APP_ENV,
   isProduction,
-  isDev,
+  isDevelopment,
   
   // Payment provider
   paymentProvider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
@@ -329,6 +345,9 @@ const appConfig = {
   
   // Validation
   validateConfig,
+  
+  // Admin role management
+  isAdmin,
 };
 
 export default appConfig;

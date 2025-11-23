@@ -6,7 +6,6 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 
@@ -75,8 +74,7 @@ export default function AdminDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const { isAdmin } = useAdmin();
+  const { user, currentUserIsAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('quotes');
@@ -102,7 +100,7 @@ export default function AdminDashboardScreen() {
 
   // Load data based on active tab
   const loadData = useCallback(async () => {
-    if (!isAdmin) {
+    if (!currentUserIsAdmin) {
       setLoading(false);
       return;
     }
@@ -134,7 +132,7 @@ export default function AdminDashboardScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab, isAdmin]);
+  }, [activeTab, currentUserIsAdmin]);
 
   const loadFreightQuotes = async () => {
     const { data, error } = await supabase
@@ -257,10 +255,10 @@ export default function AdminDashboardScreen() {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (currentUserIsAdmin) {
       loadData();
     }
-  }, [activeTab, isAdmin, loadData]);
+  }, [activeTab, currentUserIsAdmin, loadData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -395,7 +393,7 @@ export default function AdminDashboardScreen() {
   };
 
   // Redirect if not authenticated or not admin
-  if (!user || !isAdmin) {
+  if (!user || !currentUserIsAdmin) {
     return <Redirect href="/(tabs)/(home)/" />;
   }
 

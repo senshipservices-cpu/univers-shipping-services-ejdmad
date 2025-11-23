@@ -6,7 +6,6 @@ import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/app/integrations/supabase/client";
 import { colors } from "@/styles/commonStyles";
 
@@ -75,8 +74,7 @@ export default function KPIDashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const { isAdmin } = useAdmin();
+  const { user, currentUserIsAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('commercial');
@@ -102,7 +100,7 @@ export default function KPIDashboardScreen() {
 
   // Load all KPI data
   const loadKPIData = useCallback(async () => {
-    if (!isAdmin) {
+    if (!currentUserIsAdmin) {
       setLoading(false);
       return;
     }
@@ -141,7 +139,7 @@ export default function KPIDashboardScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAdmin]);
+  }, [currentUserIsAdmin]);
 
   // Section 3.1: Global Commercial Performance
   const loadCommercialPerformance = async () => {
@@ -453,10 +451,10 @@ export default function KPIDashboardScreen() {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (currentUserIsAdmin) {
       loadKPIData();
     }
-  }, [isAdmin, loadKPIData]);
+  }, [currentUserIsAdmin, loadKPIData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -479,7 +477,7 @@ export default function KPIDashboardScreen() {
   };
 
   // Redirect if not authenticated or not admin
-  if (!user || !isAdmin) {
+  if (!user || !currentUserIsAdmin) {
     return <Redirect href="/(tabs)/(home)/" />;
   }
 

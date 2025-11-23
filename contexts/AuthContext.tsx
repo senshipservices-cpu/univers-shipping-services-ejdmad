@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { Platform } from 'react-native';
+import appConfig from '@/config/appConfig';
 
 type Client = Tables<'clients'>;
 
@@ -23,6 +24,7 @@ interface AuthContextType {
   user: User | null;
   client: Client | null;
   loading: boolean;
+  currentUserIsAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
@@ -47,6 +49,9 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const { setLanguage } = useLanguage();
+
+  // Compute admin status based on user email
+  const currentUserIsAdmin = appConfig.isAdmin(user?.email);
 
   // Fetch client record for the current user
   const fetchClient = useCallback(async (userId: string) => {
@@ -285,6 +290,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     user,
     client,
     loading,
+    currentUserIsAdmin,
     signIn,
     signUp,
     signInWithGoogle,
