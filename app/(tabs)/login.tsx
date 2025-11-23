@@ -244,7 +244,7 @@ export default function LoginScreen() {
           style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={loading || authLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -263,7 +263,7 @@ export default function LoginScreen() {
           style={[styles.googleButton, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleGoogleSignIn}
           disabled={loading || authLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           {loading ? (
             <ActivityIndicator color={colors.text} />
@@ -285,7 +285,7 @@ export default function LoginScreen() {
           style={styles.signupButton}
           onPress={handleSignUp}
           disabled={loading || authLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           <Text style={styles.signupButtonText}>Créer un compte</Text>
         </TouchableOpacity>

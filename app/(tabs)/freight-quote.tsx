@@ -123,7 +123,7 @@ export default function FreightQuoteScreen() {
     logQuoteClickEvent();
   }, [user, client, serviceId, serviceName]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     console.log('=== FREIGHT QUOTE SUBMIT BUTTON CLICKED ===');
     console.log('Form data:', formData);
     console.log('User:', user);
@@ -330,7 +330,7 @@ export default function FreightQuoteScreen() {
       );
       setIsSubmitting(false);
     }
-  };
+  }, [formData, isSubmitting, user, client, serviceId, serviceName, router, t]);
 
   const filteredPorts = ports.filter((port) =>
     `${port.name} ${port.city} ${port.country}`
@@ -658,7 +658,7 @@ export default function FreightQuoteScreen() {
             ]}
             onPress={handleSubmit}
             disabled={isSubmitting}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Text style={styles.submitButtonText}>
               {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande de devis"}

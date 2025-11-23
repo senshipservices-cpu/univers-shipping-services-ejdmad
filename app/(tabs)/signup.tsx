@@ -274,7 +274,7 @@ export default function SignupScreen() {
           style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleSignUp}
           disabled={loading || authLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -293,7 +293,7 @@ export default function SignupScreen() {
           style={styles.loginButton}
           onPress={handleLogin}
           disabled={loading || authLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           <Text style={styles.loginButtonText}>Déjà un compte ? Se connecter</Text>
         </TouchableOpacity>
