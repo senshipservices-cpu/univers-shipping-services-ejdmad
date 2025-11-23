@@ -4,7 +4,6 @@ import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Tables } from '@/app/integrations/supabase/types';
 import { logLogin, logLogout } from '@/utils/eventLogger';
-import { useLanguage } from '@/contexts/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { Platform } from 'react-native';
@@ -44,11 +43,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       scopes: ['profile', 'email'],
     });
   }, []);
+  
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
-  const { setLanguage } = useLanguage();
 
   // Compute admin status based on user email
   const currentUserIsAdmin = appConfig.isAdmin(user?.email);
@@ -75,13 +74,19 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       // Load user's preferred language if available, default to 'en' if not specified
       const userLanguage = data.preferred_language || 'en';
       console.log('Loading user preferred language:', userLanguage);
-      await setLanguage(userLanguage as 'fr' | 'en' | 'es' | 'ar');
-      await AsyncStorage.setItem('lang', userLanguage);
+      
+      // Save language preference to AsyncStorage
+      try {
+        await AsyncStorage.setItem('@3s_global_language', userLanguage);
+        await AsyncStorage.setItem('lang', userLanguage);
+      } catch (storageError) {
+        console.error('Error saving language preference:', storageError);
+      }
     } catch (error) {
       console.error('Exception fetching client:', error);
       setClient(null);
     }
-  }, [setLanguage]);
+  }, []);
 
   const refreshClient = useCallback(async () => {
     if (user?.id) {
