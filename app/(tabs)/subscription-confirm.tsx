@@ -124,6 +124,7 @@ export default function SubscriptionConfirmScreen() {
   }, [planType, router]);
 
   useEffect(() => {
+    // Check if user is logged in
     if (!user) {
       Alert.alert(
         'Connexion requise',
@@ -131,7 +132,13 @@ export default function SubscriptionConfirmScreen() {
         [
           {
             text: 'Se connecter',
-            onPress: () => router.push('/(tabs)/client-space'),
+            onPress: () => {
+              // Store the plan parameter to redirect back after login
+              router.push({
+                pathname: '/(tabs)/login',
+                params: { returnTo: 'subscription-confirm', plan: planType }
+              });
+            },
           },
           {
             text: 'Annuler',
@@ -178,28 +185,33 @@ export default function SubscriptionConfirmScreen() {
       const startDate = new Date();
       const endDate = new Date();
       
-      // Add 30 days to end date
-      endDate.setDate(endDate.getDate() + 30);
+      // Add 30 days for monthly plans, 365 days for yearly plans
+      if (planDetails.billingPeriod === 'yearly') {
+        endDate.setDate(endDate.getDate() + 365);
+      } else {
+        endDate.setDate(endDate.getDate() + 30);
+      }
 
       console.log('Creating subscription with:', {
         client: client.id,
         plan_type: planDetails.id,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
-        is_active: false,
-        status: 'pending',
+        is_active: planDetails.id === 'basic', // Basic plan is active immediately
+        status: planDetails.id === 'basic' ? 'active' : 'pending',
       });
 
-      // Create subscription in pending status
+      // Create subscription
       const { data: subscription, error: subscriptionError } = await supabase
         .from('subscriptions')
         .insert({
           client: client.id,
+          user_id: user?.id || null,
           plan_type: planDetails.id,
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
-          is_active: false,
-          status: 'pending',
+          is_active: planDetails.id === 'basic', // Basic plan is active immediately
+          status: planDetails.id === 'basic' ? 'active' : 'pending',
           payment_provider: 'manual',
           notes: `Subscription created via app on ${new Date().toISOString()}`,
         })
@@ -216,17 +228,23 @@ export default function SubscriptionConfirmScreen() {
       // Refresh client data
       await refreshClient();
 
-      // Show success message
-      Alert.alert(
-        'Merci !',
-        t.feedbackMessages.subscriptionActivated,
-        [
-          {
-            text: 'OK',
-            onPress: () => router.push('/(tabs)/client-dashboard'),
-          },
-        ]
-      );
+      // Handle redirection based on plan type
+      if (planDetails.id === 'basic') {
+        // Basic plan: redirect to client dashboard with welcome message
+        Alert.alert(
+          'Bienvenue !',
+          'Votre abonnement Basic a été activé avec succès. Vous pouvez maintenant accéder à tous les services de base.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/(tabs)/client-dashboard'),
+            },
+          ]
+        );
+      } else {
+        // Other plans: redirect to subscription_pending
+        router.replace('/(tabs)/subscription-pending');
+      }
     } catch (error) {
       console.error('Error confirming subscription:', error);
       Alert.alert(
@@ -353,10 +371,10 @@ export default function SubscriptionConfirmScreen() {
               Processus de souscription
             </Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              1. Votre demande sera enregistrée en statut &quot;En attente&quot;{'\n'}
-              2. Notre équipe vous contactera pour finaliser le paiement{'\n'}
-              3. Une fois le paiement confirmé, votre abonnement sera activé{'\n'}
-              4. Vous recevrez un email de confirmation
+              {planDetails.id === 'basic' 
+                ? '1. Votre abonnement sera activé immédiatement\n2. Vous aurez accès à tous les services de base\n3. Vous recevrez un email de confirmation'
+                : '1. Votre demande sera enregistrée en statut "En attente"\n2. Notre équipe vous contactera pour finaliser le paiement\n3. Une fois le paiement confirmé, votre abonnement sera activé\n4. Vous recevrez un email de confirmation'
+              }
             </Text>
           </View>
         </View>
@@ -394,7 +412,7 @@ export default function SubscriptionConfirmScreen() {
           </View>
 
           {client && (
-            <>
+            <React.Fragment>
               <View style={styles.divider} />
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
@@ -414,7 +432,7 @@ export default function SubscriptionConfirmScreen() {
                   </Text>
                 </View>
               )}
-            </>
+            </React.Fragment>
           )}
         </View>
 
@@ -430,7 +448,7 @@ export default function SubscriptionConfirmScreen() {
           {loading ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
-            <>
+            <React.Fragment>
               <Text style={styles.confirmButtonText}>
                 Confirmer ma demande d&apos;abonnement
               </Text>
@@ -440,7 +458,7 @@ export default function SubscriptionConfirmScreen() {
                 size={20}
                 color="#ffffff"
               />
-            </>
+            </React.Fragment>
           )}
         </TouchableOpacity>
 

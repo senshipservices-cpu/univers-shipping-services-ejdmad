@@ -85,6 +85,13 @@ export default function PricingScreen() {
   const handleSelectPlan = async (plan: PricingPlan) => {
     appConfig.logger.info('Plan selected:', plan.code, 'User:', user?.id);
 
+    // Determine plan type from plan code
+    const planType = plan.code.toLowerCase().includes('basic') ? 'basic' :
+                     plan.code.toLowerCase().includes('pro') && !plan.code.toLowerCase().includes('yearly') ? 'premium_tracking' :
+                     plan.code.toLowerCase().includes('enterprise') ? 'enterprise_logistics' :
+                     plan.code.toLowerCase().includes('digital_portal') ? 'digital_portal' :
+                     plan.code.toLowerCase().includes('agent') ? 'agent_listing' : null;
+
     // Check if user is authenticated
     if (!user || !session) {
       Alert.alert(
@@ -94,7 +101,13 @@ export default function PricingScreen() {
           { text: 'Annuler', style: 'cancel' },
           { 
             text: 'Se connecter', 
-            onPress: () => router.push('/login')
+            onPress: () => {
+              // Store the plan to redirect back after login
+              router.push({
+                pathname: '/(tabs)/login',
+                params: { returnTo: 'pricing', plan: planType }
+              });
+            }
           }
         ]
       );
@@ -104,7 +117,91 @@ export default function PricingScreen() {
     try {
       setProcessingPlan(plan.code);
 
-      // Call the Edge Function to create a PayPal Order
+      // Handle Basic plan - create subscription directly and redirect to dashboard
+      if (planType === 'basic') {
+        appConfig.logger.info('Creating basic subscription directly');
+        
+        // Get client record
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (clientError || !clientData) {
+          Alert.alert(
+            'Profil incomplet',
+            'Veuillez compléter votre profil client avant de souscrire.',
+            [
+              {
+                text: 'Compléter mon profil',
+                onPress: () => router.push('/(tabs)/client-profile'),
+              },
+            ]
+          );
+          return;
+        }
+
+        // Create basic subscription
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 365); // 1 year for basic
+
+        const { error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .insert({
+            client: clientData.id,
+            user_id: user.id,
+            plan_type: 'basic',
+            plan_code: plan.code,
+            start_date: startDate.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
+            is_active: true,
+            status: 'active',
+            payment_provider: 'free',
+            notes: `Basic plan activated on ${new Date().toISOString()}`,
+          });
+
+        if (subscriptionError) {
+          appConfig.logger.error('Error creating basic subscription:', subscriptionError);
+          Alert.alert('Erreur', 'Impossible de créer votre abonnement. Veuillez réessayer.');
+          return;
+        }
+
+        // Redirect to client dashboard with success message
+        Alert.alert(
+          'Bienvenue !',
+          'Votre abonnement Basic a été activé avec succès. Vous pouvez maintenant accéder à tous les services de base.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/(tabs)/client-dashboard'),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Handle Premium and Enterprise plans - redirect to subscription_confirm
+      if (planType === 'premium_tracking' || planType === 'enterprise_logistics' || planType === 'digital_portal') {
+        appConfig.logger.info('Redirecting to subscription_confirm for plan:', planType);
+        router.push({
+          pathname: '/(tabs)/subscription-confirm',
+          params: { plan: planType }
+        });
+        return;
+      }
+
+      // Handle Agent Listing plan - redirect to become_agent
+      if (planType === 'agent_listing') {
+        appConfig.logger.info('Redirecting to become_agent');
+        router.push('/(tabs)/become-agent');
+        return;
+      }
+
+      // Fallback: use payment provider (for future payment integration)
+      appConfig.logger.warn('No specific handling for plan type:', planType, '- using payment provider');
+      
       const edgeFunctionName = appConfig.payment.provider === 'paypal' 
         ? 'create-paypal-order' 
         : 'create-checkout-session';

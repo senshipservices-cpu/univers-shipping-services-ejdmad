@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function LoginScreen() {
   const { signIn, signInWithGoogle, loading: authLoading, user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,27 @@ export default function LoginScreen() {
   // Redirect to client dashboard if already logged in
   useEffect(() => {
     if (user) {
-      console.log('User already logged in, redirecting to client dashboard');
-      router.replace('/(tabs)/client-dashboard');
+      console.log('User already logged in, checking for return destination');
+      
+      // Check if there's a return destination
+      const returnTo = params.returnTo as string;
+      const plan = params.plan as string;
+      
+      if (returnTo === 'subscription-confirm' && plan) {
+        console.log('Redirecting to subscription-confirm with plan:', plan);
+        router.replace({
+          pathname: '/(tabs)/subscription-confirm',
+          params: { plan }
+        });
+      } else if (returnTo === 'pricing') {
+        console.log('Redirecting to pricing');
+        router.replace('/(tabs)/pricing');
+      } else {
+        console.log('Redirecting to client dashboard');
+        router.replace('/(tabs)/client-dashboard');
+      }
     }
-  }, [user, router]);
+  }, [user, router, params]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -69,9 +87,24 @@ export default function LoginScreen() {
       
       Alert.alert('Erreur de connexion', errorMessage);
     } else {
-      // Success - navigation will be handled by AuthContext
+      // Success - check for return destination
       console.log('Login successful');
-      router.replace('/(tabs)/client-dashboard');
+      
+      const returnTo = params.returnTo as string;
+      const plan = params.plan as string;
+      
+      if (returnTo === 'subscription-confirm' && plan) {
+        console.log('Redirecting to subscription-confirm with plan:', plan);
+        router.replace({
+          pathname: '/(tabs)/subscription-confirm',
+          params: { plan }
+        });
+      } else if (returnTo === 'pricing') {
+        console.log('Redirecting to pricing');
+        router.replace('/(tabs)/pricing');
+      } else {
+        router.replace('/(tabs)/client-dashboard');
+      }
     }
   };
 
