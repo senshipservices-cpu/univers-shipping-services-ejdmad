@@ -124,11 +124,25 @@ export default function FreightQuoteScreen() {
   }, [user, client, serviceId, serviceName]);
 
   const handleSubmit = async () => {
+    console.log('=== FREIGHT QUOTE SUBMIT BUTTON CLICKED ===');
+    console.log('Form data:', formData);
+    console.log('User:', user);
+    console.log('Client:', client);
+    console.log('Is submitting:', isSubmitting);
+
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring click');
+      return;
+    }
+
     // Determine if user is logged in
     const isLoggedIn = !!(user && client);
+    console.log('Is logged in:', isLoggedIn);
 
     // Validation - cargo_type is always required
     if (!formData.cargoType.trim()) {
+      console.log('Validation failed: cargo type missing');
       Alert.alert(
         t.common.error || "Erreur",
         "Le champ 'Type de cargo' est obligatoire."
@@ -139,6 +153,7 @@ export default function FreightQuoteScreen() {
     // If user is NOT logged in, client_name and client_email are required
     if (!isLoggedIn) {
       if (!formData.clientName.trim()) {
+        console.log('Validation failed: client name missing');
         Alert.alert(
           t.common.error || "Erreur",
           "Veuillez entrer votre nom."
@@ -147,6 +162,7 @@ export default function FreightQuoteScreen() {
       }
 
       if (!formData.clientEmail.trim()) {
+        console.log('Validation failed: client email missing');
         Alert.alert(
           t.common.error || "Erreur",
           "Veuillez entrer votre email."
@@ -157,6 +173,7 @@ export default function FreightQuoteScreen() {
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.clientEmail)) {
+        console.log('Validation failed: invalid email format');
         Alert.alert(
           t.common.error || "Erreur",
           "Veuillez entrer un email valide."
@@ -167,6 +184,7 @@ export default function FreightQuoteScreen() {
 
     // Validate ports
     if (!formData.originPort) {
+      console.log('Validation failed: origin port missing');
       Alert.alert(
         t.common.error || "Erreur",
         "Veuillez sélectionner un port d'origine."
@@ -175,6 +193,7 @@ export default function FreightQuoteScreen() {
     }
 
     if (!formData.destinationPort) {
+      console.log('Validation failed: destination port missing');
       Alert.alert(
         t.common.error || "Erreur",
         "Veuillez sélectionner un port de destination."
@@ -182,6 +201,7 @@ export default function FreightQuoteScreen() {
       return;
     }
 
+    console.log('All validations passed, starting submission');
     setIsSubmitting(true);
 
     try {
@@ -290,12 +310,16 @@ export default function FreightQuoteScreen() {
           [
             {
               text: "OK",
-              onPress: () => router.push('/(tabs)/client-dashboard'),
+              onPress: () => {
+                setIsSubmitting(false);
+                router.push('/(tabs)/client-dashboard');
+              },
             },
           ]
         );
       } else {
         // User is not logged in - show success message on the same page
+        setIsSubmitting(false);
         setShowSuccessMessage(true);
       }
     } catch (error) {
@@ -304,7 +328,6 @@ export default function FreightQuoteScreen() {
         t.common.error || "Erreur",
         "Une erreur est survenue, merci de réessayer."
       );
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -481,7 +504,7 @@ export default function FreightQuoteScreen() {
               onChangeText={(text) => setFormData({ ...formData, clientName: text })}
               placeholder="Votre nom"
               placeholderTextColor={colors.textSecondary}
-              editable={true}
+              editable={!isSubmitting}
             />
             {isLoggedIn && formData.clientName && (
               <Text style={[styles.helperText, { color: colors.textSecondary }]}>
@@ -506,7 +529,7 @@ export default function FreightQuoteScreen() {
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
               autoCapitalize="none"
-              editable={true}
+              editable={!isSubmitting}
             />
             {isLoggedIn && formData.clientEmail && (
               <Text style={[styles.helperText, { color: colors.textSecondary }]}>
@@ -525,7 +548,8 @@ export default function FreightQuoteScreen() {
             </Text>
             <TouchableOpacity
               style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => setShowOriginPortPicker(true)}
+              onPress={() => !isSubmitting && setShowOriginPortPicker(true)}
+              disabled={isSubmitting}
             >
               <Text style={[styles.pickerButtonText, { color: formData.originPort ? theme.colors.text : colors.textSecondary }]}>
                 {formData.originPort
@@ -547,7 +571,8 @@ export default function FreightQuoteScreen() {
             </Text>
             <TouchableOpacity
               style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-              onPress={() => setShowDestinationPortPicker(true)}
+              onPress={() => !isSubmitting && setShowDestinationPortPicker(true)}
+              disabled={isSubmitting}
             >
               <Text style={[styles.pickerButtonText, { color: formData.destinationPort ? theme.colors.text : colors.textSecondary }]}>
                 {formData.destinationPort
@@ -581,6 +606,7 @@ export default function FreightQuoteScreen() {
               onChangeText={(text) => setFormData({ ...formData, cargoType: text })}
               placeholder="Ex: Conteneurs, Vrac, Marchandises diverses"
               placeholderTextColor={colors.textSecondary}
+              editable={!isSubmitting}
             />
           </View>
 
@@ -600,6 +626,7 @@ export default function FreightQuoteScreen() {
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
+              editable={!isSubmitting}
             />
           </View>
 
@@ -619,6 +646,7 @@ export default function FreightQuoteScreen() {
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={4}
+              editable={!isSubmitting}
             />
           </View>
 
@@ -630,6 +658,7 @@ export default function FreightQuoteScreen() {
             ]}
             onPress={handleSubmit}
             disabled={isSubmitting}
+            activeOpacity={0.7}
           >
             <Text style={styles.submitButtonText}>
               {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande de devis"}

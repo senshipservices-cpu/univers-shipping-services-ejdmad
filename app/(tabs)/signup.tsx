@@ -68,59 +68,73 @@ export default function SignupScreen() {
   };
 
   const handleSignUp = async () => {
+    console.log('=== SIGNUP BUTTON CLICKED ===');
+    console.log('Full name:', fullName);
+    console.log('Email:', email);
+    console.log('Password length:', password.length);
+    console.log('Loading state:', loading);
+
     if (!validateForm()) {
       return;
     }
 
+    console.log('Starting signup process...');
     setLoading(true);
     
-    // Prepare metadata to be stored with the user
-    // Use current app language, defaulting to 'en' if not set
-    const metadata = {
-      full_name: fullName.trim(),
-      preferred_language: language || 'en',
-    };
+    try {
+      // Prepare metadata to be stored with the user
+      // Use current app language, defaulting to 'en' if not set
+      const metadata = {
+        full_name: fullName.trim(),
+        preferred_language: language || 'en',
+      };
 
-    console.log('Signing up with language:', metadata.preferred_language);
+      console.log('Signing up with language:', metadata.preferred_language);
 
-    const { error } = await signUp(
-      email.trim().toLowerCase(),
-      password,
-      metadata
-    );
-    
-    setLoading(false);
-
-    if (error) {
-      console.error('Signup error:', error);
-      
-      let errorMessage = 'Une erreur est survenue lors de l\'inscription';
-      
-      if (error.message) {
-        if (error.message.includes('User already registered')) {
-          errorMessage = 'Un compte existe déjà avec cet email';
-        } else if (error.message.includes('Password should be at least')) {
-          errorMessage = 'Le mot de passe doit contenir au moins 6 caractères';
-        } else if (error.message.includes('Invalid email')) {
-          errorMessage = 'Adresse email invalide';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      Alert.alert('Erreur d\'inscription', errorMessage);
-    } else {
-      // Success
-      Alert.alert(
-        'Inscription réussie !',
-        'Un email de confirmation vous a été envoyé. Veuillez vérifier votre adresse avant de vous connecter.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)/login'),
-          },
-        ]
+      const { error } = await signUp(
+        email.trim().toLowerCase(),
+        password,
+        metadata
       );
+      
+      console.log('Signup result:', error ? 'Error' : 'Success');
+
+      if (error) {
+        console.error('Signup error:', error);
+        
+        let errorMessage = 'Une erreur est survenue lors de l\'inscription';
+        
+        if (error.message) {
+          if (error.message.includes('User already registered')) {
+            errorMessage = 'Un compte existe déjà avec cet email';
+          } else if (error.message.includes('Password should be at least')) {
+            errorMessage = 'Le mot de passe doit contenir au moins 6 caractères';
+          } else if (error.message.includes('Invalid email')) {
+            errorMessage = 'Adresse email invalide';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        Alert.alert('Erreur d\'inscription', errorMessage);
+      } else {
+        // Success
+        Alert.alert(
+          'Inscription réussie !',
+          'Un email de confirmation vous a été envoyé. Veuillez vérifier votre adresse avant de vous connecter.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/(tabs)/login'),
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Signup exception:', error);
+      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -155,7 +169,7 @@ export default function SignupScreen() {
               placeholder="Votre nom complet"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="words"
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
           </View>
         </View>
@@ -179,7 +193,7 @@ export default function SignupScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
           </View>
         </View>
@@ -203,11 +217,12 @@ export default function SignupScreen() {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeIcon}
+              disabled={loading || authLoading}
             >
               <IconSymbol
                 ios_icon_name={showPassword ? 'eye.slash.fill' : 'eye.fill'}
@@ -238,11 +253,12 @@ export default function SignupScreen() {
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
             <TouchableOpacity
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               style={styles.eyeIcon}
+              disabled={loading || authLoading}
             >
               <IconSymbol
                 ios_icon_name={showConfirmPassword ? 'eye.slash.fill' : 'eye.fill'}
@@ -255,9 +271,10 @@ export default function SignupScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleSignUp}
           disabled={loading || authLoading}
+          activeOpacity={0.7}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -275,7 +292,8 @@ export default function SignupScreen() {
         <TouchableOpacity
           style={styles.loginButton}
           onPress={handleLogin}
-          disabled={loading}
+          disabled={loading || authLoading}
+          activeOpacity={0.7}
         >
           <Text style={styles.loginButtonText}>Déjà un compte ? Se connecter</Text>
         </TouchableOpacity>

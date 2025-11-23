@@ -51,6 +51,11 @@ export default function LoginScreen() {
   }, [user, router, params]);
 
   const handleLogin = async () => {
+    console.log('=== LOGIN BUTTON CLICKED ===');
+    console.log('Email:', email);
+    console.log('Password length:', password.length);
+    console.log('Loading state:', loading);
+
     if (!email || !password) {
       Alert.alert('Erreur', 'Veuillez entrer votre email et mot de passe');
       return;
@@ -63,68 +68,90 @@ export default function LoginScreen() {
       return;
     }
 
+    console.log('Starting login process...');
     setLoading(true);
-    const { error } = await signIn(email.trim().toLowerCase(), password);
-    setLoading(false);
-
-    if (error) {
-      console.error('Login error:', error);
+    
+    try {
+      const { error } = await signIn(email.trim().toLowerCase(), password);
       
-      // Handle specific error messages
-      let errorMessage = 'Une erreur est survenue lors de la connexion';
+      console.log('Login result:', error ? 'Error' : 'Success');
       
-      if (error.message) {
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Email ou mot de passe incorrect';
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.';
-        } else if (error.message.includes('User not found')) {
-          errorMessage = 'Aucun compte trouvé avec cet email';
+      if (error) {
+        console.error('Login error:', error);
+        
+        // Handle specific error messages
+        let errorMessage = 'Une erreur est survenue lors de la connexion';
+        
+        if (error.message) {
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Email ou mot de passe incorrect';
+          } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.';
+          } else if (error.message.includes('User not found')) {
+            errorMessage = 'Aucun compte trouvé avec cet email';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        Alert.alert('Erreur de connexion', errorMessage);
+      } else {
+        // Success - check for return destination
+        console.log('Login successful');
+        
+        const returnTo = params.returnTo as string;
+        const plan = params.plan as string;
+        
+        if (returnTo === 'subscription-confirm' && plan) {
+          console.log('Redirecting to subscription-confirm with plan:', plan);
+          router.replace({
+            pathname: '/(tabs)/subscription-confirm',
+            params: { plan }
+          });
+        } else if (returnTo === 'pricing') {
+          console.log('Redirecting to pricing');
+          router.replace('/(tabs)/pricing');
         } else {
-          errorMessage = error.message;
+          router.replace('/(tabs)/client-dashboard');
         }
       }
-      
-      Alert.alert('Erreur de connexion', errorMessage);
-    } else {
-      // Success - check for return destination
-      console.log('Login successful');
-      
-      const returnTo = params.returnTo as string;
-      const plan = params.plan as string;
-      
-      if (returnTo === 'subscription-confirm' && plan) {
-        console.log('Redirecting to subscription-confirm with plan:', plan);
-        router.replace({
-          pathname: '/(tabs)/subscription-confirm',
-          params: { plan }
-        });
-      } else if (returnTo === 'pricing') {
-        console.log('Redirecting to pricing');
-        router.replace('/(tabs)/pricing');
-      } else {
-        router.replace('/(tabs)/client-dashboard');
-      }
+    } catch (error) {
+      console.error('Login exception:', error);
+      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
-    const { error } = await signInWithGoogle();
-    setLoading(false);
+    console.log('=== GOOGLE SIGN-IN BUTTON CLICKED ===');
+    console.log('Loading state:', loading);
 
-    if (error) {
-      console.error('Google sign-in error:', error);
+    setLoading(true);
+    
+    try {
+      const { error } = await signInWithGoogle();
       
-      let errorMessage = 'Une erreur est survenue lors de la connexion avec Google';
-      
-      if (error.message) {
-        errorMessage = error.message;
+      console.log('Google sign-in result:', error ? 'Error' : 'Success');
+
+      if (error) {
+        console.error('Google sign-in error:', error);
+        
+        let errorMessage = 'Une erreur est survenue lors de la connexion avec Google';
+        
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        Alert.alert('Erreur de connexion', errorMessage);
       }
-      
-      Alert.alert('Erreur de connexion', errorMessage);
+      // Success will be handled by the OAuth redirect
+    } catch (error) {
+      console.error('Google sign-in exception:', error);
+      Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+    } finally {
+      setLoading(false);
     }
-    // Success will be handled by the OAuth redirect
   };
 
   const handleForgotPassword = () => {
@@ -164,7 +191,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
           </View>
         </View>
@@ -188,11 +215,12 @@ export default function LoginScreen() {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!loading && !authLoading}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeIcon}
+              disabled={loading || authLoading}
             >
               <IconSymbol
                 ios_icon_name={showPassword ? 'eye.slash.fill' : 'eye.fill'}
@@ -204,14 +232,19 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
+        <TouchableOpacity 
+          onPress={handleForgotPassword} 
+          style={styles.forgotPassword}
+          disabled={loading || authLoading}
+        >
           <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={loading || authLoading}
+          activeOpacity={0.7}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -227,9 +260,10 @@ export default function LoginScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.googleButton, loading && styles.buttonDisabled]}
+          style={[styles.googleButton, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleGoogleSignIn}
           disabled={loading || authLoading}
+          activeOpacity={0.7}
         >
           {loading ? (
             <ActivityIndicator color={colors.text} />
@@ -250,7 +284,8 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={styles.signupButton}
           onPress={handleSignUp}
-          disabled={loading}
+          disabled={loading || authLoading}
+          activeOpacity={0.7}
         >
           <Text style={styles.signupButtonText}>Créer un compte</Text>
         </TouchableOpacity>
