@@ -98,10 +98,10 @@ export default function SignupScreen() {
       );
       
       console.log('Signup result:', error ? 'Error' : 'Success');
-      console.log('Signup error details:', error);
-
+      
       if (error) {
         console.error('Signup error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         
         let errorMessage = 'Une erreur est survenue lors de l\'inscription';
         
@@ -114,6 +114,9 @@ export default function SignupScreen() {
             errorMessage = 'Adresse email invalide';
           } else if (error.message.includes('Database error')) {
             errorMessage = 'Erreur de base de données. Veuillez réessayer dans quelques instants.';
+          } else if (error.message.includes('email_notifications')) {
+            // Specific error for email notification issues
+            errorMessage = 'Votre compte a été créé mais l\'envoi de l\'email de confirmation a échoué. Veuillez contacter le support.';
           } else {
             // Show the actual error message from Supabase
             errorMessage = error.message;
@@ -123,19 +126,24 @@ export default function SignupScreen() {
         Alert.alert('Erreur d\'inscription', errorMessage);
       } else {
         // Success
+        console.log('Signup successful! Showing success message...');
         Alert.alert(
           'Inscription réussie !',
-          'Un email de confirmation vous a été envoyé. Veuillez vérifier votre adresse avant de vous connecter.',
+          'Un email de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception et cliquer sur le lien de confirmation avant de vous connecter.',
           [
             {
               text: 'OK',
-              onPress: () => router.replace('/(tabs)/login'),
+              onPress: () => {
+                console.log('User acknowledged success, redirecting to login...');
+                router.replace('/(tabs)/login');
+              },
             },
           ]
         );
       }
     } catch (error: any) {
       console.error('Signup exception:', error);
+      console.error('Exception details:', JSON.stringify(error, null, 2));
       const errorMessage = error?.message || 'Une erreur inattendue est survenue';
       Alert.alert('Erreur', errorMessage);
     } finally {
