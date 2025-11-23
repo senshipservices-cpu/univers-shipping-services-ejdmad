@@ -242,36 +242,22 @@ export default function FreightQuoteScreen() {
 
       console.log('Submitting freight quote with data:', quoteData);
 
-      // Create the freight quote
-      // For anonymous users, we don't use .select() to avoid needing SELECT permissions
-      let insertResult;
-      if (isLoggedIn) {
-        // Authenticated users can use .select() to get the created record
-        insertResult = await supabase
-          .from('freight_quotes')
-          .insert([quoteData])
-          .select()
-          .single();
-      } else {
-        // Anonymous users: just insert without selecting
-        insertResult = await supabase
-          .from('freight_quotes')
-          .insert([quoteData]);
-      }
-
-      const { data, error } = insertResult;
+      // Create the freight quote - don't use .select() to avoid RLS SELECT permission issues
+      const { error } = await supabase
+        .from('freight_quotes')
+        .insert([quoteData]);
 
       if (error) {
         console.error('Error submitting quote:', error);
         Alert.alert(
           t.common.error || "Erreur",
-          "Une erreur est survenue, merci de réessayer."
+          "Une erreur est survenue lors de l'envoi de votre demande. Merci de réessayer."
         );
         setIsSubmitting(false);
         return;
       }
 
-      console.log('Quote submitted successfully:', data);
+      console.log('Quote submitted successfully');
 
       // Log quote_created event
       await logEvent({
@@ -279,14 +265,14 @@ export default function FreightQuoteScreen() {
         userId: user?.id || null,
         clientId: client?.id || null,
         serviceId: serviceId || null,
-        quoteId: data?.id || null,
+        quoteId: null, // We don't have the ID since we didn't select
         details: `Quote created for ${formData.cargoType}`,
       });
 
       // Send emails via Edge Function (optional - don't fail if emails fail)
       try {
         const emailPayload = {
-          quoteId: data?.id || 'unknown',
+          quoteId: 'pending', // We don't have the actual ID
           clientName: quoteData.client_name,
           clientEmail: quoteData.client_email,
           serviceName: serviceName || undefined,
@@ -318,7 +304,7 @@ export default function FreightQuoteScreen() {
         // User is logged in - show success message and redirect to client dashboard
         Alert.alert(
           "Demande envoyée !",
-          "Votre demande de devis a bien été envoyée.",
+          "Votre demande de devis a bien été envoyée. Vous pouvez suivre son statut dans votre tableau de bord.",
           [
             {
               text: "OK",
@@ -338,7 +324,7 @@ export default function FreightQuoteScreen() {
       console.error('Exception submitting quote:', error);
       Alert.alert(
         t.common.error || "Erreur",
-        "Une erreur est survenue, merci de réessayer."
+        "Une erreur est survenue lors de l'envoi de votre demande. Merci de réessayer."
       );
       setIsSubmitting(false);
     }
