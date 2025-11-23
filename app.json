@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "UNIVERSAL SHIPPING SERVICES",
-    "slug": "UNIVERSAL SHIPPING SERVICES",
+    "name": "3S Global",
+    "slug": "3S Global",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/final_quest_240x240.png",
@@ -52,5 +52,5 @@
       "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
     }
   },
-  "scheme": "UNIVERSAL SHIPPING SERVICES"
+  "scheme": "3S Global"
 }
