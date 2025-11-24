@@ -1,7 +1,7 @@
 
 import { Stack } from 'expo-router';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -20,6 +20,7 @@ export default function RootLayout() {
     appConfig.logger.essential('='.repeat(50));
     appConfig.logger.essential('Universal Shipping Services - Starting');
     appConfig.logger.essential(`Environment: ${appConfig.appEnv}`);
+    appConfig.logger.essential(`Platform: ${Platform.OS}`);
     appConfig.logger.essential(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
     appConfig.logger.essential('='.repeat(50));
 
@@ -29,6 +30,13 @@ export default function RootLayout() {
       appConfig.logger.error('Configuration validation failed:');
       validation.errors.forEach(error => {
         appConfig.logger.error(`  - ${error}`);
+      });
+    }
+    
+    if (validation.warnings.length > 0) {
+      appConfig.logger.warn('Configuration warnings:');
+      validation.warnings.forEach(warning => {
+        appConfig.logger.warn(`  - ${warning}`);
       });
     }
 

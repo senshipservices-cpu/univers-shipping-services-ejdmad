@@ -349,7 +349,7 @@ export const verifyAllServices = async (): Promise<VerificationResult[]> => {
   }
   
   // Log details in dev mode
-  if (appConfig.isDev) {
+  if (appConfig.isDevelopment) {
     results.forEach(result => {
       const icon = result.status === 'success' ? '✓' : result.status === 'warning' ? '⚠' : '✗';
       logger.debug(`${icon} ${result.service}: ${result.message}`);

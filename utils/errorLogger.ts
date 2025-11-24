@@ -2,7 +2,10 @@
 /**
  * Enhanced Error Logger
  * Centralized error logging with categorization and context
+ * Platform-agnostic implementation for React Native
  */
+
+import { Platform } from 'react-native';
 
 export interface ErrorContext {
   userId?: string;
@@ -11,6 +14,8 @@ export interface ErrorContext {
   action?: string;
   metadata?: Record<string, any>;
   type?: 'validation' | 'network' | 'database' | 'authentication' | 'authorization' | 'react_error_boundary' | 'unknown';
+  componentStack?: string;
+  platform?: string;
 }
 
 export interface ErrorLog {
@@ -19,6 +24,7 @@ export interface ErrorLog {
   context?: ErrorContext;
   severity: 'low' | 'medium' | 'high' | 'critical';
   stack?: string;
+  platform: string;
 }
 
 class ErrorLogger {
@@ -35,6 +41,7 @@ class ErrorLogger {
       context,
       severity,
       stack: error instanceof Error ? error.stack : undefined,
+      platform: Platform.OS,
     };
 
     // Add to in-memory logs
@@ -46,19 +53,26 @@ class ErrorLogger {
     // Console log based on severity
     const errorMessage = error instanceof Error ? error.message : error;
     const contextStr = context ? JSON.stringify(context, null, 2) : '';
+    const platformInfo = `[${Platform.OS.toUpperCase()}]`;
 
     switch (severity) {
       case 'critical':
-        console.error('🔴 CRITICAL ERROR:', errorMessage, contextStr);
+        console.error(`🔴 ${platformInfo} CRITICAL ERROR:`, errorMessage, contextStr);
+        if (error instanceof Error && error.stack) {
+          console.error('Stack:', error.stack);
+        }
         break;
       case 'high':
-        console.error('🟠 HIGH SEVERITY ERROR:', errorMessage, contextStr);
+        console.error(`🟠 ${platformInfo} HIGH SEVERITY ERROR:`, errorMessage, contextStr);
+        if (error instanceof Error && error.stack) {
+          console.error('Stack:', error.stack);
+        }
         break;
       case 'medium':
-        console.warn('🟡 MEDIUM SEVERITY ERROR:', errorMessage, contextStr);
+        console.warn(`🟡 ${platformInfo} MEDIUM SEVERITY ERROR:`, errorMessage, contextStr);
         break;
       case 'low':
-        console.log('🟢 LOW SEVERITY ERROR:', errorMessage, contextStr);
+        console.log(`🟢 ${platformInfo} LOW SEVERITY ERROR:`, errorMessage, contextStr);
         break;
     }
 
@@ -86,7 +100,7 @@ class ErrorLogger {
   logNetwork(error: Error, endpoint?: string, context?: ErrorContext): void {
     this.log(
       error,
-      { ...context, type: 'network', metadata: { endpoint } },
+      { ...context, type: 'network', metadata: { endpoint, ...context?.metadata } },
       'medium'
     );
   }
@@ -97,7 +111,7 @@ class ErrorLogger {
   logDatabase(error: Error, operation?: string, table?: string, context?: ErrorContext): void {
     this.log(
       error,
-      { ...context, type: 'database', metadata: { operation, table } },
+      { ...context, type: 'database', metadata: { operation, table, ...context?.metadata } },
       'high'
     );
   }
@@ -146,6 +160,13 @@ class ErrorLogger {
   }
 
   /**
+   * Get logs by platform
+   */
+  getLogsByPlatform(platform: string): ErrorLog[] {
+    return this.logs.filter(log => log.platform === platform);
+  }
+
+  /**
    * Clear all logs
    */
   clearLogs(): void {
@@ -168,7 +189,16 @@ class ErrorLogger {
     // - Sentry.captureException(errorLog.error, { contexts: errorLog.context })
     // - LogRocket.captureException(errorLog.error)
     // - Custom backend API call
-    console.log('Would send to logging service:', errorLog);
+    
+    // For now, just log that we would send it
+    if (__DEV__) {
+      console.log('[ErrorLogger] Would send to logging service:', {
+        timestamp: errorLog.timestamp,
+        severity: errorLog.severity,
+        platform: errorLog.platform,
+        type: errorLog.context?.type,
+      });
+    }
   }
 }
 
