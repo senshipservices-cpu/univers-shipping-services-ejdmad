@@ -30,56 +30,77 @@ export interface ErrorLog {
 class ErrorLogger {
   private logs: ErrorLog[] = [];
   private maxLogs = 100; // Keep last 100 errors in memory
+  private lastErrorTime: number = 0;
+  private lastErrorMessage: string = '';
+  private debounceMs: number = 1000; // Prevent duplicate errors within 1 second
 
   /**
    * Log an error with context
    */
   log(error: Error | string, context?: ErrorContext, severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'): void {
-    const errorLog: ErrorLog = {
-      timestamp: new Date().toISOString(),
-      error,
-      context,
-      severity,
-      stack: error instanceof Error ? error.stack : undefined,
-      platform: Platform.OS,
-    };
+    try {
+      const errorMessage = error instanceof Error ? error.message : error;
+      const now = Date.now();
+      
+      // Debounce duplicate errors
+      if (errorMessage === this.lastErrorMessage && (now - this.lastErrorTime) < this.debounceMs) {
+        return;
+      }
+      
+      this.lastErrorMessage = errorMessage;
+      this.lastErrorTime = now;
+      
+      const errorLog: ErrorLog = {
+        timestamp: new Date().toISOString(),
+        error,
+        context: {
+          ...context,
+          platform: Platform.OS,
+        },
+        severity,
+        stack: error instanceof Error ? error.stack : undefined,
+        platform: Platform.OS,
+      };
 
-    // Add to in-memory logs
-    this.logs.push(errorLog);
-    if (this.logs.length > this.maxLogs) {
-      this.logs.shift(); // Remove oldest log
-    }
+      // Add to in-memory logs
+      this.logs.push(errorLog);
+      if (this.logs.length > this.maxLogs) {
+        this.logs.shift(); // Remove oldest log
+      }
 
-    // Console log based on severity
-    const errorMessage = error instanceof Error ? error.message : error;
-    const contextStr = context ? JSON.stringify(context, null, 2) : '';
-    const platformInfo = `[${Platform.OS.toUpperCase()}]`;
+      // Console log based on severity
+      const contextStr = context ? JSON.stringify(context, null, 2) : '';
+      const platformInfo = `[${Platform.OS.toUpperCase()}]`;
 
-    switch (severity) {
-      case 'critical':
-        console.error(`🔴 ${platformInfo} CRITICAL ERROR:`, errorMessage, contextStr);
-        if (error instanceof Error && error.stack) {
-          console.error('Stack:', error.stack);
-        }
-        break;
-      case 'high':
-        console.error(`🟠 ${platformInfo} HIGH SEVERITY ERROR:`, errorMessage, contextStr);
-        if (error instanceof Error && error.stack) {
-          console.error('Stack:', error.stack);
-        }
-        break;
-      case 'medium':
-        console.warn(`🟡 ${platformInfo} MEDIUM SEVERITY ERROR:`, errorMessage, contextStr);
-        break;
-      case 'low':
-        console.log(`🟢 ${platformInfo} LOW SEVERITY ERROR:`, errorMessage, contextStr);
-        break;
-    }
+      switch (severity) {
+        case 'critical':
+          console.error(`🔴 ${platformInfo} CRITICAL ERROR:`, errorMessage, contextStr);
+          if (error instanceof Error && error.stack) {
+            console.error('Stack:', error.stack);
+          }
+          break;
+        case 'high':
+          console.error(`🟠 ${platformInfo} HIGH SEVERITY ERROR:`, errorMessage, contextStr);
+          if (error instanceof Error && error.stack) {
+            console.error('Stack:', error.stack);
+          }
+          break;
+        case 'medium':
+          console.warn(`🟡 ${platformInfo} MEDIUM SEVERITY ERROR:`, errorMessage, contextStr);
+          break;
+        case 'low':
+          console.log(`🟢 ${platformInfo} LOW SEVERITY ERROR:`, errorMessage, contextStr);
+          break;
+      }
 
-    // In production, you would send this to a logging service
-    // Example: Sentry, LogRocket, or custom backend
-    if (!__DEV__) {
-      this.sendToLoggingService(errorLog);
+      // In production, you would send this to a logging service
+      // Example: Sentry, LogRocket, or custom backend
+      if (!__DEV__) {
+        this.sendToLoggingService(errorLog);
+      }
+    } catch (loggingError) {
+      // Fail silently to prevent infinite error loops
+      console.error('Error in error logger:', loggingError);
     }
   }
 
@@ -208,4 +229,68 @@ export const errorLogger = new ErrorLogger();
 // Export convenience function
 export function logError(error: Error | string, context?: ErrorContext, severity?: 'low' | 'medium' | 'high' | 'critical'): void {
   errorLogger.log(error, context, severity);
+}
+
+/**
+ * Setup global error handlers (platform-agnostic)
+ * This function is safe to call on all platforms
+ */
+export function setupErrorLogging(): void {
+  try {
+    console.log(`[ErrorLogger] Setting up error logging for ${Platform.OS}`);
+    
+    // Only setup web-specific error handlers on web platform
+    if (Platform.OS === 'web') {
+      // Web-specific error handling
+      if (typeof window !== 'undefined') {
+        // Override window.onerror to catch JavaScript errors
+        window.onerror = (message, source, lineno, colno, error) => {
+          const sourceFile = source ? source.split('/').pop() : 'unknown';
+          const errorData = {
+            message: String(message),
+            source: sourceFile,
+            line: lineno,
+            column: colno,
+          };
+          
+          console.error('🔴 [WEB] JavaScript Runtime Error:', errorData);
+          
+          if (error) {
+            logError(error, {
+              component: 'window.onerror',
+              metadata: errorData,
+            }, 'critical');
+          }
+          
+          return false; // Don't prevent default error handling
+        };
+        
+        // Capture unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+          console.error('🔴 [WEB] Unhandled Promise Rejection:', event.reason);
+          
+          const error = event.reason instanceof Error 
+            ? event.reason 
+            : new Error(String(event.reason));
+          
+          logError(error, {
+            component: 'unhandledrejection',
+            metadata: {
+              promise: event.promise,
+            },
+          }, 'critical');
+        });
+        
+        console.log('[ErrorLogger] Web error handlers installed');
+      }
+    } else {
+      // Native platforms (iOS, Android)
+      console.log(`[ErrorLogger] Native platform (${Platform.OS}) - using React Native error handling`);
+      
+      // React Native has its own error handling via ErrorBoundary
+      // We don't need to set up additional handlers here
+    }
+  } catch (error) {
+    console.error('[ErrorLogger] Failed to setup error logging:', error);
+  }
 }

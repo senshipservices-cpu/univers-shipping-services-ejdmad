@@ -11,39 +11,47 @@ import { StripeProvider } from '@/contexts/StripeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import appConfig from '@/config/appConfig';
 import { verifyAllServices } from '@/config/configVerification';
+import { setupErrorLogging } from '@/utils/errorLogger';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    // Log app startup
-    appConfig.logger.essential('='.repeat(50));
-    appConfig.logger.essential('Universal Shipping Services - Starting');
-    appConfig.logger.essential(`Environment: ${appConfig.appEnv}`);
-    appConfig.logger.essential(`Platform: ${Platform.OS}`);
-    appConfig.logger.essential(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
-    appConfig.logger.essential('='.repeat(50));
+    try {
+      // Setup error logging (platform-agnostic)
+      setupErrorLogging();
+      
+      // Log app startup
+      appConfig.logger.essential('='.repeat(50));
+      appConfig.logger.essential('Universal Shipping Services - Starting');
+      appConfig.logger.essential(`Environment: ${appConfig.appEnv}`);
+      appConfig.logger.essential(`Platform: ${Platform.OS}`);
+      appConfig.logger.essential(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
+      appConfig.logger.essential('='.repeat(50));
 
-    // Validate configuration
-    const validation = appConfig.validateConfig();
-    if (!validation.valid) {
-      appConfig.logger.error('Configuration validation failed:');
-      validation.errors.forEach(error => {
-        appConfig.logger.error(`  - ${error}`);
-      });
-    }
-    
-    if (validation.warnings.length > 0) {
-      appConfig.logger.warn('Configuration warnings:');
-      validation.warnings.forEach(warning => {
-        appConfig.logger.warn(`  - ${warning}`);
-      });
-    }
+      // Validate configuration
+      const validation = appConfig.validateConfig();
+      if (!validation.valid) {
+        appConfig.logger.error('Configuration validation failed:');
+        validation.errors.forEach(error => {
+          appConfig.logger.error(`  - ${error}`);
+        });
+      }
+      
+      if (validation.warnings.length > 0) {
+        appConfig.logger.warn('Configuration warnings:');
+        validation.warnings.forEach(warning => {
+          appConfig.logger.warn(`  - ${warning}`);
+        });
+      }
 
-    // Verify all services (async, non-blocking)
-    verifyAllServices().catch(error => {
-      appConfig.logger.error('Service verification failed:', error);
-    });
+      // Verify all services (async, non-blocking)
+      verifyAllServices().catch(error => {
+        appConfig.logger.error('Service verification failed:', error);
+      });
+    } catch (error) {
+      console.error('Error in RootLayout useEffect:', error);
+    }
   }, []);
 
   return (

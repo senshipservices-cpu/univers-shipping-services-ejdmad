@@ -2,6 +2,7 @@
 /**
  * Error Boundary Component
  * Catches and handles React errors gracefully
+ * Enhanced with detailed logging for iOS debugging
  */
 
 import React, { Component, ReactNode } from 'react';
@@ -18,6 +19,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  errorCount: number;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -27,38 +29,58 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCount: 0,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🔴 Error caught by ErrorBoundary:', error);
-    console.error('🔴 Component Stack:', errorInfo.componentStack);
+    const errorCount = this.state.errorCount + 1;
+    
+    // Enhanced logging for iOS debugging
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('🔴 ERROR BOUNDARY CAUGHT AN ERROR');
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('Platform:', Platform.OS);
+    console.error('Error Count:', errorCount);
+    console.error('Error Name:', error.name);
+    console.error('Error Message:', error.message);
+    console.error('───────────────────────────────────────────────────────');
+    console.error('Error Stack:');
+    console.error(error.stack || 'No stack trace available');
+    console.error('───────────────────────────────────────────────────────');
+    console.error('Component Stack:');
+    console.error(errorInfo.componentStack || 'No component stack available');
+    console.error('═══════════════════════════════════════════════════════');
     
     // Log the full error details
     logError(error, {
       component: 'ErrorBoundary',
       type: 'react_error_boundary',
+      componentStack: errorInfo.componentStack,
       metadata: {
-        componentStack: errorInfo.componentStack,
         platform: Platform.OS,
+        errorCount,
+        errorName: error.name,
+        timestamp: new Date().toISOString(),
       },
     }, 'critical');
 
     // Update state with error info
     this.setState({
       errorInfo,
+      errorCount,
     });
   }
 
   handleReset = () => {
+    console.log('🔄 Resetting ErrorBoundary...');
     this.setState({
       hasError: false,
       error: null,
@@ -88,6 +110,22 @@ export class ErrorBoundary extends Component<Props, State> {
               {__DEV__ && this.state.error && (
                 <View style={styles.errorDetails}>
                   <Text style={styles.errorTitle}>🔍 Error Details (Dev Only):</Text>
+                  
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorLabel}>Platform:</Text>
+                    <Text style={styles.errorText}>{Platform.OS}</Text>
+                  </View>
+                  
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorLabel}>Error Count:</Text>
+                    <Text style={styles.errorText}>{this.state.errorCount}</Text>
+                  </View>
+                  
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorLabel}>Error Name:</Text>
+                    <Text style={styles.errorText}>{this.state.error.name}</Text>
+                  </View>
+                  
                   <View style={styles.errorBox}>
                     <Text style={styles.errorLabel}>Error Message:</Text>
                     <Text style={styles.errorText}>{this.state.error.toString()}</Text>
@@ -96,26 +134,37 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.stack && (
                     <View style={styles.errorBox}>
                       <Text style={styles.errorLabel}>Stack Trace:</Text>
-                      <Text style={styles.errorText}>{this.state.error.stack}</Text>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={true}
+                        style={styles.stackScrollView}
+                      >
+                        <Text style={styles.errorText}>{this.state.error.stack}</Text>
+                      </ScrollView>
                     </View>
                   )}
                   
                   {this.state.errorInfo?.componentStack && (
                     <View style={styles.errorBox}>
                       <Text style={styles.errorLabel}>Component Stack:</Text>
-                      <Text style={styles.errorText}>
-                        {this.state.errorInfo.componentStack}
-                      </Text>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={true}
+                        style={styles.stackScrollView}
+                      >
+                        <Text style={styles.errorText}>
+                          {this.state.errorInfo.componentStack}
+                        </Text>
+                      </ScrollView>
                     </View>
                   )}
                   
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorLabel}>Platform:</Text>
-                    <Text style={styles.errorText}>{Platform.OS}</Text>
-                  </View>
+                  <Text style={styles.debugHint}>
+                    💡 Check the console for the complete error log with detailed information
+                  </Text>
                   
                   <Text style={styles.debugHint}>
-                    💡 Check the console for more detailed logs
+                    📱 On iOS: Open Safari → Develop → [Your Device] → [Your App] to see console logs
                   </Text>
                 </View>
               )}
@@ -123,6 +172,12 @@ export class ErrorBoundary extends Component<Props, State> {
               <TouchableOpacity style={styles.button} onPress={this.handleReset}>
                 <Text style={styles.buttonText}>Try Again</Text>
               </TouchableOpacity>
+              
+              {__DEV__ && (
+                <Text style={styles.devNote}>
+                  Development Mode: Error details are visible above
+                </Text>
+              )}
             </View>
           </ScrollView>
         </View>
@@ -143,6 +198,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    paddingTop: Platform.OS === 'android' ? 48 : 20,
   },
   content: {
     alignItems: 'center',
@@ -200,12 +256,16 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', web: 'monospace' }),
     lineHeight: 18,
   },
+  stackScrollView: {
+    maxHeight: 200,
+  },
   debugHint: {
     fontSize: 13,
     color: colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 8,
     textAlign: 'center',
+    lineHeight: 20,
   },
   button: {
     backgroundColor: colors.primary,
@@ -214,10 +274,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minWidth: 200,
     alignItems: 'center',
+    marginBottom: 16,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  devNote: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });
