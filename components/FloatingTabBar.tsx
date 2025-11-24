@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Href } from 'expo-router';
+import { getDeviceType, spacing, borderRadius } from '@/styles/responsiveStyles';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -39,10 +40,18 @@ interface FloatingTabBarProps {
 
 export default function FloatingTabBar({
   tabs,
-  containerWidth = screenWidth / 2.5,
-  borderRadius = 35,
+  containerWidth,
+  borderRadius: customBorderRadius,
   bottomMargin
 }: FloatingTabBarProps) {
+  // Responsive container width based on device type
+  const deviceType = getDeviceType();
+  const responsiveContainerWidth = containerWidth || (
+    deviceType === 'mobile' ? Math.min(screenWidth - 40, 420) :
+    deviceType === 'tablet' ? Math.min(screenWidth * 0.6, 600) :
+    Math.min(screenWidth * 0.5, 700)
+  );
+  const responsiveBorderRadius = customBorderRadius || borderRadius.xxl;
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
@@ -103,7 +112,7 @@ export default function FloatingTabBar({
   const tabWidthPercent = ((100 / tabs.length) - 1).toFixed(2);
 
   const indicatorStyle = useAnimatedStyle(() => {
-    const tabWidth = (containerWidth - 8) / tabs.length; // Account for container padding (4px on each side)
+    const tabWidth = (responsiveContainerWidth - 8) / tabs.length; // Account for container padding (4px on each side)
     return {
       transform: [
         {
@@ -159,13 +168,13 @@ export default function FloatingTabBar({
       <View style={[
         styles.container,
         {
-          width: containerWidth,
-          marginBottom: bottomMargin ?? 20
+          width: responsiveContainerWidth,
+          marginBottom: bottomMargin ?? spacing.lg
         }
       ]}>
         <BlurView
           intensity={80}
-          style={[dynamicStyles.blurContainer, { borderRadius }]}
+          style={[dynamicStyles.blurContainer, { borderRadius: responsiveBorderRadius }]}
         >
           <View style={dynamicStyles.background} />
           <Animated.View style={[dynamicStyles.indicator, indicatorStyle]} />

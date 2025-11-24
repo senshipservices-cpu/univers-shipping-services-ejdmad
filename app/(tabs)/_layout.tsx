@@ -89,7 +89,7 @@ export default function TabLayout() {
         <Stack.Screen key="profile" name="profile" />
         <Stack.Screen key="test-signup" name="test-signup" />
       </Stack>
-      <FloatingTabBar tabs={tabs} containerWidth={420} />
+      <FloatingTabBar tabs={tabs} />
     </>
   );
 }

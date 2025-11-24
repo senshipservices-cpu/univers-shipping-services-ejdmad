@@ -15,6 +15,16 @@ import { ConfidenceBanner } from "@/components/ConfidenceBanner";
 import { MicroCopy } from "@/components/MicroCopy";
 import { colors } from "@/styles/commonStyles";
 import { LinearGradient } from "expo-linear-gradient";
+import { 
+  getSafeAreaPadding, 
+  getFontSize, 
+  spacing, 
+  borderRadius, 
+  getShadow,
+  getCardWidth,
+  layout
+} from "@/styles/responsiveStyles";
+import { ResponsiveContainer } from "@/components/ResponsiveContainer";
 
 interface ServiceCard {
   title: string;
@@ -152,10 +162,12 @@ export default function HomeScreen() {
     },
   ];
 
+  const cardWidth = getCardWidth(2, spacing.md);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Top Header with Logo and Navigation */}
-      <View style={[styles.topHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
+      <View style={[styles.topHeader, getSafeAreaPadding()]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.menuButton}
@@ -217,37 +229,42 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Section with Logo */}
-        <View style={styles.heroLogoSection}>
-          <Logo width={180} showText={true} textSize="large" />
-        </View>
+        <ResponsiveContainer>
+          <View style={styles.heroLogoSection}>
+            <Logo width={layout.isSmallDevice ? 150 : 180} showText={true} textSize="large" />
+          </View>
+        </ResponsiveContainer>
 
         {/* Quick Access Cards */}
-        <View style={styles.section}>
+        <ResponsiveContainer>
           <View style={styles.quickAccessGrid}>
             {quickAccessCards.map((card, index) => (
-              <React.Fragment key={index}>
-                <TouchableOpacity
-                  style={[styles.quickAccessCard, { backgroundColor: theme.colors.card }]}
-                  onPress={() => router.push(card.route as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.quickAccessIconContainer, { backgroundColor: card.color }]}>
-                    <Text style={styles.quickAccessEmoji}>
-                      {card.title === t.home.portCoverage ? '⚓' :
-                       card.title === t.home.globalServices ? '📦' :
-                       card.title === t.home.pricing ? '💳' :
-                       card.title === t.home.becomeAgent ? '🌍' : '🏠'}
-                    </Text>
-                  </View>
-                  <Text style={[styles.quickAccessTitle, { color: theme.colors.text }]}>
-                    {card.title}
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.quickAccessCard,
+                  { backgroundColor: theme.colors.card, width: cardWidth },
+                  getShadow('sm'),
+                ]}
+                onPress={() => router.push(card.route as any)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.quickAccessIconContainer, { backgroundColor: card.color }]}>
+                  <Text style={styles.quickAccessEmoji}>
+                    {card.title === t.home.portCoverage ? '⚓' :
+                     card.title === t.home.globalServices ? '📦' :
+                     card.title === t.home.pricing ? '💳' :
+                     card.title === t.home.becomeAgent ? '🌍' : '🏠'}
                   </Text>
-                  <Text style={styles.quickAccessDescription}>{card.description}</Text>
-                </TouchableOpacity>
-              </React.Fragment>
+                </View>
+                <Text style={[styles.quickAccessTitle, { color: theme.colors.text }]}>
+                  {card.title}
+                </Text>
+                <Text style={styles.quickAccessDescription}>{card.description}</Text>
+              </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </ResponsiveContainer>
 
         {/* CTA Section */}
         <LinearGradient
@@ -256,50 +273,52 @@ export default function HomeScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.ctaSection}
         >
-          <View style={styles.ctaContent}>
-            <Text style={styles.ctaTitle}>{t.home.heroTitle}</Text>
-            <Text style={styles.ctaSubtitle}>{t.home.heroSubtitle}</Text>
-            
-            <View style={styles.ctaButtons}>
-              <View>
+          <ResponsiveContainer>
+            <View style={styles.ctaContent}>
+              <Text style={styles.ctaTitle}>{t.home.heroTitle}</Text>
+              <Text style={styles.ctaSubtitle}>{t.home.heroSubtitle}</Text>
+              
+              <View style={styles.ctaButtons}>
+                <View>
+                  <TouchableOpacity
+                    style={[styles.ctaButton, styles.ctaButtonPrimary]}
+                    onPress={() => router.push("/(tabs)/freight-quote")}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.ctaButtonTextPrimary}>{t.home.mainCta}</Text>
+                    <IconSymbol
+                      ios_icon_name="arrow.right"
+                      android_material_icon_name="arrow_forward"
+                      size={20}
+                      color="#ffffff"
+                    />
+                  </TouchableOpacity>
+                  <MicroCopy
+                    text={t.home.mainCtaMicrocopy}
+                    icon={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
+                    color="#ffffff"
+                  />
+                </View>
+                
                 <TouchableOpacity
-                  style={[styles.ctaButton, styles.ctaButtonPrimary]}
-                  onPress={() => router.push("/(tabs)/freight-quote")}
+                  style={[styles.ctaButton, styles.ctaButtonSecondary]}
+                  onPress={() => router.push({
+                    pathname: "/(tabs)/contact",
+                    params: { subject: "Demande d'assistance générale" }
+                  })}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.ctaButtonTextPrimary}>{t.home.mainCta}</Text>
+                  <Text style={styles.ctaButtonTextSecondary}>{t.home.talkToExpert}</Text>
                   <IconSymbol
-                    ios_icon_name="arrow.right"
-                    android_material_icon_name="arrow_forward"
+                    ios_icon_name="person.fill"
+                    android_material_icon_name="person"
                     size={20}
                     color="#ffffff"
                   />
                 </TouchableOpacity>
-                <MicroCopy
-                  text={t.home.mainCtaMicrocopy}
-                  icon={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
-                  color="#ffffff"
-                />
               </View>
-              
-              <TouchableOpacity
-                style={[styles.ctaButton, styles.ctaButtonSecondary]}
-                onPress={() => router.push({
-                  pathname: "/(tabs)/contact",
-                  params: { subject: "Demande d'assistance générale" }
-                })}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.ctaButtonTextSecondary}>{t.home.talkToExpert}</Text>
-                <IconSymbol
-                  ios_icon_name="person.fill"
-                  android_material_icon_name="person"
-                  size={20}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
             </View>
-          </View>
+          </ResponsiveContainer>
         </LinearGradient>
 
         {/* Featured Services Section */}
@@ -339,15 +358,22 @@ export default function HomeScreen() {
         />
 
         {/* Why Choose Us Section */}
-        <View style={[styles.section, styles.whyChooseUsSection]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.home.whyChooseUsTitle}
-          </Text>
-          
-          <View style={styles.whyChooseUsGrid}>
-            {whyChooseUsAdvantages.map((advantage, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.whyChooseUsCard, { backgroundColor: theme.colors.card }]}>
+        <ResponsiveContainer>
+          <View style={styles.whyChooseUsSection}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {t.home.whyChooseUsTitle}
+            </Text>
+            
+            <View style={styles.whyChooseUsGrid}>
+              {whyChooseUsAdvantages.map((advantage, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.whyChooseUsCard,
+                    { backgroundColor: theme.colors.card, width: cardWidth },
+                    getShadow('md'),
+                  ]}
+                >
                   <View style={[styles.whyChooseUsIconContainer, { backgroundColor: colors.secondary }]}>
                     <IconSymbol
                       ios_icon_name={advantage.icon}
@@ -363,22 +389,29 @@ export default function HomeScreen() {
                     {advantage.description}
                   </Text>
                 </View>
-              </React.Fragment>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        </ResponsiveContainer>
 
         {/* Services Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.home.servicesTitle}
-          </Text>
-          <Text style={styles.sectionSubtitle}>{t.home.servicesSubtitle}</Text>
-          
-          <View style={styles.servicesGrid}>
-            {serviceCategories.map((service, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.serviceCard, { backgroundColor: theme.colors.card }]}>
+        <ResponsiveContainer>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {t.home.servicesTitle}
+            </Text>
+            <Text style={styles.sectionSubtitle}>{t.home.servicesSubtitle}</Text>
+            
+            <View style={styles.servicesGrid}>
+              {serviceCategories.map((service, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.serviceCard,
+                    { backgroundColor: theme.colors.card },
+                    getShadow('sm'),
+                  ]}
+                >
                   <View style={[styles.serviceIconContainer, { backgroundColor: service.color }]}>
                     <IconSymbol
                       ios_icon_name={service.iosIcon}
@@ -407,22 +440,29 @@ export default function HomeScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-              </React.Fragment>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        </ResponsiveContainer>
 
         {/* Coverage Section */}
-        <View style={[styles.section, styles.coverageSection]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.home.coverageTitle}
-          </Text>
-          <Text style={styles.sectionSubtitle}>{t.home.coverageText}</Text>
-          
-          <View style={styles.regionsContainer}>
-            {regions.map((region, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.regionBadge, { backgroundColor: theme.colors.card }]}>
+        <ResponsiveContainer>
+          <View style={[styles.section, styles.coverageSection]}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {t.home.coverageTitle}
+            </Text>
+            <Text style={styles.sectionSubtitle}>{t.home.coverageText}</Text>
+            
+            <View style={styles.regionsContainer}>
+              {regions.map((region, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.regionBadge,
+                    { backgroundColor: theme.colors.card },
+                    getShadow('sm'),
+                  ]}
+                >
                   <IconSymbol
                     ios_icon_name="globe"
                     android_material_icon_name={region.icon as any}
@@ -433,34 +473,41 @@ export default function HomeScreen() {
                     {region.name}
                   </Text>
                 </View>
-              </React.Fragment>
-            ))}
+              ))}
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.coverageButton, { backgroundColor: colors.secondary }]}
+              onPress={() => router.push("/(tabs)/port-coverage")}
+            >
+              <Text style={styles.coverageButtonText}>{t.home.viewAllPorts}</Text>
+              <IconSymbol
+                ios_icon_name="arrow.right"
+                android_material_icon_name="arrow_forward"
+                size={20}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity
-            style={[styles.coverageButton, { backgroundColor: colors.secondary }]}
-            onPress={() => router.push("/(tabs)/port-coverage")}
-          >
-            <Text style={styles.coverageButtonText}>{t.home.viewAllPorts}</Text>
-            <IconSymbol
-              ios_icon_name="arrow.right"
-              android_material_icon_name="arrow_forward"
-              size={20}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
-        </View>
+        </ResponsiveContainer>
 
         {/* Why Us Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.home.whyUsTitle}
-          </Text>
-          
-          <View style={styles.whyUsContainer}>
-            {whyUsPoints.map((point, index) => (
-              <React.Fragment key={index}>
-                <View style={[styles.whyUsCard, { backgroundColor: theme.colors.card }]}>
+        <ResponsiveContainer>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {t.home.whyUsTitle}
+            </Text>
+            
+            <View style={styles.whyUsContainer}>
+              {whyUsPoints.map((point, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.whyUsCard,
+                    { backgroundColor: theme.colors.card },
+                    getShadow('sm'),
+                  ]}
+                >
                   <View style={[styles.whyUsIconContainer, { backgroundColor: colors.highlight }]}>
                     <IconSymbol
                       ios_icon_name={point.icon}
@@ -473,74 +520,78 @@ export default function HomeScreen() {
                     {point.text}
                   </Text>
                 </View>
-              </React.Fragment>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        </ResponsiveContainer>
 
         {/* Final CTA Section */}
-        <View style={[styles.section, styles.finalCtaSection]}>
-          <LinearGradient
-            colors={[colors.primary, colors.secondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.finalCtaCard}
-          >
-            <IconSymbol
-              ios_icon_name="lightbulb.fill"
-              android_material_icon_name="lightbulb"
-              size={56}
-              color="#ffffff"
-            />
-            <Text style={styles.finalCtaTitle}>{t.home.finalCtaTitle}</Text>
-            <Text style={styles.finalCtaSubtitle}>{t.home.finalCtaSubtitle}</Text>
-            
-            <View style={styles.finalCtaButtons}>
-              <TouchableOpacity
-                style={styles.finalCtaButton}
-                onPress={() => router.push({
-                  pathname: "/(tabs)/contact",
-                  params: { subject: "Demande personnalisée" }
-                })}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.finalCtaButtonText}>{t.home.finalCtaContactExpert}</Text>
-                <IconSymbol
-                  ios_icon_name="arrow.right"
-                  android_material_icon_name="arrow_forward"
-                  size={20}
-                  color={colors.primary}
-                />
-              </TouchableOpacity>
+        <ResponsiveContainer>
+          <View style={styles.finalCtaSection}>
+            <LinearGradient
+              colors={[colors.primary, colors.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.finalCtaCard, getShadow('lg')]}
+            >
+              <IconSymbol
+                ios_icon_name="lightbulb.fill"
+                android_material_icon_name="lightbulb"
+                size={56}
+                color="#ffffff"
+              />
+              <Text style={styles.finalCtaTitle}>{t.home.finalCtaTitle}</Text>
+              <Text style={styles.finalCtaSubtitle}>{t.home.finalCtaSubtitle}</Text>
               
-              <TouchableOpacity
-                style={[styles.finalCtaButton, styles.finalCtaButtonSecondary]}
-                onPress={() => router.push("/(tabs)/pricing")}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.finalCtaButtonText, styles.finalCtaButtonTextSecondary]}>
-                  {t.home.finalCtaViewPricing}
-                </Text>
-                <IconSymbol
-                  ios_icon_name="arrow.right"
-                  android_material_icon_name="arrow_forward"
-                  size={20}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
+              <View style={styles.finalCtaButtons}>
+                <TouchableOpacity
+                  style={[styles.finalCtaButton, getShadow('md')]}
+                  onPress={() => router.push({
+                    pathname: "/(tabs)/contact",
+                    params: { subject: "Demande personnalisée" }
+                  })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.finalCtaButtonText}>{t.home.finalCtaContactExpert}</Text>
+                  <IconSymbol
+                    ios_icon_name="arrow.right"
+                    android_material_icon_name="arrow_forward"
+                    size={20}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.finalCtaButton, styles.finalCtaButtonSecondary]}
+                  onPress={() => router.push("/(tabs)/pricing")}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.finalCtaButtonText, styles.finalCtaButtonTextSecondary]}>
+                    {t.home.finalCtaViewPricing}
+                  </Text>
+                  <IconSymbol
+                    ios_icon_name="arrow.right"
+                    android_material_icon_name="arrow_forward"
+                    size={20}
+                    color="#ffffff"
+                  />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </ResponsiveContainer>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            © 2024 UNIVERSAL SHIPPING SERVICES
-          </Text>
-          <Text style={[styles.footerText, { marginTop: 4 }]}>
-            Worldwide Maritime & Logistics Solutions
-          </Text>
-        </View>
+        <ResponsiveContainer>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              © 2024 UNIVERSAL SHIPPING SERVICES
+            </Text>
+            <Text style={[styles.footerText, { marginTop: 4 }]}>
+              Worldwide Maritime & Logistics Solutions
+            </Text>
+          </View>
+        </ResponsiveContainer>
       </ScrollView>
     </View>
   );
@@ -554,13 +605,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.primary,
     borderBottomWidth: 2,
     borderBottomColor: colors.secondary,
-    boxShadow: '0px 2px 8px rgba(0, 44, 95, 0.15)',
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 44, 95, 0.15)',
+      },
+      default: {
+        elevation: 4,
+      },
+    }),
   },
   headerLeft: {
     width: 40,
@@ -573,14 +630,14 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   menuButton: {
     padding: 4,
   },
   adminButton: {
-    padding: 8,
-    borderRadius: 20,
+    padding: spacing.sm,
+    borderRadius: borderRadius.round,
   },
   helpButton: {
     padding: 4,
@@ -592,41 +649,36 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   heroLogoSection: {
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: spacing.huge,
     alignItems: 'center',
     backgroundColor: colors.highlight,
   },
   section: {
-    paddingHorizontal: 20,
-    paddingVertical: 32,
+    paddingVertical: spacing.xxxl,
   },
   sectionTitle: {
-    fontSize: 26,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     textAlign: 'center',
     color: colors.primary,
   },
   sectionSubtitle: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
     lineHeight: 24,
   },
   quickAccessGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'space-between',
   },
   quickAccessCard: {
-    width: '48%',
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -637,49 +689,48 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   quickAccessEmoji: {
     fontSize: 32,
   },
   quickAccessTitle: {
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 6,
   },
   quickAccessDescription: {
-    fontSize: 12,
+    fontSize: getFontSize('xs'),
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
   },
   ctaSection: {
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: spacing.huge,
   },
   ctaContent: {
     alignItems: 'center',
   },
   ctaTitle: {
-    fontSize: 28,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '800',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
     lineHeight: 36,
   },
   ctaSubtitle: {
-    fontSize: 18,
+    fontSize: getFontSize('lg'),
     fontWeight: '600',
     color: '#ffffff',
     textAlign: 'center',
     opacity: 0.95,
-    marginBottom: 28,
+    marginBottom: spacing.xxxl,
   },
   ctaButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
@@ -687,9 +738,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
   },
   ctaButtonPrimary: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -702,30 +753,29 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   ctaButtonTextPrimary: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     color: '#ffffff',
   },
   ctaButtonTextSecondary: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     color: '#ffffff',
   },
   whyChooseUsSection: {
     backgroundColor: colors.highlight,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
   },
   whyChooseUsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: spacing.lg,
     justifyContent: 'space-between',
   },
   whyChooseUsCard: {
-    width: '48%',
-    padding: 20,
-    borderRadius: 16,
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
-    elevation: 4,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -736,28 +786,26 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   whyChooseUsTitle: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   whyChooseUsDescription: {
-    fontSize: 13,
+    fontSize: getFontSize('sm'),
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   servicesGrid: {
-    gap: 16,
+    gap: spacing.lg,
   },
   serviceCard: {
-    padding: 24,
-    borderRadius: 16,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
-    elevation: 3,
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -767,18 +815,18 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   serviceTitle: {
-    fontSize: 20,
+    fontSize: getFontSize('xl'),
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   serviceDescription: {
-    fontSize: 14,
+    fontSize: getFontSize('sm'),
     color: colors.textSecondary,
     lineHeight: 22,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   serviceButton: {
     flexDirection: 'row',
@@ -787,61 +835,59 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   serviceButtonText: {
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
   },
   coverageSection: {
     backgroundColor: colors.highlight,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
   },
   regionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   regionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    gap: 8,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.round,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   regionText: {
-    fontSize: 14,
+    fontSize: getFontSize('sm'),
     fontWeight: '600',
   },
   coverageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxxl,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
     alignSelf: 'center',
   },
   coverageButtonText: {
-    fontSize: 17,
+    fontSize: getFontSize('lg'),
     fontWeight: '700',
     color: '#ffffff',
   },
   whyUsContainer: {
-    gap: 16,
+    gap: spacing.lg,
   },
   whyUsCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    borderRadius: 12,
-    gap: 16,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    gap: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -854,43 +900,40 @@ const styles = StyleSheet.create({
   },
   whyUsText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     fontWeight: '600',
     lineHeight: 22,
   },
   finalCtaSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingVertical: spacing.huge,
   },
   finalCtaCard: {
-    padding: 40,
-    borderRadius: 24,
+    padding: spacing.huge,
+    borderRadius: borderRadius.xxl,
     alignItems: 'center',
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
-    elevation: 8,
   },
   finalCtaTitle: {
-    fontSize: 28,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '800',
     color: '#ffffff',
     textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
     lineHeight: 36,
   },
   finalCtaSubtitle: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '500',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: spacing.xxxl,
     lineHeight: 24,
     opacity: 0.95,
     paddingHorizontal: 10,
   },
   finalCtaButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     flexWrap: 'wrap',
     justifyContent: 'center',
     width: '100%',
@@ -899,12 +942,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    gap: 8,
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
-    elevation: 4,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxxl,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
   },
   finalCtaButtonSecondary: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -912,7 +953,7 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
   },
   finalCtaButtonText: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     color: colors.primary,
   },
@@ -920,12 +961,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 32,
+    paddingVertical: spacing.xxxl,
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 12,
+    fontSize: getFontSize('xs'),
     color: colors.textSecondary,
     textAlign: 'center',
   },
