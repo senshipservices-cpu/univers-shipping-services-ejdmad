@@ -76,37 +76,7 @@ export default function AdminDashboardScreen() {
   // Check if user is admin
   const isAdmin = appConfig.isAdmin(user?.email);
 
-  // Redirect to login if not authenticated
-  if (!authLoading && !user) {
-    Alert.alert(
-      'Accès refusé',
-      'Accès réservé à l\'équipe Universal Shipping Services.',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/login'),
-        },
-      ]
-    );
-    return <Redirect href="/(tabs)/login" />;
-  }
-
-  // Redirect to login if not admin
-  if (!authLoading && user && !isAdmin) {
-    Alert.alert(
-      'Accès refusé',
-      'Accès réservé à l\'équipe Universal Shipping Services.',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/login'),
-        },
-      ]
-    );
-    return <Redirect href="/(tabs)/login" />;
-  }
-
-  // Load dashboard data
+  // Load dashboard data - MUST be defined before any conditional returns
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
@@ -179,7 +149,7 @@ export default function AdminDashboardScreen() {
 
       if (subscriptionsData) {
         subscriptionsData.forEach((sub) => {
-          if (sub.plan_type && subscriptionCounts.hasOwnProperty(sub.plan_type)) {
+          if (sub.plan_type && Object.hasOwn(subscriptionCounts, sub.plan_type)) {
             subscriptionCounts[sub.plan_type as keyof typeof subscriptionCounts]++;
           }
         });
@@ -263,18 +233,12 @@ export default function AdminDashboardScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    if (user && isAdmin) {
-      loadDashboardData();
-    }
-  }, [user, isAdmin, loadDashboardData]);
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadDashboardData();
   }, [loadDashboardData]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     Alert.alert(
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
@@ -293,7 +257,44 @@ export default function AdminDashboardScreen() {
         },
       ]
     );
-  };
+  }, [signOut, router]);
+
+  // useEffect MUST be called before any conditional returns
+  useEffect(() => {
+    if (user && isAdmin) {
+      loadDashboardData();
+    }
+  }, [user, isAdmin, loadDashboardData]);
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    Alert.alert(
+      'Accès refusé',
+      'Accès réservé à l\'équipe Universal Shipping Services.',
+      [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/login'),
+        },
+      ]
+    );
+    return <Redirect href="/(tabs)/login" />;
+  }
+
+  // Redirect to login if not admin
+  if (!authLoading && user && !isAdmin) {
+    Alert.alert(
+      'Accès refusé',
+      'Accès réservé à l\'équipe Universal Shipping Services.',
+      [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/login'),
+        },
+      ]
+    );
+    return <Redirect href="/(tabs)/login" />;
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
