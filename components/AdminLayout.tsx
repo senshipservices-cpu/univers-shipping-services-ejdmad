@@ -28,7 +28,7 @@ const menuItems: MenuItem[] = [
     label: 'Dashboard',
     icon: 'chart.bar.fill',
     androidIcon: 'dashboard',
-    route: '/(tabs)/admin-dashboard',
+    route: '/(tabs)/admin-web-dashboard',
     color: colors.primary,
   },
   {
@@ -36,7 +36,7 @@ const menuItems: MenuItem[] = [
     label: 'Devis',
     icon: 'doc.text.fill',
     androidIcon: 'description',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-quotes',
     color: colors.secondary,
   },
   {
@@ -44,7 +44,7 @@ const menuItems: MenuItem[] = [
     label: 'Shipments',
     icon: 'shippingbox.fill',
     androidIcon: 'inventory_2',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-shipments',
     color: '#10b981',
   },
   {
@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
     label: 'Agents & Ports',
     icon: 'person.3.fill',
     androidIcon: 'groups',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-agents-ports',
     color: '#f59e0b',
   },
   {
@@ -60,7 +60,7 @@ const menuItems: MenuItem[] = [
     label: 'Abonnements',
     icon: 'star.fill',
     androidIcon: 'star',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-subscriptions',
     color: '#8b5cf6',
   },
   {
@@ -68,7 +68,7 @@ const menuItems: MenuItem[] = [
     label: 'Services',
     icon: 'wrench.and.screwdriver.fill',
     androidIcon: 'build',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-services',
     color: '#ec4899',
   },
   {
@@ -76,7 +76,7 @@ const menuItems: MenuItem[] = [
     label: 'Clients',
     icon: 'person.2.fill',
     androidIcon: 'people',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-clients',
     color: '#06b6d4',
   },
   {
@@ -84,7 +84,7 @@ const menuItems: MenuItem[] = [
     label: 'Configuration',
     icon: 'gearshape.fill',
     androidIcon: 'settings',
-    route: '/(tabs)/admin',
+    route: '/(tabs)/admin-config',
     color: colors.textSecondary,
   },
 ];
@@ -104,7 +104,7 @@ export default function AdminLayout({ children, title, activeMenu }: AdminLayout
       {/* Header */}
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/admin')} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/admin-web-dashboard')} style={styles.backButton}>
             <IconSymbol
               ios_icon_name="chevron.left"
               android_material_icon_name="arrow_back"
