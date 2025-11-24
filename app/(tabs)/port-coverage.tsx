@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -33,10 +33,34 @@ export default function PortCoverageScreen() {
   const [ports, setPorts] = useState<Port[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Port[]>([]);
 
   useEffect(() => {
     loadPorts();
   }, []);
+
+  // Autocomplete logic
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const suggestions = ports
+        .filter(port => {
+          const searchLower = searchQuery.toLowerCase();
+          return (
+            port.name.toLowerCase().includes(searchLower) ||
+            port.country.toLowerCase().includes(searchLower) ||
+            (port.city && port.city.toLowerCase().includes(searchLower))
+          );
+        })
+        .slice(0, 5); // Limit to 5 suggestions
+      
+      setAutocompleteSuggestions(suggestions);
+      setShowAutocomplete(suggestions.length > 0);
+    } else {
+      setShowAutocomplete(false);
+      setAutocompleteSuggestions([]);
+    }
+  }, [searchQuery, ports]);
 
   const loadPorts = async () => {
     try {
@@ -70,9 +94,17 @@ export default function PortCoverageScreen() {
     }
   };
 
+  const handleAutocompleteSelect = (port: Port) => {
+    setSearchQuery(port.name);
+    setShowAutocomplete(false);
+    // Optionally navigate to port details
+    router.push(`/port-details?port_id=${port.id}`);
+  };
+
   const filteredPorts = ports.filter(port => {
     const matchesSearch = port.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         port.country.toLowerCase().includes(searchQuery.toLowerCase());
+                         port.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (port.city && port.city.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesSearch;
   });
 
@@ -187,6 +219,7 @@ export default function PortCoverageScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
@@ -235,7 +268,7 @@ export default function PortCoverageScreen() {
           )}
         </View>
 
-        {/* Search Bar */}
+        {/* Search Bar with Autocomplete */}
         <View style={styles.searchContainer}>
           <View style={[styles.searchBar, { backgroundColor: theme.colors.card }]}>
             <IconSymbol
@@ -246,12 +279,75 @@ export default function PortCoverageScreen() {
             />
             <TextInput
               style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder={language === 'en' ? 'Search ports...' : 'Rechercher des ports...'}
+              placeholder={language === 'en' ? 'Search ports by name, city, or country...' : 'Rechercher des ports par nom, ville ou pays...'}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => {
+                if (searchQuery.trim().length > 0 && autocompleteSuggestions.length > 0) {
+                  setShowAutocomplete(true);
+                }
+              }}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setShowAutocomplete(false);
+                }}
+                style={styles.clearButton}
+              >
+                <IconSymbol
+                  ios_icon_name="xmark.circle.fill"
+                  android_material_icon_name="cancel"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Autocomplete Dropdown */}
+          {showAutocomplete && autocompleteSuggestions.length > 0 && (
+            <View style={[styles.autocompleteContainer, { backgroundColor: theme.colors.card }]}>
+              {autocompleteSuggestions.map((port, index) => (
+                <React.Fragment key={index}>
+                  <TouchableOpacity
+                    style={styles.autocompleteItem}
+                    onPress={() => handleAutocompleteSelect(port)}
+                  >
+                    <IconSymbol
+                      ios_icon_name="mappin.circle.fill"
+                      android_material_icon_name="location_on"
+                      size={20}
+                      color={port.is_hub ? colors.accent : colors.primary}
+                    />
+                    <View style={styles.autocompleteTextContainer}>
+                      <Text style={[styles.autocompletePortName, { color: theme.colors.text }]}>
+                        {port.name}
+                      </Text>
+                      <Text style={[styles.autocompletePortLocation, { color: colors.textSecondary }]}>
+                        {port.city ? `${port.city}, ${port.country}` : port.country}
+                      </Text>
+                    </View>
+                    {port.is_hub && (
+                      <View style={[styles.hubBadgeSmall, { backgroundColor: colors.accent }]}>
+                        <IconSymbol
+                          ios_icon_name="star.fill"
+                          android_material_icon_name="star"
+                          size={10}
+                          color="#ffffff"
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {index < autocompleteSuggestions.length - 1 && (
+                    <View style={[styles.autocompleteDivider, { backgroundColor: colors.border }]} />
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -459,6 +555,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     marginBottom: 24,
+    position: 'relative',
+    zIndex: 1000,
   },
   searchBar: {
     flexDirection: 'row',
@@ -473,6 +571,50 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  autocompleteContainer: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    maxHeight: 300,
+  },
+  autocompleteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  autocompleteTextContainer: {
+    flex: 1,
+  },
+  autocompletePortName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  autocompletePortLocation: {
+    fontSize: 13,
+  },
+  autocompleteDivider: {
+    height: 1,
+    marginHorizontal: 16,
+  },
+  hubBadgeSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingContainer: {
     padding: 40,

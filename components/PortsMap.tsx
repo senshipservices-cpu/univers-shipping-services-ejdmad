@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { IconSymbol } from './IconSymbol';
@@ -33,6 +33,7 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
   });
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [nearbyPorts, setNearbyPorts] = useState<(Port & { distance: number })[]>([]);
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   useEffect(() => {
     console.log('PortsMap received ports:', ports.length);
@@ -77,20 +78,29 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
   // Request location permission and get user location
   const locateUser = async () => {
     try {
+      setLoadingLocation(true);
+      console.log('Requesting location permission...');
+      
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
+        console.log('Location permission denied');
         Alert.alert(
           language === 'en' ? 'Permission Denied' : 'Permission refusée',
           language === 'en'
             ? 'Location permission is required to find nearby ports.'
             : 'La permission de localisation est requise pour trouver les ports à proximité.'
         );
+        setLoadingLocation(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      console.log('Getting current position...');
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       const { latitude, longitude } = location.coords;
+      console.log('User location:', latitude, longitude);
 
       setUserLocation({ latitude, longitude });
       setRegion({
@@ -103,6 +113,7 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
       // Calculate nearby ports
       const nearby = getNearbyPorts(latitude, longitude);
       setNearbyPorts(nearby);
+      console.log('Nearby ports found:', nearby.length);
 
       if (nearby.length === 0) {
         Alert.alert(
@@ -111,15 +122,24 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
             ? 'No ports found within 500 km of your location.'
             : 'Aucun port trouvé à moins de 500 km de votre position.'
         );
+      } else {
+        Alert.alert(
+          language === 'en' ? 'Location Found' : 'Position trouvée',
+          language === 'en'
+            ? `Found ${nearby.length} port${nearby.length > 1 ? 's' : ''} within 500 km.`
+            : `${nearby.length} port${nearby.length > 1 ? 's' : ''} trouvé${nearby.length > 1 ? 's' : ''} à moins de 500 km.`
+        );
       }
     } catch (error) {
       console.error('Error getting location:', error);
       Alert.alert(
         language === 'en' ? 'Error' : 'Erreur',
         language === 'en'
-          ? 'Unable to retrieve your location.'
-          : 'Impossible de récupérer votre position.'
+          ? 'Unable to retrieve your location. Please make sure location services are enabled.'
+          : 'Impossible de récupérer votre position. Veuillez vous assurer que les services de localisation sont activés.'
       );
+    } finally {
+      setLoadingLocation(false);
     }
   };
 
@@ -146,6 +166,8 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         provider={PROVIDER_GOOGLE}
         region={region}
         onRegionChangeComplete={setRegion}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
       >
         {/* Port markers */}
         {ports.map((port, index) => (
@@ -169,7 +191,11 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
             coordinate={userLocation}
             title={language === 'en' ? 'Your Location' : 'Votre position'}
             pinColor="#007BFF"
-          />
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+            </View>
+          </Marker>
         )}
       </MapView>
 
@@ -177,40 +203,79 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
       <TouchableOpacity
         style={[styles.locateButton, { backgroundColor: colors.primary }]}
         onPress={locateUser}
+        disabled={loadingLocation}
       >
-        <IconSymbol
-          ios_icon_name="location.fill"
-          android_material_icon_name="my_location"
-          size={24}
-          color="#ffffff"
-        />
+        {loadingLocation ? (
+          <ActivityIndicator size="small" color="#ffffff" />
+        ) : (
+          <IconSymbol
+            ios_icon_name="location.fill"
+            android_material_icon_name="my_location"
+            size={24}
+            color="#ffffff"
+          />
+        )}
       </TouchableOpacity>
 
       {/* Nearby ports list */}
       {nearbyPorts.length > 0 && (
         <View style={[styles.nearbyContainer, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.nearbyTitle, { color: theme.colors.text }]}>
-            {language === 'en'
-              ? `Nearby Ports (≤ 500 km):`
-              : `Ports proches (≤ 500 km) :`}
-          </Text>
-          {nearbyPorts.slice(0, 5).map((port, index) => (
+          <View style={styles.nearbyHeader}>
+            <Text style={[styles.nearbyTitle, { color: theme.colors.text }]}>
+              {language === 'en'
+                ? `Nearby Ports (≤ 500 km)`
+                : `Ports proches (≤ 500 km)`}
+            </Text>
             <TouchableOpacity
-              key={index}
-              style={styles.nearbyPortItem}
-              onPress={() => {
-                if (onPortPress) {
-                  onPortPress(port.id);
-                }
-              }}
+              onPress={() => setNearbyPorts([])}
+              style={styles.closeNearbyButton}
             >
-              <Text style={[styles.nearbyPortName, { color: theme.colors.text }]}>
-                {port.name}
-              </Text>
-              <Text style={[styles.nearbyPortDistance, { color: colors.textSecondary }]}>
-                ~{Math.round(port.distance)} km
-              </Text>
+              <IconSymbol
+                ios_icon_name="xmark.circle.fill"
+                android_material_icon_name="cancel"
+                size={20}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
+          </View>
+          {nearbyPorts.slice(0, 5).map((port, index) => (
+            <React.Fragment key={index}>
+              <TouchableOpacity
+                style={styles.nearbyPortItem}
+                onPress={() => {
+                  if (onPortPress) {
+                    onPortPress(port.id);
+                  }
+                }}
+              >
+                <View style={styles.nearbyPortInfo}>
+                  <Text style={[styles.nearbyPortName, { color: theme.colors.text }]}>
+                    {port.name}
+                  </Text>
+                  <Text style={[styles.nearbyPortCountry, { color: colors.textSecondary }]}>
+                    {port.country}
+                  </Text>
+                </View>
+                <View style={styles.nearbyPortDistance}>
+                  <Text style={[styles.nearbyPortDistanceText, { color: colors.primary }]}>
+                    ~{Math.round(port.distance)} km
+                  </Text>
+                  {port.is_hub && (
+                    <View style={[styles.hubBadgeTiny, { backgroundColor: colors.accent }]}>
+                      <IconSymbol
+                        ios_icon_name="star.fill"
+                        android_material_icon_name="star"
+                        size={8}
+                        color="#ffffff"
+                      />
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+              {index < nearbyPorts.slice(0, 5).length - 1 && (
+                <View style={[styles.nearbyDivider, { backgroundColor: colors.border }]} />
+              )}
+            </React.Fragment>
           ))}
         </View>
       )}
@@ -252,6 +317,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  userLocationMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 123, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userLocationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#007BFF',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
   nearbyContainer: {
     position: 'absolute',
     bottom: 16,
@@ -264,25 +345,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    maxHeight: 250,
+  },
+  nearbyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   nearbyTitle: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  closeNearbyButton: {
+    padding: 4,
   },
   nearbyPortItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  },
+  nearbyPortInfo: {
+    flex: 1,
   },
   nearbyPortName: {
     fontSize: 14,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  nearbyPortCountry: {
+    fontSize: 12,
   },
   nearbyPortDistance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nearbyPortDistanceText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  nearbyDivider: {
+    height: 1,
+    marginVertical: 4,
+  },
+  hubBadgeTiny: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

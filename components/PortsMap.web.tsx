@@ -48,6 +48,41 @@ export function PortsMap({ ports }: PortsMapProps) {
               : `${ports.length} ports actifs dans le monde`}
           </Text>
         </View>
+        <View style={styles.featuresList}>
+          <View style={styles.featureItem}>
+            <IconSymbol
+              ios_icon_name="location.fill"
+              android_material_icon_name="my_location"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              {language === 'en' ? 'Geolocation' : 'Géolocalisation'}
+            </Text>
+          </View>
+          <View style={styles.featureItem}>
+            <IconSymbol
+              ios_icon_name="mappin.circle.fill"
+              android_material_icon_name="location_on"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              {language === 'en' ? 'Port markers' : 'Marqueurs de ports'}
+            </Text>
+          </View>
+          <View style={styles.featureItem}>
+            <IconSymbol
+              ios_icon_name="arrow.triangle.2.circlepath"
+              android_material_icon_name="sync"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+              {language === 'en' ? 'Nearby ports' : 'Ports à proximité'}
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -88,5 +123,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  featuresList: {
+    marginTop: 16,
+    gap: 12,
+    alignSelf: 'stretch',
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  featureText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
