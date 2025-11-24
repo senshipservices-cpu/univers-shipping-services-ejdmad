@@ -59,7 +59,7 @@ export default function AdminShipmentDetailsScreen() {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const params = useLocalSearchParams();
-  const shipmentId = params.shipment_id as string;
+  const shipmentId = (params.id || params.shipment_id) as string;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

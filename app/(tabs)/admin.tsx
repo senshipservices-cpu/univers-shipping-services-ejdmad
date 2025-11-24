@@ -148,7 +148,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Devis', 'Gestion des devis à venir')}
+            onPress={() => router.push('/(tabs)/admin-quotes')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: colors.secondary + '20' }]}>
               <IconSymbol
@@ -166,7 +166,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Shipments', 'Gestion des expéditions à venir')}
+            onPress={() => router.push('/(tabs)/admin-shipments')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#10b981' + '20' }]}>
               <IconSymbol
@@ -184,7 +184,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Agents & Ports', 'Gestion des agents et ports à venir')}
+            onPress={() => router.push('/(tabs)/admin-agents-ports')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#f59e0b' + '20' }]}>
               <IconSymbol

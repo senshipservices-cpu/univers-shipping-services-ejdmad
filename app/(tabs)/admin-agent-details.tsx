@@ -47,7 +47,7 @@ export default function AdminAgentDetailsScreen() {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const params = useLocalSearchParams();
-  const agentId = params.agent_id as string;
+  const agentId = (params.id || params.agent_id) as string;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
