@@ -34,6 +34,13 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [nearbyPorts, setNearbyPorts] = useState<(Port & { distance: number })[]>([]);
 
+  useEffect(() => {
+    console.log('PortsMap received ports:', ports.length);
+    if (ports.length > 0) {
+      console.log('First port:', ports[0]);
+    }
+  }, [ports]);
+
   // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = (
     lat1: number,
@@ -115,6 +122,22 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
       );
     }
   };
+
+  if (ports.length === 0) {
+    return (
+      <View style={[styles.container, styles.emptyContainer, { backgroundColor: colors.highlight }]}>
+        <IconSymbol
+          ios_icon_name="map"
+          android_material_icon_name="map"
+          size={48}
+          color={colors.textSecondary}
+        />
+        <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+          {language === 'en' ? 'No ports available to display' : 'Aucun port disponible à afficher'}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -201,6 +224,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
+  },
+  emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   map: {
     flex: 1,

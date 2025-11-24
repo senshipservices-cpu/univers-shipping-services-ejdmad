@@ -20,8 +20,8 @@ interface Port {
   services_available: string[];
   description_fr: string | null;
   description_en: string | null;
-  lat: number | null;
-  lng: number | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -41,21 +41,30 @@ export default function PortCoverageScreen() {
   const loadPorts = async () => {
     try {
       setLoading(true);
+      console.log('Loading ports from database...');
+      
       const { data, error } = await supabase
         .from('ports')
         .select('*')
-        .eq('status', 'actif')
+        .eq('status', 'active')
         .order('name', { ascending: true });
 
       if (error) {
         console.error('Error loading ports:', error);
-        Alert.alert('Erreur', 'Impossible de charger les ports.');
+        Alert.alert(
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'Unable to load ports.' : 'Impossible de charger les ports.'
+        );
       } else {
         setPorts(data || []);
-        console.log('Ports loaded:', data?.length);
+        console.log('Ports loaded successfully:', data?.length);
       }
     } catch (error) {
       console.error('Exception loading ports:', error);
+      Alert.alert(
+        language === 'en' ? 'Error' : 'Erreur',
+        language === 'en' ? 'An error occurred while loading ports.' : 'Une erreur est survenue lors du chargement des ports.'
+      );
     } finally {
       setLoading(false);
     }
@@ -69,10 +78,10 @@ export default function PortCoverageScreen() {
 
   // Group ports by region
   const portsByRegion = {
-    africa: filteredPorts.filter(p => p.region === 'Afrique'),
-    europe: filteredPorts.filter(p => p.region === 'Europe'),
-    asia: filteredPorts.filter(p => p.region === 'Asie' || p.region === 'Moyen-Orient'),
-    americas: filteredPorts.filter(p => p.region === 'Amériques'),
+    africa: filteredPorts.filter(p => p.region === 'africa'),
+    europe: filteredPorts.filter(p => p.region === 'europe'),
+    asia: filteredPorts.filter(p => p.region === 'asia_me'),
+    americas: filteredPorts.filter(p => p.region === 'americas'),
   };
 
   const getRegionTitle = (region: string) => {
@@ -110,14 +119,18 @@ export default function PortCoverageScreen() {
   };
 
   // Get ports with valid coordinates for the map
-  const portsWithCoordinates = ports.filter(p => p.lat !== null && p.lng !== null).map(p => ({
-    id: p.id,
-    name: p.name,
-    lat: p.lat!,
-    lng: p.lng!,
-    is_hub: p.is_hub,
-    country: p.country,
-  }));
+  const portsWithCoordinates = ports
+    .filter(p => p.latitude !== null && p.longitude !== null)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      lat: Number(p.latitude),
+      lng: Number(p.longitude),
+      is_hub: p.is_hub,
+      country: p.country,
+    }));
+
+  console.log('Ports with coordinates:', portsWithCoordinates.length);
 
   const renderPortsByRegion = (region: 'africa' | 'europe' | 'asia' | 'americas') => {
     const regionPorts = portsByRegion[region];
@@ -197,7 +210,7 @@ export default function PortCoverageScreen() {
             <View style={[styles.mapPlaceholder, { backgroundColor: colors.highlight }]}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={[styles.mapPlaceholderText, { color: colors.textSecondary }]}>
-                {t.portCoverage.loading}
+                {language === 'en' ? 'Loading ports...' : 'Chargement des ports...'}
               </Text>
             </View>
           ) : (
@@ -233,7 +246,7 @@ export default function PortCoverageScreen() {
             />
             <TextInput
               style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder={t.portCoverage.searchPlaceholder}
+              placeholder={language === 'en' ? 'Search ports...' : 'Rechercher des ports...'}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -245,7 +258,7 @@ export default function PortCoverageScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-              {t.portCoverage.loading}
+              {language === 'en' ? 'Loading ports...' : 'Chargement des ports...'}
             </Text>
           </View>
         ) : (
@@ -267,7 +280,7 @@ export default function PortCoverageScreen() {
                   color={colors.textSecondary}
                 />
                 <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-                  {t.portCoverage.noPorts}
+                  {language === 'en' ? 'No ports found' : 'Aucun port trouvé'}
                 </Text>
               </View>
             )}
@@ -277,17 +290,19 @@ export default function PortCoverageScreen() {
         {/* CTA: Port Not Listed - Dark Blue Block */}
         <View style={[styles.portNotListedSection, { backgroundColor: '#1e3a5f' }]}>
           <Text style={styles.portNotListedTitle}>
-            {t.portCoverage.portNotListedTitle}
+            {language === 'en' ? 'Port Not Listed?' : 'Port non listé ?'}
           </Text>
           <Text style={styles.portNotListedText}>
-            {t.portCoverage.portNotListedText}
+            {language === 'en'
+              ? 'We are constantly expanding our network. Contact us to add your port.'
+              : 'Nous élargissons constamment notre réseau. Contactez-nous pour ajouter votre port.'}
           </Text>
           <TouchableOpacity
             style={[styles.portNotListedButton, { backgroundColor: '#ffffff' }]}
             onPress={() => router.push('/contact?subject=port_request')}
           >
             <Text style={[styles.portNotListedButtonText, { color: '#1e3a5f' }]}>
-              {t.portCoverage.portNotListedButton}
+              {language === 'en' ? 'Contact Us' : 'Nous Contacter'}
             </Text>
             <IconSymbol
               ios_icon_name="arrow.right"
