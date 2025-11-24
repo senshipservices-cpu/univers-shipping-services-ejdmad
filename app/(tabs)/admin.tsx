@@ -202,7 +202,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Abonnements', 'Gestion des abonnements à venir')}
+            onPress={() => router.push('/(tabs)/admin-subscriptions')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#8b5cf6' + '20' }]}>
               <IconSymbol
@@ -220,7 +220,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Services', 'Gestion des services à venir')}
+            onPress={() => router.push('/(tabs)/admin-services')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#ec4899' + '20' }]}>
               <IconSymbol
@@ -238,7 +238,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Clients', 'Gestion des clients à venir')}
+            onPress={() => router.push('/(tabs)/admin-clients')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: '#06b6d4' + '20' }]}>
               <IconSymbol
@@ -256,7 +256,7 @@ export default function AdminScreen() {
 
           <TouchableOpacity
             style={[styles.menuCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => Alert.alert('Configuration', 'Configuration système à venir')}
+            onPress={() => router.push('/(tabs)/admin-config')}
           >
             <View style={[styles.menuIconContainer, { backgroundColor: colors.textSecondary + '20' }]}>
               <IconSymbol
