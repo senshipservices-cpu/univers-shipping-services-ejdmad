@@ -3,6 +3,7 @@
  * Error Boundary Component
  * Catches and handles React errors gracefully
  * Enhanced with detailed logging for iOS debugging
+ * NOW DISPLAYS ERROR DETAILS IN PRODUCTION FOR DEBUGGING
  */
 
 import React, { Component, ReactNode } from 'react';
@@ -20,6 +21,8 @@ interface State {
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
   errorCount: number;
+  errorMessage: string;
+  errorStack: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -30,6 +33,8 @@ export class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
       errorCount: 0,
+      errorMessage: '',
+      errorStack: '',
     };
   }
 
@@ -44,6 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorCount = this.state.errorCount + 1;
     
     // Enhanced logging for iOS debugging
+    console.error('[GLOBAL_ERROR_BOUNDARY]', error, errorInfo);
     console.error('═══════════════════════════════════════════════════════');
     console.error('🔴 ERROR BOUNDARY CAUGHT AN ERROR');
     console.error('═══════════════════════════════════════════════════════');
@@ -72,8 +78,11 @@ export class ErrorBoundary extends Component<Props, State> {
       },
     }, 'critical');
 
-    // Update state with error info
+    // Update state with error info INCLUDING errorMessage and errorStack
     this.setState({
+      hasError: true,
+      errorMessage: error?.message ?? String(error),
+      errorStack: error?.stack ?? '',
       errorInfo,
       errorCount,
     });
@@ -85,6 +94,8 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorMessage: '',
+      errorStack: '',
     });
   };
 
@@ -106,6 +117,33 @@ export class ErrorBoundary extends Component<Props, State> {
               <Text style={styles.message}>
                 We&apos;re sorry for the inconvenience. The error has been logged and we&apos;ll look into it.
               </Text>
+              
+              {/* Bloc debug pour voir l'erreur réelle sur iOS / Android / Web */}
+              {(true) && this.state.errorMessage ? (
+                <View
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    backgroundColor: '#f8f8f8',
+                    borderRadius: 8,
+                    marginHorizontal: 24,
+                    width: '100%',
+                    maxWidth: 600,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: '#b00020', marginBottom: 8 }}>
+                    {this.state.errorMessage}
+                  </Text>
+                  {this.state.errorStack ? (
+                    <Text
+                      style={{ fontSize: 10, color: '#555' }}
+                      numberOfLines={6}
+                    >
+                      {this.state.errorStack}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
               
               {__DEV__ && this.state.error && (
                 <View style={styles.errorDetails}>
