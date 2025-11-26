@@ -278,41 +278,15 @@ export default function ShipmentDetailsScreen() {
   const handleContactSupport = useCallback(() => {
     console.log('[SHIPMENT_DETAILS] Contact support button clicked');
     
-    // For now, we'll use email/phone as there's no dedicated Support screen yet
-    // When Support screen is created, navigate with:
-    // router.push({
-    //   pathname: '/(tabs)/support',
-    //   params: {
-    //     context_type: 'shipment',
-    //     context_shipment_id: state.shipment_data?.id,
-    //     context_tracking_number: state.shipment_data?.tracking_number,
-    //   }
-    // });
-    
-    Alert.alert(
-      'Contacter le support',
-      'Comment souhaitez-vous nous contacter ?',
-      [
-        {
-          text: 'Email',
-          onPress: () => {
-            const subject = `Support - Envoi ${state.shipment_data?.tracking_number || state.shipment_id}`;
-            const body = `Bonjour,\n\nJ'ai besoin d'aide concernant mon envoi:\n\nNuméro de suivi: ${state.shipment_data?.tracking_number || 'N/A'}\nID: ${state.shipment_id}\n\nDescription du problème:\n\n`;
-            Linking.openURL(`mailto:support@3sglobal.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-          }
-        },
-        {
-          text: 'Téléphone',
-          onPress: () => {
-            Linking.openURL('tel:+212522000000');
-          }
-        },
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        }
-      ]
-    );
+    // Navigate to Support screen with shipment context
+    router.push({
+      pathname: '/(tabs)/support',
+      params: {
+        context_type: 'shipment',
+        context_shipment_id: state.shipment_data?.id || state.shipment_id,
+        context_tracking_number: state.shipment_data?.tracking_number || '',
+      }
+    });
   }, [state.shipment_data, state.shipment_id, router]);
 
   // PARTIE 4/4 - 4. Bouton "Retour à mes envois"
