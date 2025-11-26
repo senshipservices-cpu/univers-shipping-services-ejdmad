@@ -1,9 +1,17 @@
 
 /**
  * Error Boundary Component
- * Catches and handles React errors gracefully
- * Enhanced with detailed logging for iOS debugging
- * NOW DISPLAYS ERROR DETAILS IN PRODUCTION FOR DEBUGGING
+ * 
+ * Catches and handles React errors gracefully across all platforms.
+ * This component prevents the entire app from crashing when an error occurs.
+ * 
+ * Features:
+ * - Catches all React component errors
+ * - Displays user-friendly error UI
+ * - Logs detailed error information for debugging
+ * - Provides retry functionality
+ * - Shows detailed error info in development mode
+ * - Platform-agnostic implementation
  */
 
 import React, { Component, ReactNode } from 'react';
@@ -39,6 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
+    // Update state so the next render will show the fallback UI
     return {
       hasError: true,
       error,
@@ -48,8 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const errorCount = this.state.errorCount + 1;
     
-    // Enhanced logging for iOS debugging
-    console.error('[GLOBAL_ERROR_BOUNDARY]', error, errorInfo);
+    // Enhanced logging for debugging
     console.error('═══════════════════════════════════════════════════════');
     console.error('🔴 ERROR BOUNDARY CAUGHT AN ERROR');
     console.error('═══════════════════════════════════════════════════════');
@@ -65,7 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error(errorInfo.componentStack || 'No component stack available');
     console.error('═══════════════════════════════════════════════════════');
     
-    // Log the full error details
+    // Log the full error details using error logger
     logError(error, {
       component: 'ErrorBoundary',
       type: 'react_error_boundary',
@@ -78,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
       },
     }, 'critical');
 
-    // Update state with error info INCLUDING errorMessage and errorStack
+    // Update state with error info
     this.setState({
       hasError: true,
       errorMessage: error?.message ?? String(error),
@@ -89,7 +97,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleReset = () => {
-    console.log('🔄 Resetting ErrorBoundary...');
+    console.log('🔄 [ERROR_BOUNDARY] Resetting ErrorBoundary...');
     this.setState({
       hasError: false,
       error: null,
@@ -101,10 +109,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // If a custom fallback is provided, use it
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
+      // Default error UI
       return (
         <View style={styles.container}>
           <ScrollView 
@@ -112,75 +122,57 @@ export class ErrorBoundary extends Component<Props, State> {
             showsVerticalScrollIndicator={true}
           >
             <View style={styles.content}>
+              {/* Error Icon */}
               <Text style={styles.emoji}>⚠️</Text>
-              <Text style={styles.title}>Oops! Something went wrong</Text>
+              
+              {/* Error Title */}
+              <Text style={styles.title}>Oups! Une erreur est survenue</Text>
+              
+              {/* Error Message */}
               <Text style={styles.message}>
-                We&apos;re sorry for the inconvenience. The error has been logged and we&apos;ll look into it.
+                Nous sommes désolés pour ce désagrément. L&apos;erreur a été enregistrée et nous allons l&apos;examiner.
               </Text>
               
-              {/* Bloc debug pour voir l'erreur réelle sur iOS / Android / Web */}
-              {(true) && this.state.errorMessage ? (
-                <View
-                  style={{
-                    marginTop: 16,
-                    padding: 12,
-                    backgroundColor: '#f8f8f8',
-                    borderRadius: 8,
-                    marginHorizontal: 24,
-                    width: '100%',
-                    maxWidth: 600,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, color: '#b00020', marginBottom: 8 }}>
+              {/* Error Details (Always visible for debugging) */}
+              {this.state.errorMessage && (
+                <View style={styles.errorDetailsBox}>
+                  <Text style={styles.errorDetailsTitle}>Détails de l&apos;erreur:</Text>
+                  <Text style={styles.errorDetailsText}>
                     {this.state.errorMessage}
                   </Text>
-                  {this.state.errorStack ? (
-                    <Text
-                      style={{ fontSize: 10, color: '#555' }}
-                      numberOfLines={6}
+                  {this.state.errorStack && (
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={true}
+                      style={styles.stackScrollView}
                     >
-                      {this.state.errorStack}
-                    </Text>
-                  ) : null}
+                      <Text style={styles.errorStackText} numberOfLines={8}>
+                        {this.state.errorStack}
+                      </Text>
+                    </ScrollView>
+                  )}
                 </View>
-              ) : null}
+              )}
               
+              {/* Development Mode Details */}
               {__DEV__ && this.state.error && (
                 <View style={styles.errorDetails}>
-                  <Text style={styles.errorTitle}>🔍 Error Details (Dev Only):</Text>
+                  <Text style={styles.errorTitle}>🔍 Informations de débogage (Dev uniquement):</Text>
                   
                   <View style={styles.errorBox}>
-                    <Text style={styles.errorLabel}>Platform:</Text>
+                    <Text style={styles.errorLabel}>Plateforme:</Text>
                     <Text style={styles.errorText}>{Platform.OS}</Text>
                   </View>
                   
                   <View style={styles.errorBox}>
-                    <Text style={styles.errorLabel}>Error Count:</Text>
+                    <Text style={styles.errorLabel}>Nombre d&apos;erreurs:</Text>
                     <Text style={styles.errorText}>{this.state.errorCount}</Text>
                   </View>
                   
                   <View style={styles.errorBox}>
-                    <Text style={styles.errorLabel}>Error Name:</Text>
+                    <Text style={styles.errorLabel}>Type d&apos;erreur:</Text>
                     <Text style={styles.errorText}>{this.state.error.name}</Text>
                   </View>
-                  
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorLabel}>Error Message:</Text>
-                    <Text style={styles.errorText}>{this.state.error.toString()}</Text>
-                  </View>
-                  
-                  {this.state.error.stack && (
-                    <View style={styles.errorBox}>
-                      <Text style={styles.errorLabel}>Stack Trace:</Text>
-                      <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={true}
-                        style={styles.stackScrollView}
-                      >
-                        <Text style={styles.errorText}>{this.state.error.stack}</Text>
-                      </ScrollView>
-                    </View>
-                  )}
                   
                   {this.state.errorInfo?.componentStack && (
                     <View style={styles.errorBox}>
@@ -198,22 +190,24 @@ export class ErrorBoundary extends Component<Props, State> {
                   )}
                   
                   <Text style={styles.debugHint}>
-                    💡 Check the console for the complete error log with detailed information
+                    💡 Consultez la console pour le log complet de l&apos;erreur
                   </Text>
                   
                   <Text style={styles.debugHint}>
-                    📱 On iOS: Open Safari → Develop → [Your Device] → [Your App] to see console logs
+                    📱 Sur iOS: Ouvrez Safari → Développement → [Votre appareil] → [Votre app] pour voir les logs
                   </Text>
                 </View>
               )}
               
+              {/* Retry Button */}
               <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-                <Text style={styles.buttonText}>Try Again</Text>
+                <Text style={styles.buttonText}>Réessayer</Text>
               </TouchableOpacity>
               
+              {/* Dev Note */}
               {__DEV__ && (
                 <Text style={styles.devNote}>
-                  Development Mode: Error details are visible above
+                  Mode Développement: Les détails de l&apos;erreur sont visibles ci-dessus
                 </Text>
               )}
             </View>
@@ -244,14 +238,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emoji: {
-    fontSize: 64,
-    marginBottom: 20,
+    fontSize: 72,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
     textAlign: 'center',
   },
   message: {
@@ -261,8 +255,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
   },
-  errorDetails: {
-    backgroundColor: colors.card,
+  errorDetailsBox: {
+    backgroundColor: '#fff5f5',
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
@@ -270,10 +264,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.error,
   },
+  errorDetailsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 8,
+  },
+  errorDetailsText: {
+    fontSize: 13,
+    color: '#c53030',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', web: 'monospace' }),
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  errorStackText: {
+    fontSize: 11,
+    color: '#666',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', web: 'monospace' }),
+    lineHeight: 16,
+  },
+  errorDetails: {
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.error,
+    color: colors.text,
     marginBottom: 12,
   },
   errorBox: {
@@ -307,8 +329,8 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
     borderRadius: 12,
     minWidth: 200,
     alignItems: 'center',
@@ -316,7 +338,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   devNote: {

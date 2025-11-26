@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,15 @@ import { colors } from '@/styles/commonStyles';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 
+/**
+ * Login Screen
+ * 
+ * IMPORTANT: Auto-navigation on screen load has been DISABLED to prevent navigation loops.
+ * Users must manually click the login button to authenticate.
+ * 
+ * Navigation loops were causing crashes:
+ * Accueil → Login → Accueil → Login → ... (stack overflow)
+ */
 export default function LoginScreen() {
   const { signIn, signInWithGoogle, loading: authLoading, user, isEmailVerified } = useAuth();
   const router = useRouter();
@@ -26,37 +35,16 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Redirect to appropriate screen if already logged in
-  useEffect(() => {
-    if (user) {
-      console.log('User already logged in, checking email verification and return destination');
-      
-      // Check if email is verified
-      if (!isEmailVerified()) {
-        console.log('Email not verified, redirecting to verify-email');
-        router.replace('/(tabs)/verify-email');
-        return;
-      }
-      
-      // Check if there's a return destination
-      const returnTo = params.returnTo as string;
-      const plan = params.plan as string;
-      
-      if (returnTo === 'subscription-confirm' && plan) {
-        console.log('Redirecting to subscription-confirm with plan:', plan);
-        router.replace({
-          pathname: '/(tabs)/subscription-confirm',
-          params: { plan }
-        });
-      } else if (returnTo === 'pricing') {
-        console.log('Redirecting to pricing');
-        router.replace('/(tabs)/pricing');
-      } else {
-        console.log('Redirecting to client dashboard');
-        router.replace('/(tabs)/client-dashboard');
-      }
-    }
-  }, [user, isEmailVerified, router, params]);
+  // ⚠️ AUTO-NAVIGATION DISABLED TO PREVENT LOOPS
+  // Previously, this useEffect would automatically redirect logged-in users
+  // This caused navigation loops: Home → Login → Home → Login → crash
+  // Now, users must manually navigate after login
+  
+  // useEffect(() => {
+  //   if (user) {
+  //     // AUTO-REDIRECT DISABLED
+  //   }
+  // }, [user]);
 
   const handleLogin = async () => {
     console.log('=== LOGIN BUTTON CLICKED ===');
@@ -108,8 +96,33 @@ export default function LoginScreen() {
         
         setErrorMessage(errorMsg);
       } else {
-        // Success - navigation will be handled by useEffect
-        console.log('Login successful, waiting for redirect...');
+        // Success - manually navigate based on return destination
+        console.log('Login successful, checking return destination...');
+        
+        // Check if email is verified
+        if (!isEmailVerified()) {
+          console.log('Email not verified, redirecting to verify-email');
+          router.replace('/(tabs)/verify-email');
+          return;
+        }
+        
+        // Check if there's a return destination
+        const returnTo = params.returnTo as string;
+        const plan = params.plan as string;
+        
+        if (returnTo === 'subscription-confirm' && plan) {
+          console.log('Redirecting to subscription-confirm with plan:', plan);
+          router.replace({
+            pathname: '/(tabs)/subscription-confirm',
+            params: { plan }
+          });
+        } else if (returnTo === 'pricing') {
+          console.log('Redirecting to pricing');
+          router.replace('/(tabs)/pricing');
+        } else {
+          console.log('Redirecting to client dashboard');
+          router.replace('/(tabs)/client-dashboard');
+        }
       }
     } catch (error: any) {
       console.error('Login exception:', error);
@@ -144,7 +157,7 @@ export default function LoginScreen() {
         
         setErrorMessage(errorMsg);
       }
-      // Success will be handled by the OAuth redirect and useEffect
+      // Success will be handled by the OAuth redirect
     } catch (error: any) {
       console.error('Google sign-in exception:', error);
       setErrorMessage('Une erreur inattendue est survenue lors de la connexion avec Google. Merci de réessayer.');
