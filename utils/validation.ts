@@ -27,17 +27,22 @@ export function validateEmail(email: string): ValidationResult {
 
 /**
  * Phone number validation (international format)
+ * Minimum 8 characters, digits and + allowed
  */
 export function validatePhone(phone: string): ValidationResult {
   if (!phone || phone.trim() === '') {
     return { isValid: false, error: 'Phone number is required' };
   }
 
-  // Basic international phone format: +[country code][number]
-  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
   const cleanPhone = phone.replace(/[\s\-()]/g, '');
   
-  if (!phoneRegex.test(cleanPhone)) {
+  // Check minimum length
+  if (cleanPhone.length < 8) {
+    return { isValid: false, error: 'Phone number must be at least 8 characters' };
+  }
+
+  // Check format: only digits and + allowed
+  if (!/^[\d+]+$/.test(cleanPhone)) {
     return { isValid: false, error: 'Invalid phone number format' };
   }
 
@@ -196,6 +201,50 @@ export function validateComposite(validators: (() => ValidationResult)[]): Valid
     if (!result.isValid) {
       return result;
     }
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Weight validation for shipments
+ * Must be numeric, > 0, and <= 100 kg
+ */
+export function validateWeight(weight: string | number): ValidationResult {
+  const weightNum = typeof weight === 'string' ? parseFloat(weight) : weight;
+
+  if (isNaN(weightNum)) {
+    return { isValid: false, error: 'Weight must be a valid number' };
+  }
+
+  if (weightNum <= 0) {
+    return { isValid: false, error: 'Weight must be greater than 0' };
+  }
+
+  if (weightNum > 100) {
+    return { isValid: false, error: 'Weight must not exceed 100 kg' };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Declared value validation
+ * Optional field, but if provided must be numeric and >= 0
+ */
+export function validateDeclaredValue(value: string | number): ValidationResult {
+  if (!value || value === '') {
+    return { isValid: true }; // Optional field
+  }
+
+  const valueNum = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(valueNum)) {
+    return { isValid: false, error: 'Declared value must be a valid number' };
+  }
+
+  if (valueNum < 0) {
+    return { isValid: false, error: 'Declared value must be 0 or greater' };
   }
 
   return { isValid: true };
