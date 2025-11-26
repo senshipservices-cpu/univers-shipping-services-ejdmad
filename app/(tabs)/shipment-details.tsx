@@ -19,13 +19,12 @@ import { supabase } from '@/app/integrations/supabase/client';
 import { colors } from '@/styles/commonStyles';
 import { formatDate, formatDateTime, formatCurrency } from '@/utils/formatters';
 
-// PARTIE 2/4 – Modèle de données + Blocs Résumé / Expéditeur / Destinataire
-// PARTIE 3/4 – Colis + Prix + Timeline + Boutons + Loading/Erreur
+// PARTIE 4/4 – Logique métier (API, refresh, navigation, support, sécurité)
 // SCREEN_ID: ShipmentDetails
 // TITLE: "Détails de l'envoi"
 // ROUTE: "/shipment-details"
 
-// New data structure aligned with API response
+// Data structure aligned with API response
 interface OriginDestination {
   name: string;
   phone: string;
@@ -85,7 +84,9 @@ export default function ShipmentDetailsScreen() {
     shipment_data: null,
   });
 
-  // Load shipment details
+  // PARTIE 4/4 - 1. Chargement à l'ouverture
+  // API: GET /shipments/{id}
+  // Authorization: Bearer <access_token>
   const loadShipmentDetails = useCallback(async () => {
     if (!state.shipment_id || !client?.id) {
       console.log('[SHIPMENT_DETAILS] Missing shipment_id or client_id');
@@ -95,12 +96,14 @@ export default function ShipmentDetailsScreen() {
     try {
       console.log('[SHIPMENT_DETAILS] Loading shipment:', state.shipment_id);
 
+      // Step 1: set_screen_state - shipment_loading: true
       setState(prev => ({
         ...prev,
         shipment_loading: true,
         shipment_error: null,
       }));
 
+      // Step 2: call_api - GET /shipments/{id}
       // Load shipment with port information
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
@@ -114,17 +117,21 @@ export default function ShipmentDetailsScreen() {
 
       if (shipmentError) {
         console.error('[SHIPMENT_DETAILS] Error loading shipment:', shipmentError);
+        
+        // on_error: set_screen_state
         setState(prev => ({
           ...prev,
           shipment_loading: false,
-          shipment_error: 'Impossible de charger les détails de l\'envoi.',
+          shipment_error: 'Impossible de charger les détails de cet envoi. Merci de réessayer plus tard.',
         }));
         return;
       }
 
-      // Security check: Verify that the shipment belongs to the user's client
+      // SECURITY_NOTES: Verify that the user is the owner of the shipment
+      // /shipments/{id} must verify that the connected user is the owner
       if (shipmentData.client !== client.id) {
-        console.warn('[SHIPMENT_DETAILS] Unauthorized access attempt');
+        console.warn('[SHIPMENT_DETAILS] Unauthorized access attempt - User:', client.id, 'Shipment owner:', shipmentData.client);
+        
         setState(prev => ({
           ...prev,
           shipment_loading: false,
@@ -161,7 +168,7 @@ export default function ShipmentDetailsScreen() {
         console.error('[SHIPMENT_DETAILS] Error loading quote:', quoteError);
       }
 
-      // Transform data to match new structure
+      // Transform data to match expected structure
       const transformedData: ShipmentData = {
         id: shipmentData.id,
         tracking_number: shipmentData.tracking_number,
@@ -199,27 +206,122 @@ export default function ShipmentDetailsScreen() {
 
       console.log('[SHIPMENT_DETAILS] Shipment loaded successfully');
 
+      // on_success: set_screen_state
       setState(prev => ({
         ...prev,
         shipment_loading: false,
         shipment_data: transformedData,
+        shipment_error: null,
       }));
     } catch (error) {
       console.error('[SHIPMENT_DETAILS] Exception loading shipment:', error);
+      
+      // on_error: set_screen_state
       setState(prev => ({
         ...prev,
         shipment_loading: false,
-        shipment_error: 'Une erreur est survenue lors du chargement.',
+        shipment_error: 'Impossible de charger les détails de cet envoi. Merci de réessayer plus tard.',
       }));
     }
   }, [state.shipment_id, client, router]);
 
-  // Load on mount
+  // ON_SCREEN_LOAD: Load shipment details when screen mounts
   useEffect(() => {
     if (user && client && state.shipment_id) {
+      console.log('[SHIPMENT_DETAILS] ON_SCREEN_LOAD triggered');
       loadShipmentDetails();
     }
   }, [user, client, state.shipment_id]);
+
+  // PARTIE 4/4 - 5. Bouton "Rafraîchir" (optionnel)
+  // ON_CLICK (btn_refresh_details)
+  const handleRefresh = useCallback(async () => {
+    console.log('[SHIPMENT_DETAILS] Refresh button clicked');
+    
+    // Step 1: set_screen_state - shipment_loading: true
+    setState(prev => ({
+      ...prev,
+      shipment_loading: true,
+      shipment_error: null,
+    }));
+
+    // Step 2: call_api - GET /shipments/{id}
+    await loadShipmentDetails();
+  }, [loadShipmentDetails]);
+
+  // PARTIE 4/4 - 2. Bouton "Voir le suivi"
+  // ON_CLICK (btn_track_this)
+  // Navigate to: "Tracking" with prefill_tracking_number
+  const handleTrackShipment = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Track button clicked');
+    
+    if (state.shipment_data?.tracking_number) {
+      console.log('[SHIPMENT_DETAILS] Navigating to Tracking with:', state.shipment_data.tracking_number);
+      
+      router.push({
+        pathname: '/(tabs)/tracking',
+        params: { 
+          prefill_tracking_number: state.shipment_data.tracking_number 
+        }
+      });
+    } else {
+      Alert.alert(
+        'Information',
+        'Le numéro de suivi n\'est pas disponible pour cet envoi.'
+      );
+    }
+  }, [state.shipment_data, router]);
+
+  // PARTIE 4/4 - 3. Bouton "Contacter le support"
+  // ON_CLICK (btn_contact_support)
+  // Navigate to: "Support" with context
+  const handleContactSupport = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Contact support button clicked');
+    
+    // For now, we'll use email/phone as there's no dedicated Support screen yet
+    // When Support screen is created, navigate with:
+    // router.push({
+    //   pathname: '/(tabs)/support',
+    //   params: {
+    //     context_type: 'shipment',
+    //     context_shipment_id: state.shipment_data?.id,
+    //     context_tracking_number: state.shipment_data?.tracking_number,
+    //   }
+    // });
+    
+    Alert.alert(
+      'Contacter le support',
+      'Comment souhaitez-vous nous contacter ?',
+      [
+        {
+          text: 'Email',
+          onPress: () => {
+            const subject = `Support - Envoi ${state.shipment_data?.tracking_number || state.shipment_id}`;
+            const body = `Bonjour,\n\nJ'ai besoin d'aide concernant mon envoi:\n\nNuméro de suivi: ${state.shipment_data?.tracking_number || 'N/A'}\nID: ${state.shipment_id}\n\nDescription du problème:\n\n`;
+            Linking.openURL(`mailto:support@3sglobal.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+          }
+        },
+        {
+          text: 'Téléphone',
+          onPress: () => {
+            Linking.openURL('tel:+212522000000');
+          }
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        }
+      ]
+    );
+  }, [state.shipment_data, state.shipment_id, router]);
+
+  // PARTIE 4/4 - 4. Bouton "Retour à mes envois"
+  // ON_CLICK (btn_back_dashboard)
+  // Navigate to: "Dashboard"
+  const handleBackToDashboard = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Back to dashboard button clicked');
+    router.push('/(tabs)/dashboard');
+  }, [router]);
 
   // Helper functions
   const getStatusColor = useCallback((status: string) => {
@@ -283,55 +385,6 @@ export default function ShipmentDetailsScreen() {
     }
   }, []);
 
-  // Action button handlers
-  const handleTrackShipment = useCallback(() => {
-    console.log('[SHIPMENT_DETAILS] Navigate to tracking');
-    if (state.tracking_number) {
-      router.push({
-        pathname: '/(tabs)/tracking',
-        params: { tracking_number: state.tracking_number }
-      });
-    } else {
-      Alert.alert(
-        'Information',
-        'Le numéro de suivi n\'est pas disponible pour cet envoi.'
-      );
-    }
-  }, [state.tracking_number, router]);
-
-  const handleContactSupport = useCallback(() => {
-    console.log('[SHIPMENT_DETAILS] Contact support');
-    Alert.alert(
-      'Contacter le support',
-      'Comment souhaitez-vous nous contacter ?',
-      [
-        {
-          text: 'Email',
-          onPress: () => {
-            const subject = `Support - Envoi ${state.tracking_number || state.shipment_id}`;
-            const body = `Bonjour,\n\nJ'ai besoin d'aide concernant mon envoi:\n\nNuméro de suivi: ${state.tracking_number || 'N/A'}\nID: ${state.shipment_id}\n\nDescription du problème:\n\n`;
-            Linking.openURL(`mailto:support@3sglobal.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-          }
-        },
-        {
-          text: 'Téléphone',
-          onPress: () => {
-            Linking.openURL('tel:+212522000000');
-          }
-        },
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        }
-      ]
-    );
-  }, [state.tracking_number, state.shipment_id]);
-
-  const handleBackToDashboard = useCallback(() => {
-    console.log('[SHIPMENT_DETAILS] Navigate back to dashboard');
-    router.push('/(tabs)/dashboard');
-  }, [router]);
-
   // Redirect if not authenticated
   if (!user) {
     return <Redirect href="/(tabs)/login" />;
@@ -342,8 +395,8 @@ export default function ShipmentDetailsScreen() {
     return <Redirect href="/(tabs)/verify-email" />;
   }
 
-  // Loading state
-  if (state.shipment_loading) {
+  // DISPLAY (si shipment_loading == true)
+  if (state.shipment_loading && !state.shipment_data) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
@@ -370,8 +423,8 @@ export default function ShipmentDetailsScreen() {
     );
   }
 
-  // Error state
-  if (state.shipment_error) {
+  // DISPLAY (si shipment_error non nul)
+  if (state.shipment_error && !state.shipment_data) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
@@ -459,7 +512,7 @@ export default function ShipmentDetailsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
+      {/* Header with Refresh Button */}
       <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol
@@ -472,7 +525,19 @@ export default function ShipmentDetailsScreen() {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
           Détails de l&apos;envoi
         </Text>
-        <View style={{ width: 28 }} />
+        {/* PARTIE 4/4 - 5. Bouton "Rafraîchir" */}
+        <TouchableOpacity 
+          style={styles.refreshButton} 
+          onPress={handleRefresh}
+          disabled={state.shipment_loading}
+        >
+          <IconSymbol
+            ios_icon_name="arrow.clockwise"
+            android_material_icon_name="refresh"
+            size={24}
+            color={state.shipment_loading ? colors.textSecondary : colors.primary}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -751,7 +816,7 @@ export default function ShipmentDetailsScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-          {/* Primary Button - Voir le suivi */}
+          {/* PARTIE 4/4 - 2. Primary Button - Voir le suivi */}
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: colors.primary }]}
             onPress={handleTrackShipment}
@@ -766,7 +831,7 @@ export default function ShipmentDetailsScreen() {
             <Text style={styles.primaryButtonText}>Voir le suivi</Text>
           </TouchableOpacity>
 
-          {/* Secondary Button - Contacter le support */}
+          {/* PARTIE 4/4 - 3. Secondary Button - Contacter le support */}
           <TouchableOpacity
             style={[styles.secondaryButton, { 
               backgroundColor: theme.colors.card,
@@ -786,7 +851,7 @@ export default function ShipmentDetailsScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Ghost Button - Retour à mes envois */}
+          {/* PARTIE 4/4 - 4. Ghost Button - Retour à mes envois */}
           <TouchableOpacity
             style={styles.ghostButton}
             onPress={handleBackToDashboard}
@@ -830,6 +895,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  refreshButton: {
+    padding: 4,
   },
   scrollView: {
     flex: 1,
