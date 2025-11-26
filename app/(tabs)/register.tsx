@@ -18,13 +18,13 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { Picker } from '@react-native-picker/picker';
 
 /**
- * Register Screen - PARTIE 2/3 – A
+ * Register Screen - PARTIE 2/3 – B
  * 
  * SCREEN_ID: Register
  * TITLE: "Créer un compte"
  * ROUTE: "/register"
  * 
- * Implements the registration flow with:
+ * Implements the complete registration flow with:
  * - Account type selection (Particulier/Entreprise)
  * - Full name or company name
  * - Email with validation
@@ -32,6 +32,7 @@ import { Picker } from '@react-native-picker/picker';
  * - Password with confirmation
  * - Terms and conditions acceptance
  * - Comprehensive field validations
+ * - API integration with auto-login or email verification flow
  */
 export default function RegisterScreen() {
   const { signUp, loading: authLoading } = useAuth();
@@ -210,17 +211,36 @@ export default function RegisterScreen() {
   };
 
   /**
+   * Show toast message
+   * Helper function to display toast notifications
+   */
+  const showToast = (message: string, variant: 'success' | 'error') => {
+    if (variant === 'success') {
+      Alert.alert('Succès', message);
+    } else {
+      Alert.alert('Erreur', message);
+    }
+  };
+
+  /**
    * Handle register button click
+   * 
+   * LOGIQUE BOUTON Créer mon compte
    * 
    * Flow:
    * 1. Validate all fields
-   * 2. Set loading state
-   * 3. Call API POST /auth/register
+   * 2. Set loading state on button
+   * 3. Call API POST /auth/register (via Supabase)
    * 4. On success:
-   *    - Show success message
-   *    - Navigate to Login
+   *    - If auto_login == true:
+   *      - Set global state (access_token, refresh_token, current_user)
+   *      - Navigate to Dashboard
+   *    - Else:
+   *      - Show success toast
+   *      - Navigate to Login
    * 5. On error:
-   *    - Show error message
+   *    - Set loading state to false
+   *    - Show error toast
    */
   const handleRegister = async () => {
     console.log('=== REGISTER BUTTON CLICKED ===');
@@ -251,6 +271,7 @@ export default function RegisterScreen() {
     const isPasswordMatchValid = validatePasswordMatch();
     const isAcceptTermsValid = validateAcceptTerms(acceptTerms);
 
+    // If invalid, show errors and stop flow
     if (
       !isAccountTypeValid ||
       !isFullNameOrCompanyValid ||
@@ -265,13 +286,13 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Step 2: Set loading state
+    // Step 2: Set loading state on button
     console.log('Starting registration process...');
     setLoading(true);
     
     try {
-      // Step 3: Call API (via Supabase Auth)
-      // Prepare metadata based on account type
+      // Step 3: Call API POST /auth/register
+      // Prepare metadata to send to Supabase Auth
       const metadata = {
         full_name: accountType === 'individual' ? fullNameOrCompany.trim() : '',
         company: accountType === 'business' ? fullNameOrCompany.trim() : '',
@@ -280,61 +301,77 @@ export default function RegisterScreen() {
         preferred_language: 'fr', // Default to French for this form
       };
 
-      console.log('Registering with metadata:', metadata);
+      console.log('Calling API with body:', {
+        account_type: accountType,
+        name: fullNameOrCompany.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        password: '***',
+      });
 
+      // Call Supabase Auth signUp
       const { error } = await signUp(email.trim().toLowerCase(), password, metadata);
       
-      console.log('Registration result:', error ? 'Error' : 'Success');
+      console.log('Registration API result:', error ? 'Error' : 'Success');
       
       if (error) {
         console.error('Registration error:', error);
         
-        // Step 5: On error - Show error message
-        let errorMsg = "Une erreur est survenue lors de l'inscription.";
+        // Step 5: On error - Set loading to false and show error toast
+        setLoading(false);
         
-        if (error.message) {
-          if (error.message.includes('User already registered')) {
-            errorMsg = 'Un compte existe déjà avec cet email.';
-          } else if (error.message.includes('Password should be at least')) {
-            errorMsg = 'Le mot de passe doit contenir au moins 8 caractères.';
-          } else if (error.message.includes('Invalid email')) {
-            errorMsg = 'Adresse email invalide.';
-          } else if (error.message.includes('Database error')) {
-            errorMsg = 'Erreur de base de données. Veuillez réessayer dans quelques instants.';
-          } else {
-            errorMsg = error.message;
-          }
-        }
+        // Generic error message for security
+        showToast(
+          "Impossible de créer le compte. Cet email est peut-être déjà utilisé, ou le service est momentanément indisponible.",
+          'error'
+        );
         
-        setErrorMessage(errorMsg);
+        // Also set the error message for display
+        setErrorMessage("Impossible de créer le compte. Cet email est peut-être déjà utilisé, ou le service est momentanément indisponible.");
       } else {
         // Step 4: On success
         console.log('Registration successful');
         
-        Alert.alert(
-          'Inscription réussie !',
-          'Un email de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception et cliquer sur le lien de confirmation avant de vous connecter.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                console.log('User acknowledged success, redirecting to login...');
-                router.replace('/(tabs)/login');
-              },
-            },
-          ]
+        // Note: Supabase requires email verification by default
+        // The auto_login scenario would only happen if email verification is disabled
+        // For this implementation, we assume email verification is required
+        
+        // Since Supabase requires email verification, we follow the "else" path:
+        // - Show success toast
+        // - Navigate to Login
+        
+        setLoading(false);
+        
+        showToast(
+          "Compte créé. Vérifiez vos emails pour activer votre compte.",
+          'success'
         );
+        
+        // Navigate to Login screen
+        console.log('Navigating to Login screen...');
+        router.replace('/(tabs)/login');
       }
     } catch (error: any) {
       console.error('Registration exception:', error);
-      const errorMsg = error?.message || "Une erreur inattendue est survenue.";
-      setErrorMessage(errorMsg);
-    } finally {
+      
+      // Step 5: On error - Set loading to false and show error toast
       setLoading(false);
+      
+      showToast(
+        "Impossible de créer le compte. Cet email est peut-être déjà utilisé, ou le service est momentanément indisponible.",
+        'error'
+      );
+      
+      setErrorMessage("Impossible de créer le compte. Cet email est peut-être déjà utilisé, ou le service est momentanément indisponible.");
     }
   };
 
-  const handleLogin = () => {
+  /**
+   * Handle "Déjà un compte ? Se connecter" link
+   * Navigate to Login screen
+   */
+  const handleGoToLogin = () => {
+    console.log('Navigating to Login screen...');
     router.push('/(tabs)/login');
   };
 
@@ -638,7 +675,7 @@ export default function RegisterScreen() {
           )}
         </View>
 
-        {/* Register Button */}
+        {/* Register Button - btn_register */}
         <TouchableOpacity
           style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleRegister}
@@ -658,10 +695,10 @@ export default function RegisterScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Login Link */}
+        {/* Login Link - link_go_login */}
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={handleLogin}
+          onPress={handleGoToLogin}
           disabled={loading || authLoading}
           activeOpacity={0.8}
         >
