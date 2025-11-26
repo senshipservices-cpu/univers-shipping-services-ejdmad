@@ -1,246 +1,378 @@
 
-# Sécurité & Rôles Admin - Guide Rapide
+# SECURITY QUICK REFERENCE GUIDE
+## Universal Shipping Services - Security Implementation
 
-## 🎯 Résumé en 30 secondes
-
-- **Admins définis par :** Variable `ADMIN_EMAILS` (emails séparés par virgules)
-- **Vérification frontend :** `appConfig.isAdmin(email)` ou `currentUserIsAdmin` du contexte
-- **Vérification backend :** Fonction PostgreSQL `is_admin_user()` dans les politiques RLS
-- **Pages protégées :** Utilisent le composant `<ProtectedRoute requireAdmin={true}>`
-- **Champs protégés :** `global_agents.status`, `subscriptions.is_active`, `shipments.current_status`
+**Last Updated:** 2024
+**Status:** ✅ Production Ready
 
 ---
 
-## 🔐 Configuration rapide
+## 🔒 AUTHENTICATION & AUTHORIZATION
 
-### 1. Définir les admins
-
-Dans Natively > Environment Variables :
-
-```bash
-ADMIN_EMAILS=cheikh@universalshipping.com,admin@uss.com,admin@3sglobal.com
-```
-
-### 2. Vérifier l'environnement
-
-```bash
-APP_ENV=production  # ou 'dev'
-```
-
-### 3. Configurer Supabase (optionnel)
-
-Dans Supabase > Database > Settings > Custom Postgres Configuration :
-
-```
-app.settings.admin_emails = 'cheikh@universalshipping.com,admin@uss.com'
-```
-
----
-
-## 💻 Utilisation dans le code
-
-### Vérifier si un utilisateur est admin
-
+### Public Screens (No Auth Required)
 ```typescript
-import appConfig from '@/config/appConfig';
-import { useAuth } from '@/contexts/AuthContext';
-
-// Méthode 1 : Via appConfig
-const isUserAdmin = appConfig.isAdmin('cheikh@universalshipping.com');
-
-// Méthode 2 : Via le contexte (recommandé)
-const { currentUserIsAdmin } = useAuth();
-
-if (currentUserIsAdmin) {
-  // Afficher les fonctionnalités admin
-}
+// These screens are accessible without authentication
+- /(tabs)/(home)/index.tsx          // Home
+- /(tabs)/global-services.tsx       // Services
+- /(tabs)/port-coverage.tsx         // Ports
+- /(tabs)/pricing.tsx               // Pricing
+- /(tabs)/become-agent.tsx          // Become Agent
+- /(tabs)/freight-quote.tsx         // Quote Request
+- /(tabs)/login.tsx                 // Login
+- /(tabs)/signup.tsx                // Signup
 ```
 
-### Protéger une page
-
+### Protected Screens (Auth Required)
 ```typescript
+// Wrap with ProtectedRoute component
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-export default function AdminPage() {
-  return (
-    <ProtectedRoute requireAdmin={true}>
-      {/* Contenu réservé aux admins */}
-    </ProtectedRoute>
-  );
-}
+<ProtectedRoute requireEmailVerification={true}>
+  <YourComponent />
+</ProtectedRoute>
+
+// Protected screens:
+- /(tabs)/client-dashboard.tsx      // Client Dashboard
+- /(tabs)/client-profile.tsx        // Client Profile
+- /(tabs)/quote-details.tsx         // Quote Details
+- /(tabs)/shipment-detail.tsx       // Shipment Details
 ```
 
-### Protéger une action
-
+### Admin Screens (Admin Role Required)
 ```typescript
-const updateAgentStatus = async (agentId: string, newStatus: string) => {
-  if (!currentUserIsAdmin) {
-    Alert.alert('Erreur', 'Action réservée aux administrateurs');
-    return;
-  }
+// Wrap with AdminGuard component
+import { AdminGuard } from '@/components/AdminGuard';
 
-  // Effectuer l'action
-  const { error } = await supabase
-    .from('global_agents')
-    .update({ status: newStatus })
-    .eq('id', agentId);
-};
+<AdminGuard>
+  <YourAdminComponent />
+</AdminGuard>
+
+// Admin screens:
+- /(tabs)/admin-dashboard.tsx       // Admin Dashboard
+- /(tabs)/admin-clients.tsx         // Client Management
+- /(tabs)/admin-quotes.tsx          // Quote Management
+- /(tabs)/admin-shipments.tsx       // Shipment Management
+- /(tabs)/admin-agents-ports.tsx    // Agent/Port Management
+- /(tabs)/admin-subscriptions.tsx   // Subscription Management
 ```
 
 ---
 
-## 🗄️ Politiques RLS
+## 👤 ADMIN ROLE MANAGEMENT
 
-### Accès complet pour les admins
+### Check if User is Admin
+```typescript
+import appConfig from '@/config/appConfig';
 
+// Client-side check
+const isAdmin = appConfig.isAdmin(user?.email);
+
+// In component
+import { useAuth } from '@/contexts/AuthContext';
+const { currentUserIsAdmin } = useAuth();
+
+// In admin context
+import { useAdmin } from '@/contexts/AdminContext';
+const { isAdmin } = useAdmin();
+```
+
+### Configure Admin Emails
+```bash
+# In .env or Natively Environment Variables
+ADMIN_EMAILS=cheikh@universalshipping.com,admin2@example.com,admin3@example.com
+```
+
+### Database Admin Function
 ```sql
+-- Check if current user is admin
+SELECT is_admin_user();
+
+-- Use in RLS policies
 CREATE POLICY "Admins have full access"
-ON table_name FOR ALL
+ON your_table FOR ALL
 USING (is_admin_user())
 WITH CHECK (is_admin_user());
 ```
 
-### Empêcher la modification d'un champ
+---
 
+## 🛡️ ROW LEVEL SECURITY (RLS) PATTERNS
+
+### Pattern 1: User Can Only Access Own Data
 ```sql
-CREATE POLICY "Clients cannot modify status"
-ON table_name FOR UPDATE
-USING (client_id = get_client_id())
-WITH CHECK (
-  is_admin_user() 
-  OR status = (SELECT status FROM table_name WHERE id = table_name.id)
-);
+-- SELECT policy
+CREATE POLICY "Users can view their own records"
+ON your_table FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+-- INSERT policy
+CREATE POLICY "Users can insert their own records"
+ON your_table FOR INSERT
+TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+-- UPDATE policy
+CREATE POLICY "Users can update their own records"
+ON your_table FOR UPDATE
+TO authenticated
+USING (user_id = auth.uid());
+
+-- DELETE policy
+CREATE POLICY "Users can delete their own records"
+ON your_table FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
 ```
 
-### Voir uniquement ses propres données
-
+### Pattern 2: Public Read, Authenticated Write
 ```sql
-CREATE POLICY "Users can view their own data"
-ON table_name FOR SELECT
+-- Anyone can read
+CREATE POLICY "Public can view records"
+ON your_table FOR SELECT
+USING (true);
+
+-- Only authenticated users can insert
+CREATE POLICY "Authenticated users can insert"
+ON your_table FOR INSERT
+TO authenticated
+WITH CHECK (true);
+```
+
+### Pattern 3: Admin Full Access + User Limited Access
+```sql
+-- Admins have full access
+CREATE POLICY "Admins have full access"
+ON your_table FOR ALL
+USING (is_admin_user())
+WITH CHECK (is_admin_user());
+
+-- Users can view their own records
+CREATE POLICY "Users can view their own records"
+ON your_table FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+```
+
+### Pattern 4: Join-Based Access Control
+```sql
+-- Users can view records related to their client profile
+CREATE POLICY "Users can view their related records"
+ON your_table FOR SELECT
+TO authenticated
 USING (
-  client IN (
+  client_id IN (
     SELECT id FROM clients WHERE user_id = auth.uid()
   )
 );
 ```
 
----
-
-## 🎨 Feedback visuel
-
-### Badge d'environnement
-
-```typescript
-<View style={[
-  styles.envBadge, 
-  { backgroundColor: appConfig.isProduction ? '#10b981' : '#f59e0b' }
-]}>
-  <Text style={styles.envText}>
-    {appConfig.appEnv.toUpperCase()}
-  </Text>
-</View>
-```
-
-### Badge Admin/Client
-
-```typescript
-<View style={[
-  styles.roleBadge,
-  { backgroundColor: currentUserIsAdmin ? colors.primary + '20' : colors.textSecondary + '20' }
-]}>
-  <IconSymbol
-    ios_icon_name={currentUserIsAdmin ? 'star.fill' : 'person.fill'}
-    android_material_icon_name={currentUserIsAdmin ? 'star' : 'person'}
-    size={14}
-    color={currentUserIsAdmin ? colors.primary : colors.textSecondary}
-  />
-  <Text style={[
-    styles.roleText,
-    { color: currentUserIsAdmin ? colors.primary : colors.textSecondary }
-  ]}>
-    {currentUserIsAdmin ? 'Admin' : 'Client'}
-  </Text>
-</View>
-```
-
----
-
-## 🧪 Tests rapides
-
-### Tester la fonction isAdmin()
-
-```typescript
-console.log('Admin check:', appConfig.isAdmin('cheikh@universalshipping.com')); // true
-console.log('Admin check:', appConfig.isAdmin('client@example.com')); // false
-```
-
-### Tester is_admin_user() dans Supabase
-
+### Pattern 5: Status-Based Protection
 ```sql
--- Se connecter en tant qu'admin
-SELECT is_admin_user(); -- Devrait retourner true
-
--- Tester une politique RLS
-SELECT * FROM global_agents WHERE status = 'pending'; -- Devrait voir tous les agents
+-- Users can update their records but not change status
+CREATE POLICY "Users can update their records"
+ON your_table FOR UPDATE
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (
+  is_admin_user() OR 
+  status = (SELECT status FROM your_table WHERE id = id)
+);
 ```
 
-### Tester l'accès aux pages
+---
 
-1. Connectez-vous avec un email admin
-2. Accédez à `/admin-dashboard` → Devrait fonctionner
-3. Déconnectez-vous et reconnectez-vous avec un email non-admin
-4. Accédez à `/admin-dashboard` → Devrait afficher "Accès Restreint"
+## 🔐 SECRETS MANAGEMENT
+
+### Public Variables (Frontend-Safe)
+```typescript
+// Use EXPO_PUBLIC_ prefix for frontend-accessible variables
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+EXPO_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_key
+```
+
+### Secret Variables (Backend-Only)
+```typescript
+// NO EXPO_PUBLIC_ prefix - never exposed to frontend
+SERVICE_ROLE_KEY=your_service_role_key
+PAYPAL_CLIENT_SECRET=your_paypal_secret
+PAYPAL_WEBHOOK_ID=your_webhook_id
+SMTP_PASSWORD=your_smtp_password
+ADMIN_EMAILS=admin@example.com
+```
+
+### Access Secrets in Code
+```typescript
+// Client-side (public variables only)
+import appConfig from '@/config/appConfig';
+const supabaseUrl = appConfig.env.SUPABASE_URL;
+const anonKey = appConfig.env.SUPABASE_ANON_KEY;
+
+// Edge Functions (can access secrets)
+const serviceKey = Deno.env.get('SERVICE_ROLE_KEY');
+const paypalSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+```
 
 ---
 
-## 🚨 Dépannage rapide
+## 🚨 SECURITY CHECKLIST
 
-### L'admin n'a pas accès
+### Before Deploying to Production
 
-1. Vérifiez `ADMIN_EMAILS` dans les variables d'environnement
-2. Vérifiez que l'email est en minuscules et sans espaces
-3. Redémarrez l'application
-4. Vérifiez dans ConfigStatus que l'utilisateur est bien marqué comme "Admin"
+- [ ] All sensitive tables have RLS enabled
+- [ ] No `USING (true)` policies on sensitive tables
+- [ ] Admin emails configured in environment variables
+- [ ] All secrets use proper naming (no EXPO_PUBLIC_ for secrets)
+- [ ] AdminGuard protects all admin routes
+- [ ] ProtectedRoute protects all private routes
+- [ ] Email verification required for sensitive operations
+- [ ] Rate limiting implemented on public forms
+- [ ] Audit logging enabled for admin actions
+- [ ] HTTPS enforced (Supabase default)
+- [ ] CORS properly configured
+- [ ] Error messages don't leak sensitive information
 
-### Les politiques RLS bloquent l'admin
+### Regular Security Audits
 
-1. Testez `SELECT is_admin_user();` dans Supabase SQL Editor
-2. Vérifiez que `app.settings.admin_emails` est configuré
-3. Redémarrez la base de données
-4. Vérifiez que les politiques utilisent bien `is_admin_user()`
-
-### Le badge d'environnement n'apparaît pas
-
-1. ConfigStatus n'apparaît qu'en mode développement (`APP_ENV != 'production'`)
-2. Vérifiez que `APP_ENV` est défini
-3. Redémarrez l'application
-
----
-
-## 📋 Checklist de sécurité
-
-Avant de déployer en production :
-
-- [ ] `ADMIN_EMAILS` configuré avec les bons emails
-- [ ] `APP_ENV=production` en production
-- [ ] Fonction `is_admin_user()` déployée dans Supabase
-- [ ] Politiques RLS activées sur toutes les tables sensibles
-- [ ] Tests d'accès admin réussis
-- [ ] Tests d'accès client réussis (blocage des actions admin)
-- [ ] ConfigStatus désactivé en production (automatique)
-- [ ] Logs sensibles désactivés en production (automatique)
+- [ ] Review RLS policies quarterly
+- [ ] Review admin access logs monthly
+- [ ] Update dependencies regularly
+- [ ] Scan for vulnerabilities (npm audit)
+- [ ] Review failed authentication attempts
+- [ ] Check for unusual data access patterns
+- [ ] Verify admin email list is current
 
 ---
 
-## 📚 Documentation complète
+## 🔍 TESTING SECURITY
 
-Pour plus de détails, consultez :
-- [SECURITY_ADMIN_ROLES_IMPLEMENTATION.md](./SECURITY_ADMIN_ROLES_IMPLEMENTATION.md) - Documentation complète
-- [NATIVELY_ENVIRONMENT_SETUP.md](./NATIVELY_ENVIRONMENT_SETUP.md) - Configuration des variables d'environnement
+### Test Authentication
+```typescript
+// Test 1: Unauthenticated user cannot access protected route
+// Expected: Redirect to login
+
+// Test 2: Authenticated user can access protected route
+// Expected: Route accessible
+
+// Test 3: Non-admin user cannot access admin route
+// Expected: Access denied message
+
+// Test 4: Admin user can access admin route
+// Expected: Route accessible
+```
+
+### Test RLS Policies
+```sql
+-- Test 1: User can only view own data
+-- Login as user1, try to access user2's data
+-- Expected: No results
+
+-- Test 2: Admin can view all data
+-- Login as admin, try to access any user's data
+-- Expected: All results visible
+
+-- Test 3: Anonymous user can only access public data
+-- Not logged in, try to access protected data
+-- Expected: No results or error
+```
+
+### Test Secrets
+```typescript
+// Test 1: Public variables accessible in frontend
+console.log(appConfig.env.SUPABASE_URL); // Should work
+
+// Test 2: Secret variables NOT accessible in frontend
+console.log(appConfig.env.SUPABASE_SERVICE_KEY); // Should be empty or undefined
+
+// Test 3: Secrets accessible in Edge Functions
+// In Edge Function:
+const serviceKey = Deno.env.get('SERVICE_ROLE_KEY'); // Should work
+```
 
 ---
 
-## 🆘 Support
+## 🚀 COMMON SECURITY TASKS
 
-- **Email :** support@universalshipping.com
-- **Équipe technique :** Cheikh (cheikh@universalshipping.com)
+### Add a New Admin
+```bash
+# 1. Update environment variable
+ADMIN_EMAILS=existing@example.com,newadmin@example.com
+
+# 2. Restart application (or update in Natively dashboard)
+
+# 3. Verify admin access
+# Login as new admin and check admin dashboard access
+```
+
+### Protect a New Table
+```sql
+-- 1. Enable RLS
+ALTER TABLE your_new_table ENABLE ROW LEVEL SECURITY;
+
+-- 2. Add policies
+CREATE POLICY "Users can view their own records"
+ON your_new_table FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+CREATE POLICY "Admins have full access"
+ON your_new_table FOR ALL
+USING (is_admin_user())
+WITH CHECK (is_admin_user());
+
+-- 3. Test policies
+-- Login as regular user and admin, verify access
+```
+
+### Add a New Protected Route
+```typescript
+// 1. Wrap component with ProtectedRoute
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+
+export default function YourScreen() {
+  return (
+    <ProtectedRoute requireEmailVerification={true}>
+      <YourComponent />
+    </ProtectedRoute>
+  );
+}
+
+// 2. Test authentication
+// Try accessing without login - should redirect
+// Try accessing with login - should work
+```
+
+### Add a New Admin Route
+```typescript
+// 1. Wrap component with AdminGuard
+import { AdminGuard } from '@/components/AdminGuard';
+
+export default function YourAdminScreen() {
+  return (
+    <AdminGuard>
+      <YourAdminComponent />
+    </AdminGuard>
+  );
+}
+
+// 2. Test admin access
+// Try accessing as regular user - should show access denied
+// Try accessing as admin - should work
+```
+
+---
+
+## 📚 ADDITIONAL RESOURCES
+
+- [Supabase RLS Documentation](https://supabase.com/docs/guides/auth/row-level-security)
+- [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
+- [Security Audit Report](./SECURITY_AUDIT_REPORT.md)
+- [Environment Variables Reference](./ENVIRONMENT_VARIABLES_REFERENCE.md)
+- [Admin Security Implementation](./ADMIN_SECURITY_IMPLEMENTATION.md)
+
+---
+
+**Questions or Issues?**
+Contact: cheikh@universalshipping.com
