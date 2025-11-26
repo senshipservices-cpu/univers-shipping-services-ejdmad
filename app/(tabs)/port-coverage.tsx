@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions, FlatList } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -35,42 +35,51 @@ export default function PortCoverageScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Port[]>([]);
-
-  const loadPorts = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log('Loading ports from database...');
-      
-      const { data, error } = await supabase
-        .from('ports')
-        .select('*')
-        .eq('status', 'active')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Error loading ports:', error);
-        Alert.alert(
-          language === 'en' ? 'Error' : 'Erreur',
-          language === 'en' ? 'Unable to load ports.' : 'Impossible de charger les ports.'
-        );
-      } else {
-        setPorts(data || []);
-        console.log('Ports loaded successfully:', data?.length);
-      }
-    } catch (error) {
-      console.error('Exception loading ports:', error);
-      Alert.alert(
-        language === 'en' ? 'Error' : 'Erreur',
-        language === 'en' ? 'An error occurred while loading ports.' : 'Une erreur est survenue lors du chargement des ports.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [language]);
+  
+  // Prevent infinite loops
+  const hasLoadedPorts = useRef(false);
 
   useEffect(() => {
+    // Only load ports once
+    if (hasLoadedPorts.current) {
+      return;
+    }
+
+    const loadPorts = async () => {
+      try {
+        hasLoadedPorts.current = true;
+        setLoading(true);
+        console.log('[PORT_COVERAGE] Loading ports from database...');
+        
+        const { data, error } = await supabase
+          .from('ports')
+          .select('*')
+          .eq('status', 'active')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('[PORT_COVERAGE] Error loading ports:', error);
+          Alert.alert(
+            language === 'en' ? 'Error' : 'Erreur',
+            language === 'en' ? 'Unable to load ports.' : 'Impossible de charger les ports.'
+          );
+        } else {
+          setPorts(data || []);
+          console.log('[PORT_COVERAGE] Ports loaded successfully:', data?.length);
+        }
+      } catch (error) {
+        console.error('[PORT_COVERAGE] Exception loading ports:', error);
+        Alert.alert(
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'An error occurred while loading ports.' : 'Une erreur est survenue lors du chargement des ports.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadPorts();
-  }, [loadPorts]);
+  }, []); // Empty dependency array - only run once
 
   // Autocomplete logic
   useEffect(() => {
@@ -162,7 +171,7 @@ export default function PortCoverageScreen() {
       country: p.country,
     }));
 
-  console.log('Ports with coordinates:', portsWithCoordinates.length);
+  console.log('[PORT_COVERAGE] Ports with coordinates:', portsWithCoordinates.length);
 
   const renderPortsByRegion = (region: 'africa' | 'europe' | 'asia' | 'americas') => {
     const regionPorts = portsByRegion[region];

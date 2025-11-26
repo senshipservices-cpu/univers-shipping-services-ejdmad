@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -48,45 +48,59 @@ export default function PricingScreen() {
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [highlightedPlan, setHighlightedPlan] = useState<string | null>(null);
-
-  const fetchPlans = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('pricing_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price_eur', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching plans:', error);
-        Alert.alert(
-          language === 'en' ? 'Error' : 'Erreur',
-          language === 'en' ? 'Unable to load pricing plans.' : 'Impossible de charger les plans tarifaires.'
-        );
-        return;
-      }
-
-      setPlans(data || []);
-    } catch (error) {
-      console.error('Exception fetching plans:', error);
-      Alert.alert(
-        language === 'en' ? 'Error' : 'Erreur',
-        language === 'en' ? 'An error occurred while loading plans.' : 'Une erreur est survenue lors du chargement des plans.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [language]);
+  
+  // Prevent infinite loops
+  const hasFetchedPlans = useRef(false);
 
   useEffect(() => {
+    // Only fetch plans once
+    if (hasFetchedPlans.current) {
+      return;
+    }
+
+    const fetchPlans = async () => {
+      try {
+        hasFetchedPlans.current = true;
+        setLoading(true);
+        console.log('[PRICING] Fetching plans...');
+        
+        const { data, error } = await supabase
+          .from('pricing_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('price_eur', { ascending: true });
+
+        if (error) {
+          console.error('[PRICING] Error fetching plans:', error);
+          Alert.alert(
+            language === 'en' ? 'Error' : 'Erreur',
+            language === 'en' ? 'Unable to load pricing plans.' : 'Impossible de charger les plans tarifaires.'
+          );
+          return;
+        }
+
+        setPlans(data || []);
+        console.log('[PRICING] Plans loaded:', data?.length);
+      } catch (error) {
+        console.error('[PRICING] Exception fetching plans:', error);
+        Alert.alert(
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'An error occurred while loading plans.' : 'Une erreur est survenue lors du chargement des plans.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchPlans();
-    
+  }, []); // Empty dependency array - only run once
+
+  useEffect(() => {
     // Check for highlight parameter
     if (params.highlight) {
       setHighlightedPlan(params.highlight as string);
     }
-  }, [fetchPlans, params.highlight]);
+  }, [params.highlight]);
 
   const handleSelectPlan = async (plan: PricingPlan) => {
     // Determine plan type from plan code
@@ -168,7 +182,7 @@ export default function PricingScreen() {
           });
 
         if (subscriptionError) {
-          console.error('Error creating basic subscription:', subscriptionError);
+          console.error('[PRICING] Error creating basic subscription:', subscriptionError);
           Alert.alert(
             language === 'en' ? 'Error' : 'Erreur',
             language === 'en' ? 'Unable to create your subscription. Please try again.' : 'Impossible de créer votre abonnement. Veuillez réessayer.'
@@ -214,7 +228,7 @@ export default function PricingScreen() {
       });
 
       if (error) {
-        console.error('Error creating payment session:', error);
+        console.error('[PRICING] Error creating payment session:', error);
         Alert.alert(
           language === 'en' ? 'Error' : 'Erreur',
           language === 'en' ? 'Unable to create payment session. Please try again.' : 'Impossible de créer la session de paiement. Veuillez réessayer.'
@@ -241,7 +255,7 @@ export default function PricingScreen() {
         );
       }
     } catch (error) {
-      console.error('Exception handling plan selection:', error);
+      console.error('[PRICING] Exception handling plan selection:', error);
       Alert.alert(
         language === 'en' ? 'Error' : 'Erreur',
         language === 'en' ? 'An error occurred. Please try again.' : 'Une erreur est survenue. Veuillez réessayer.'

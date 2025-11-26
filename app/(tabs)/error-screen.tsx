@@ -20,12 +20,13 @@ import { ResponsiveContainer } from '@/components/ResponsiveContainer';
  * - Support contact information
  * - Professional USS branding
  * - Platform-specific behavior
+ * - Works identically on Web, iOS, and Android
  */
 export default function ErrorScreen() {
   const router = useRouter();
   const theme = useTheme();
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     console.log('🔄 [ERROR_SCREEN] User clicked Retry button');
     
     try {
@@ -35,7 +36,7 @@ export default function ErrorScreen() {
     } catch (error) {
       console.error('[ERROR_SCREEN] Error during retry:', error);
       // Last resort: just navigate to home
-      router.replace('/(tabs)/(home)/');
+      router.push('/(tabs)/(home)/');
     }
   };
 
@@ -43,7 +44,9 @@ export default function ErrorScreen() {
     console.log('📧 [ERROR_SCREEN] User clicked Contact Support');
     // Open email client or navigate to contact page
     if (Platform.OS === 'web') {
-      window.location.href = 'mailto:support@universalshippingservices.com?subject=Erreur%20Application';
+      if (typeof window !== 'undefined') {
+        window.location.href = 'mailto:support@universalshippingservices.com?subject=Erreur%20Application';
+      }
     } else {
       router.push({
         pathname: '/(tabs)/contact',

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,30 +28,49 @@ export default function AdminLoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Prevent navigation loops with a ref
+  const hasCheckedSession = useRef(false);
+  const isNavigating = useRef(false);
 
-  const checkExistingSession = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabaseAdmin.auth.getSession();
-      
-      if (session?.user) {
-        const isAdmin = appConfig.isAdmin(session.user.email);
-        
-        if (isAdmin) {
-          // Already logged in as admin, redirect to dashboard
-          router.replace('/(tabs)/admin-dashboard');
-        }
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    }
-  }, [router]);
-
-  // Check if already logged in as admin
+  // Check if already logged in as admin (only once on mount)
   useEffect(() => {
+    // Prevent multiple checks
+    if (hasCheckedSession.current || isNavigating.current) {
+      return;
+    }
+
+    const checkExistingSession = async () => {
+      try {
+        hasCheckedSession.current = true;
+        console.log('[ADMIN_LOGIN] Checking existing session...');
+        
+        const { data: { session } } = await supabaseAdmin.auth.getSession();
+        
+        if (session?.user) {
+          const isAdmin = appConfig.isAdmin(session.user.email);
+          
+          if (isAdmin && !isNavigating.current) {
+            // Already logged in as admin, redirect to dashboard
+            console.log('[ADMIN_LOGIN] Admin session found, redirecting to dashboard');
+            isNavigating.current = true;
+            router.replace('/(tabs)/admin-dashboard');
+          }
+        }
+      } catch (error) {
+        console.error('[ADMIN_LOGIN] Error checking session:', error);
+      }
+    };
+
     checkExistingSession();
-  }, [checkExistingSession]);
+  }, []); // Empty dependency array - only run once on mount
 
   const handleLogin = async () => {
+    // Prevent multiple simultaneous login attempts
+    if (loading || isNavigating.current) {
+      return;
+    }
+
     // Clear previous errors
     setError('');
 
@@ -76,6 +95,8 @@ export default function AdminLoginScreen() {
     setLoading(true);
 
     try {
+      console.log('[ADMIN_LOGIN] Attempting login...');
+      
       // Attempt to sign in with Supabase
       const { data, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -83,7 +104,7 @@ export default function AdminLoginScreen() {
       });
 
       if (signInError) {
-        console.error('Sign in error:', signInError);
+        console.error('[ADMIN_LOGIN] Sign in error:', signInError);
         
         // Handle specific error messages
         if (signInError.message.includes('Invalid login credentials')) {
@@ -104,6 +125,7 @@ export default function AdminLoginScreen() {
         
         if (!isAdmin) {
           // Not an admin, sign out and show error
+          console.log('[ADMIN_LOGIN] User is not admin, signing out');
           await supabaseAdmin.auth.signOut();
           setError('Accès réservé à l\'équipe Universal Shipping Services.');
           setLoading(false);
@@ -111,13 +133,17 @@ export default function AdminLoginScreen() {
         }
 
         // Success! Redirect to admin dashboard
-        console.log('Admin login successful:', data.user.email);
-        router.replace('/(tabs)/admin-dashboard');
+        console.log('[ADMIN_LOGIN] Admin login successful:', data.user.email);
+        
+        // Prevent navigation loop
+        if (!isNavigating.current) {
+          isNavigating.current = true;
+          router.replace('/(tabs)/admin-dashboard');
+        }
       }
     } catch (error: any) {
-      console.error('Login exception:', error);
+      console.error('[ADMIN_LOGIN] Login exception:', error);
       setError('Une erreur est survenue. Veuillez réessayer.');
-    } finally {
       setLoading(false);
     }
   };
@@ -284,7 +310,11 @@ export default function AdminLoginScreen() {
         {/* Back to Home Link */}
         <TouchableOpacity
           style={styles.backLink}
-          onPress={() => router.push('/(tabs)/(home)/')}
+          onPress={() => {
+            if (!loading && !isNavigating.current) {
+              router.push('/(tabs)/(home)/');
+            }
+          }}
           disabled={loading}
         >
           <IconSymbol

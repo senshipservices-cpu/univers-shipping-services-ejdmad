@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
@@ -29,73 +29,93 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const checkAdminAccess = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Get current session
-      const { data: { session }, error } = await supabaseAdmin.auth.getSession();
-
-      if (error) {
-        console.error('Error getting session:', error);
-        setUser(null);
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-
-      if (!session?.user) {
-        // Not authenticated, redirect to login
-        console.log('No user session, redirecting to admin login');
-        setUser(null);
-        setIsAdmin(false);
-        setLoading(false);
-        router.replace('/(tabs)/admin-login');
-        return;
-      }
-
-      // Check if user is admin
-      const userEmail = session.user.email;
-      const adminStatus = appConfig.isAdmin(userEmail);
-
-      console.log('Admin access check:', {
-        email: userEmail,
-        isAdmin: adminStatus,
-        adminEmails: appConfig.env.ADMIN_EMAILS,
-      });
-
-      setUser(session.user);
-      setIsAdmin(adminStatus);
-      setLoading(false);
-
-      // If not admin, don't redirect but show access denied message
-      if (!adminStatus) {
-        console.log('User is not admin, showing access denied');
-      }
-    } catch (error) {
-      console.error('Exception checking admin access:', error);
-      setUser(null);
-      setIsAdmin(false);
-      setLoading(false);
-    }
-  }, [router]);
+  
+  // Prevent navigation loops
+  const hasCheckedAccess = useRef(false);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple checks
+    if (hasCheckedAccess.current) {
+      return;
+    }
+
+    const checkAdminAccess = async () => {
+      try {
+        hasCheckedAccess.current = true;
+        setLoading(true);
+        
+        console.log('[ADMIN_GUARD] Checking admin access...');
+
+        // Get current session
+        const { data: { session }, error } = await supabaseAdmin.auth.getSession();
+
+        if (error) {
+          console.error('[ADMIN_GUARD] Error getting session:', error);
+          setUser(null);
+          setIsAdmin(false);
+          setLoading(false);
+          return;
+        }
+
+        if (!session?.user) {
+          // Not authenticated, redirect to login
+          console.log('[ADMIN_GUARD] No user session, redirecting to admin login');
+          setUser(null);
+          setIsAdmin(false);
+          setLoading(false);
+          
+          if (!isNavigating.current) {
+            isNavigating.current = true;
+            router.replace('/(tabs)/admin-login');
+          }
+          return;
+        }
+
+        // Check if user is admin
+        const userEmail = session.user.email;
+        const adminStatus = appConfig.isAdmin(userEmail);
+
+        console.log('[ADMIN_GUARD] Admin access check:', {
+          email: userEmail,
+          isAdmin: adminStatus,
+        });
+
+        setUser(session.user);
+        setIsAdmin(adminStatus);
+        setLoading(false);
+
+        // If not admin, don't redirect but show access denied message
+        if (!adminStatus) {
+          console.log('[ADMIN_GUARD] User is not admin, showing access denied');
+        }
+      } catch (error) {
+        console.error('[ADMIN_GUARD] Exception checking admin access:', error);
+        setUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    };
+
     checkAdminAccess();
 
     // Listen for auth state changes
     const { data: { subscription } } = supabaseAdmin.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log('Admin auth state changed:', _event);
-        checkAdminAccess();
+      (event, session) => {
+        console.log('[ADMIN_GUARD] Auth state changed:', event);
+        
+        // Reset check flag when auth state changes
+        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+          hasCheckedAccess.current = false;
+          isNavigating.current = false;
+        }
       }
     );
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [checkAdminAccess]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Show loading state
   if (loading) {
@@ -144,8 +164,11 @@ export function AdminGuard({ children }: AdminGuardProps) {
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.primary }]}
               onPress={async () => {
-                await supabaseAdmin.auth.signOut();
-                router.replace('/(tabs)/admin-login');
+                if (!isNavigating.current) {
+                  isNavigating.current = true;
+                  await supabaseAdmin.auth.signOut();
+                  router.replace('/(tabs)/admin-login');
+                }
               }}
             >
               <IconSymbol
@@ -161,7 +184,11 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
             <TouchableOpacity
               style={[styles.buttonSecondary, { borderColor: colors.border }]}
-              onPress={() => router.push('/(tabs)/(home)/')}
+              onPress={() => {
+                if (!isNavigating.current) {
+                  router.push('/(tabs)/(home)/');
+                }
+              }}
             >
               <IconSymbol
                 ios_icon_name="house.fill"
