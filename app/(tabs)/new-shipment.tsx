@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useShipment } from '@/contexts/ShipmentContext';
 import { calculateQuoteWithTimeout } from '@/utils/apiClient';
 
 // Validation utilities
@@ -44,6 +45,7 @@ const validateDeclaredValue = (value: string): boolean => {
 export default function NewShipmentScreen() {
   const colors = useColors();
   const { t } = useLanguage();
+  const { setFormData, setQuoteData } = useShipment();
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -153,6 +155,9 @@ export default function NewShipmentScreen() {
   };
 
   const handleCalculateQuote = async () => {
+    console.log('[NEW_SHIPMENT] Calculate quote button pressed');
+    
+    // PARTIE 3: VALIDATION FORM
     if (!validateForm()) {
       Alert.alert('Erreur de validation', 'Veuillez corriger les erreurs dans le formulaire.');
       return;
@@ -163,8 +168,8 @@ export default function NewShipmentScreen() {
     setButtonDisabled(true);
 
     try {
-      // Prepare payload
-      const payload = {
+      // PARTIE 3: PREPARE PAYLOAD
+      const formPayload = {
         sender: {
           type: senderType,
           name: senderName,
@@ -189,33 +194,39 @@ export default function NewShipmentScreen() {
         },
       };
 
-      console.log('[NEW_SHIPMENT] Calculating quote with payload:', payload);
+      console.log('[NEW_SHIPMENT] Calculating quote with payload:', formPayload);
 
-      // SECURITY: Call API with timeout
-      const { data, error } = await calculateQuoteWithTimeout(payload);
+      // PARTIE 3: APPEL API POST /shipments/quote
+      const { data, error } = await calculateQuoteWithTimeout(formPayload);
 
       if (error) {
         console.error('[NEW_SHIPMENT] Quote calculation error:', error);
         
-        // Handle specific error messages
+        // PARTIE 3: GESTION ERREURS
         if (error.message?.includes('timeout') || error.message?.includes('expiré')) {
           Alert.alert('Erreur', 'La requête a expiré. Veuillez réessayer.');
         } else if (error.message?.includes('400') || error.message?.includes('incorrectes')) {
           Alert.alert('Erreur', 'Informations incorrectes.');
+        } else if (error.message?.includes('Unauthorized') || error.message?.includes('authorization')) {
+          Alert.alert('Erreur', 'Vous devez être connecté pour calculer un tarif.');
         } else {
-          Alert.alert('Erreur', 'Service indisponible.');
+          Alert.alert('Erreur', 'Service indisponible. Veuillez réessayer plus tard.');
         }
         return;
       }
 
       console.log('[NEW_SHIPMENT] Quote calculated successfully:', data);
 
-      // Navigate to summary screen with quote data
+      // PARTIE 3: STOCKAGE GLOBAL (quote_id + prix + dates + form)
+      setFormData(formPayload);
+      setQuoteData(data);
+
+      // PARTIE 3: NAVIGATION VERS ShipmentSummary
       router.push({
         pathname: '/shipment-summary',
         params: {
           quoteData: JSON.stringify({
-            ...payload,
+            ...formPayload,
             quote: data,
           }),
         },
@@ -584,7 +595,7 @@ export default function NewShipmentScreen() {
           </View>
         )}
 
-        {/* CALCULATE BUTTON */}
+        {/* PARTIE 3: BOUTON "CALCULER LE TARIF" */}
         <TouchableOpacity
           style={[
             styles.calculateButton,

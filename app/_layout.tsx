@@ -8,6 +8,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AdminProvider } from '@/contexts/AdminContext';
 import { WidgetProvider } from '@/contexts/WidgetContext';
 import { StripeProvider } from '@/contexts/StripeContext';
+import { ShipmentProvider } from '@/contexts/ShipmentContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import appConfig from '@/config/appConfig';
 import { verifyAllServices } from '@/config/configVerification';
@@ -85,33 +86,35 @@ export default function RootLayout() {
           <AuthProvider>
             <AdminProvider>
               <StripeProvider>
-                <WidgetProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="language-selection" />
-                    <Stack.Screen 
-                      name="modal" 
-                      options={{
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom',
-                      }}
-                    />
-                    <Stack.Screen 
-                      name="transparent-modal" 
-                      options={{
-                        presentation: 'transparentModal',
-                        animation: 'fade',
-                      }}
-                    />
-                    <Stack.Screen 
-                      name="formsheet" 
-                      options={{
-                        presentation: 'formSheet',
-                        animation: 'slide_from_bottom',
-                      }}
-                    />
-                  </Stack>
-                </WidgetProvider>
+                <ShipmentProvider>
+                  <WidgetProvider>
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="language-selection" />
+                      <Stack.Screen 
+                        name="modal" 
+                        options={{
+                          presentation: 'modal',
+                          animation: 'slide_from_bottom',
+                        }}
+                      />
+                      <Stack.Screen 
+                        name="transparent-modal" 
+                        options={{
+                          presentation: 'transparentModal',
+                          animation: 'fade',
+                        }}
+                      />
+                      <Stack.Screen 
+                        name="formsheet" 
+                        options={{
+                          presentation: 'formSheet',
+                          animation: 'slide_from_bottom',
+                        }}
+                      />
+                    </Stack>
+                  </WidgetProvider>
+                </ShipmentProvider>
               </StripeProvider>
             </AdminProvider>
           </AuthProvider>

@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useShipment } from '@/contexts/ShipmentContext';
 import { processPaymentWithSecurity } from '@/utils/apiClient';
 import { generateIdempotencyKey } from '@/utils/trackingGenerator';
 
@@ -24,24 +25,46 @@ export default function ShipmentSummaryScreen() {
   const colors = useColors();
   const { t } = useLanguage();
   const params = useLocalSearchParams();
+  const { formData: contextFormData, quoteData: contextQuoteData } = useShipment();
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [quoteData, setQuoteData] = useState<any>(null);
 
   useEffect(() => {
+    // Try to load from navigation params first, then fall back to context
     if (params.quoteData) {
       try {
         const data = JSON.parse(params.quoteData as string);
         setQuoteData(data);
-        console.log('[SHIPMENT_SUMMARY] Quote data loaded:', data);
+        console.log('[SHIPMENT_SUMMARY] Quote data loaded from params:', data);
       } catch (error) {
         console.error('[SHIPMENT_SUMMARY] Error parsing quote data:', error);
-        Alert.alert('Erreur', 'Données de devis invalides.');
-        router.back();
+        
+        // Fall back to context data
+        if (contextFormData && contextQuoteData) {
+          setQuoteData({
+            ...contextFormData,
+            quote: contextQuoteData,
+          });
+          console.log('[SHIPMENT_SUMMARY] Quote data loaded from context');
+        } else {
+          Alert.alert('Erreur', 'Données de devis invalides.');
+          router.back();
+        }
       }
+    } else if (contextFormData && contextQuoteData) {
+      // Load from context if no params
+      setQuoteData({
+        ...contextFormData,
+        quote: contextQuoteData,
+      });
+      console.log('[SHIPMENT_SUMMARY] Quote data loaded from context');
+    } else {
+      Alert.alert('Erreur', 'Aucune donnée de devis disponible.');
+      router.back();
     }
-  }, [params.quoteData]);
+  }, [params.quoteData, contextFormData, contextQuoteData]);
 
   const handlePayment = async () => {
     if (!paymentMethod) {
