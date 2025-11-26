@@ -115,43 +115,9 @@ export default function ProfileScreen() {
     console.log('[PROFILE] Change password button clicked');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    Alert.alert(
-      'Changer le mot de passe',
-      'Un email de réinitialisation va être envoyé à votre adresse email.',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
-        {
-          text: 'Envoyer',
-          onPress: async () => {
-            try {
-              const { error } = await supabase.auth.resetPasswordForEmail(
-                user?.email || '',
-                {
-                  redirectTo: 'https://natively.dev/reset-password',
-                }
-              );
-
-              if (error) {
-                console.error('[PROFILE] Error sending reset email:', error);
-                Alert.alert('Erreur', 'Impossible d\'envoyer l\'email de réinitialisation.');
-              } else {
-                Alert.alert(
-                  'Email envoyé',
-                  'Un email de réinitialisation a été envoyé à votre adresse email.'
-                );
-              }
-            } catch (error) {
-              console.error('[PROFILE] Exception sending reset email:', error);
-              Alert.alert('Erreur', 'Une erreur est survenue.');
-            }
-          },
-        },
-      ]
-    );
-  }, [user]);
+    // Navigate to ChangePassword screen
+    router.push('/(tabs)/change-password');
+  }, [router]);
 
   // Handle logout button
   const handleLogout = useCallback(async () => {
