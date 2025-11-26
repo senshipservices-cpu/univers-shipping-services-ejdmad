@@ -17,6 +17,8 @@ import { formatPrice, getBillingPeriodLabel } from "@/utils/paypal";
 import { ConfigStatus } from "@/components/ConfigStatus";
 import appConfig from "@/config/appConfig";
 import * as Linking from 'expo-linking';
+import { ResponsiveContainer } from "@/components/ResponsiveContainer";
+import { getFontSize, spacing, borderRadius, getShadow } from "@/styles/responsiveStyles";
 
 interface PricingPlan {
   id: string;
@@ -38,7 +40,7 @@ interface FAQItem {
 export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, session, client } = useAuth();
   const params = useLocalSearchParams();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -52,7 +54,6 @@ export default function PricingScreen() {
     
     // Check for highlight parameter
     if (params.highlight) {
-      appConfig.logger.info('Highlighting plan:', params.highlight);
       setHighlightedPlan(params.highlight as string);
     }
   }, [params.highlight]);
@@ -67,24 +68,27 @@ export default function PricingScreen() {
         .order('price_eur', { ascending: true });
 
       if (error) {
-        appConfig.logger.error('Error fetching plans:', error);
-        Alert.alert('Erreur', 'Impossible de charger les plans tarifaires.');
+        console.error('Error fetching plans:', error);
+        Alert.alert(
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'Unable to load pricing plans.' : 'Impossible de charger les plans tarifaires.'
+        );
         return;
       }
 
-      appConfig.logger.info('Fetched plans:', data);
       setPlans(data || []);
     } catch (error) {
-      appConfig.logger.error('Exception fetching plans:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors du chargement des plans.');
+      console.error('Exception fetching plans:', error);
+      Alert.alert(
+        language === 'en' ? 'Error' : 'Erreur',
+        language === 'en' ? 'An error occurred while loading plans.' : 'Une erreur est survenue lors du chargement des plans.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleSelectPlan = async (plan: PricingPlan) => {
-    appConfig.logger.info('Plan selected:', plan.code, 'User:', user?.id, 'Session:', !!session);
-
     // Determine plan type from plan code
     const planType = plan.code.toLowerCase().includes('basic') ? 'basic' :
                      plan.code.toLowerCase().includes('pro') && !plan.code.toLowerCase().includes('yearly') ? 'premium_tracking' :
@@ -92,28 +96,22 @@ export default function PricingScreen() {
                      plan.code.toLowerCase().includes('digital_portal') ? 'digital_portal' :
                      plan.code.toLowerCase().includes('agent') ? 'agent_listing' : null;
 
-    appConfig.logger.info('Determined plan type:', planType);
-
     // Handle Agent Listing plan - redirect to become_agent (no authentication required)
     if (planType === 'agent_listing') {
-      appConfig.logger.info('Redirecting to become_agent');
       router.push('/(tabs)/become-agent');
       return;
     }
 
     // Check if user is authenticated for other plans
     if (!user || !session) {
-      appConfig.logger.info('User not authenticated, showing login prompt');
       Alert.alert(
-        'Connexion requise',
-        'Veuillez vous connecter pour souscrire à un plan.',
+        language === 'en' ? 'Login Required' : 'Connexion requise',
+        language === 'en' ? 'Please log in to subscribe to a plan.' : 'Veuillez vous connecter pour souscrire à un plan.',
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: language === 'en' ? 'Cancel' : 'Annuler', style: 'cancel' },
           { 
-            text: 'Se connecter', 
+            text: language === 'en' ? 'Login' : 'Se connecter', 
             onPress: () => {
-              // Store the plan to redirect back after login
-              appConfig.logger.info('Redirecting to login with plan:', planType);
               router.push({
                 pathname: '/(tabs)/login',
                 params: { 
@@ -133,13 +131,12 @@ export default function PricingScreen() {
 
       // Check if client profile exists
       if (!client) {
-        appConfig.logger.warn('Client profile not found');
         Alert.alert(
-          'Profil incomplet',
-          'Veuillez compléter votre profil client avant de souscrire.',
+          language === 'en' ? 'Incomplete Profile' : 'Profil incomplet',
+          language === 'en' ? 'Please complete your client profile before subscribing.' : 'Veuillez compléter votre profil client avant de souscrire.',
           [
             {
-              text: 'Compléter mon profil',
+              text: language === 'en' ? 'Complete Profile' : 'Compléter mon profil',
               onPress: () => router.push('/(tabs)/client-profile'),
             },
           ]
@@ -150,8 +147,6 @@ export default function PricingScreen() {
 
       // Handle Basic plan - create subscription directly and redirect to dashboard
       if (planType === 'basic') {
-        appConfig.logger.info('Creating basic subscription directly for client:', client.id);
-        
         // Create basic subscription
         const startDate = new Date();
         const endDate = new Date();
@@ -173,18 +168,19 @@ export default function PricingScreen() {
           });
 
         if (subscriptionError) {
-          appConfig.logger.error('Error creating basic subscription:', subscriptionError);
-          Alert.alert('Erreur', 'Impossible de créer votre abonnement. Veuillez réessayer.');
+          console.error('Error creating basic subscription:', subscriptionError);
+          Alert.alert(
+            language === 'en' ? 'Error' : 'Erreur',
+            language === 'en' ? 'Unable to create your subscription. Please try again.' : 'Impossible de créer votre abonnement. Veuillez réessayer.'
+          );
           setProcessingPlan(null);
           return;
         }
 
-        appConfig.logger.info('Basic subscription created successfully');
-
         // Redirect to client dashboard with success message
         Alert.alert(
-          'Bienvenue !',
-          'Votre abonnement Basic a été activé avec succès. Vous pouvez maintenant accéder à tous les services de base.',
+          language === 'en' ? 'Welcome!' : 'Bienvenue !',
+          language === 'en' ? 'Your Basic subscription has been activated successfully. You can now access all basic services.' : 'Votre abonnement Basic a été activé avec succès. Vous pouvez maintenant accéder à tous les services de base.',
           [
             {
               text: 'OK',
@@ -198,7 +194,6 @@ export default function PricingScreen() {
 
       // Handle Premium, Enterprise, and Digital Portal plans - redirect to subscription_confirm
       if (planType === 'premium_tracking' || planType === 'enterprise_logistics' || planType === 'digital_portal') {
-        appConfig.logger.info('Redirecting to subscription_confirm for plan:', planType);
         router.push({
           pathname: '/(tabs)/subscription-confirm',
           params: { plan: planType }
@@ -208,8 +203,6 @@ export default function PricingScreen() {
       }
 
       // Fallback: use payment provider (for future payment integration)
-      appConfig.logger.warn('No specific handling for plan type:', planType, '- using payment provider');
-      
       const edgeFunctionName = appConfig.payment.provider === 'paypal' 
         ? 'create-paypal-order' 
         : 'create-checkout-session';
@@ -221,16 +214,14 @@ export default function PricingScreen() {
       });
 
       if (error) {
-        appConfig.logger.error('Error creating payment session:', error);
+        console.error('Error creating payment session:', error);
         Alert.alert(
-          'Erreur',
-          'Impossible de créer la session de paiement. Veuillez réessayer.'
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'Unable to create payment session. Please try again.' : 'Impossible de créer la session de paiement. Veuillez réessayer.'
         );
         setProcessingPlan(null);
         return;
       }
-
-      appConfig.logger.info('Payment session created:', data);
 
       // Redirect to payment page (PayPal or Stripe)
       if (data.url) {
@@ -238,14 +229,23 @@ export default function PricingScreen() {
         if (supported) {
           await Linking.openURL(data.url);
         } else {
-          Alert.alert('Erreur', 'Impossible d\'ouvrir la page de paiement.');
+          Alert.alert(
+            language === 'en' ? 'Error' : 'Erreur',
+            language === 'en' ? 'Unable to open payment page.' : 'Impossible d\'ouvrir la page de paiement.'
+          );
         }
       } else {
-        Alert.alert('Erreur', 'URL de paiement non disponible.');
+        Alert.alert(
+          language === 'en' ? 'Error' : 'Erreur',
+          language === 'en' ? 'Payment URL not available.' : 'URL de paiement non disponible.'
+        );
       }
     } catch (error) {
-      appConfig.logger.error('Exception handling plan selection:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+      console.error('Exception handling plan selection:', error);
+      Alert.alert(
+        language === 'en' ? 'Error' : 'Erreur',
+        language === 'en' ? 'An error occurred. Please try again.' : 'Une erreur est survenue. Veuillez réessayer.'
+      );
     } finally {
       setProcessingPlan(null);
     }
@@ -293,7 +293,7 @@ export default function PricingScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-            Chargement des plans...
+            {language === 'en' ? 'Loading plans...' : 'Chargement des plans...'}
           </Text>
         </View>
       </View>
@@ -313,35 +313,41 @@ export default function PricingScreen() {
         {appConfig.isDev && <ConfigStatus />}
 
         {highlightedPlan === 'digital_portal' && (
-          <View style={[styles.accessBanner, { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}>
-            <IconSymbol
-              ios_icon_name="lock.fill"
-              android_material_icon_name="lock"
-              size={32}
-              color={colors.accent}
-            />
-            <View style={styles.accessBannerContent}>
-              <Text style={[styles.accessBannerTitle, { color: theme.colors.text }]}>
-                Accès au Portail Digital requis
-              </Text>
-              <Text style={[styles.accessBannerText, { color: colors.textSecondary }]}>
-                Pour accéder au Portail Digital Maritime, vous devez souscrire à un plan Premium Tracking, Enterprise Logistics ou Digital Portal.
-              </Text>
+          <ResponsiveContainer>
+            <View style={[styles.accessBanner, { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}>
+              <IconSymbol
+                ios_icon_name="lock.fill"
+                android_material_icon_name="lock"
+                size={32}
+                color={colors.accent}
+              />
+              <View style={styles.accessBannerContent}>
+                <Text style={[styles.accessBannerTitle, { color: theme.colors.text }]}>
+                  {language === 'en' ? 'Digital Portal Access Required' : 'Accès au Portail Digital requis'}
+                </Text>
+                <Text style={[styles.accessBannerText, { color: colors.textSecondary }]}>
+                  {language === 'en' 
+                    ? 'To access the Digital Maritime Portal, you must subscribe to a Premium Tracking, Enterprise Logistics or Digital Portal plan.'
+                    : 'Pour accéder au Portail Digital Maritime, vous devez souscrire à un plan Premium Tracking, Enterprise Logistics ou Digital Portal.'}
+                </Text>
+              </View>
             </View>
-          </View>
+          </ResponsiveContainer>
         )}
 
-        <View style={styles.heroSection}>
-          <IconSymbol
-            ios_icon_name="dollarsign.circle.fill"
-            android_material_icon_name="payments"
-            size={80}
-            color={colors.primary}
-          />
-          <Text style={[styles.subtitle, { color: theme.colors.text }]}>
-            {t.pricing.subtitle}
-          </Text>
-        </View>
+        <ResponsiveContainer>
+          <View style={styles.heroSection}>
+            <IconSymbol
+              ios_icon_name="dollarsign.circle.fill"
+              android_material_icon_name="payments"
+              size={80}
+              color={colors.primary}
+            />
+            <Text style={[styles.subtitle, { color: theme.colors.text }]}>
+              {t.pricing.subtitle}
+            </Text>
+          </View>
+        </ResponsiveContainer>
 
         {/* Trust Bar */}
         <TrustBar
@@ -365,132 +371,144 @@ export default function PricingScreen() {
           ]}
         />
 
-        <View style={styles.plansContainer}>
-          {plans.map((plan, index) => {
-            const planColor = getPlanColor(plan.code);
-            const isPopular = isPlanPopular(plan.code);
-            const isProcessing = processingPlan === plan.code;
+        <ResponsiveContainer>
+          <View style={styles.plansContainer}>
+            {plans.map((plan, index) => {
+              const planColor = getPlanColor(plan.code);
+              const isPopular = isPlanPopular(plan.code);
+              const isProcessing = processingPlan === plan.code;
 
-            return (
-              <React.Fragment key={index}>
-                <View
-                  style={[
-                    styles.planCard,
-                    { backgroundColor: theme.colors.card },
-                    isPopular && styles.popularPlan,
-                    highlightedPlan && plan.code.includes(highlightedPlan.toUpperCase()) && styles.highlightedPlan,
-                  ]}
-                >
-                  {isPopular && (
-                    <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
-                      <IconSymbol
-                        ios_icon_name="star.fill"
-                        android_material_icon_name="star"
-                        size={14}
-                        color="#ffffff"
-                      />
-                      <Text style={styles.popularBadgeText}>Populaire</Text>
-                    </View>
-                  )}
-                  
-                  <Text style={[styles.planName, { color: planColor }]}>
-                    {plan.name}
-                  </Text>
-                  
-                  <View style={styles.priceContainer}>
-                    <Text style={[styles.planPrice, { color: theme.colors.text }]}>
-                      {formatPrice(parseFloat(plan.price_eur), plan.currency)}
-                    </Text>
-                    <Text style={[styles.billingPeriod, { color: colors.textSecondary }]}>
-                      {getBillingPeriodLabel(plan.billing_period, 'fr')}
-                    </Text>
-                  </View>
-                  
-                  {plan.description && (
-                    <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
-                      {plan.description}
-                    </Text>
-                  )}
-
-                  <View style={styles.divider} />
-
-                  <View>
-                    <TouchableOpacity
-                      style={[
-                        styles.selectButton,
-                        { backgroundColor: planColor },
-                        isProcessing && styles.selectButtonDisabled,
-                      ]}
-                      onPress={() => handleSelectPlan(plan)}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
-                      ) : (
-                        <React.Fragment>
-                          <Text style={styles.selectButtonText}>
-                            {plan.billing_period === 'one_time' ? 'Acheter maintenant' : 'Choisir ce plan'}
-                          </Text>
-                          <IconSymbol
-                            ios_icon_name="arrow.right"
-                            android_material_icon_name="arrow_forward"
-                            size={18}
-                            color="#ffffff"
-                          />
-                        </React.Fragment>
-                      )}
-                    </TouchableOpacity>
+              return (
+                <React.Fragment key={index}>
+                  <View
+                    style={[
+                      styles.planCard,
+                      { backgroundColor: theme.colors.card },
+                      getShadow('md'),
+                      isPopular && styles.popularPlan,
+                      highlightedPlan && plan.code.includes(highlightedPlan.toUpperCase()) && styles.highlightedPlan,
+                    ]}
+                  >
                     {isPopular && (
-                      <MicroCopy
-                        text={`Paiement sécurisé par ${appConfig.payment.provider === 'paypal' ? 'PayPal' : 'Stripe'}`}
-                        icon={{ ios: 'lock.shield.fill', android: 'security' }}
-                      />
+                      <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
+                        <IconSymbol
+                          ios_icon_name="star.fill"
+                          android_material_icon_name="star"
+                          size={14}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.popularBadgeText}>
+                          {language === 'en' ? 'Popular' : 'Populaire'}
+                        </Text>
+                      </View>
                     )}
-                  </View>
-                </View>
-              </React.Fragment>
-            );
-          })}
-        </View>
+                    
+                    <Text style={[styles.planName, { color: planColor }]}>
+                      {plan.name}
+                    </Text>
+                    
+                    <View style={styles.priceContainer}>
+                      <Text style={[styles.planPrice, { color: theme.colors.text }]}>
+                        {formatPrice(parseFloat(plan.price_eur), plan.currency)}
+                      </Text>
+                      <Text style={[styles.billingPeriod, { color: colors.textSecondary }]}>
+                        {getBillingPeriodLabel(plan.billing_period, language)}
+                      </Text>
+                    </View>
+                    
+                    {plan.description && (
+                      <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
+                        {plan.description}
+                      </Text>
+                    )}
 
-        <View style={styles.faqSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t.pricing.faqTitle}
-          </Text>
-          
-          <View style={styles.faqContainer}>
-            {faqItems.map((item, index) => (
-              <React.Fragment key={index}>
-                <TouchableOpacity
-                  style={[
-                    styles.faqItem,
-                    { backgroundColor: theme.colors.card },
-                  ]}
-                  onPress={() => toggleFAQ(index)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.faqHeader}>
-                    <Text style={[styles.faqQuestion, { color: theme.colors.text }]}>
-                      {item.question}
-                    </Text>
-                    <IconSymbol
-                      ios_icon_name={expandedFAQ === index ? "chevron.up" : "chevron.down"}
-                      android_material_icon_name={expandedFAQ === index ? "expand_less" : "expand_more"}
-                      size={24}
-                      color={colors.primary}
-                    />
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    <View>
+                      <TouchableOpacity
+                        style={[
+                          styles.selectButton,
+                          { backgroundColor: planColor },
+                          isProcessing && styles.selectButtonDisabled,
+                        ]}
+                        onPress={() => handleSelectPlan(plan)}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <React.Fragment>
+                            <Text style={styles.selectButtonText}>
+                              {plan.billing_period === 'one_time' 
+                                ? (language === 'en' ? 'Buy Now' : 'Acheter maintenant')
+                                : (language === 'en' ? 'Choose This Plan' : 'Choisir ce plan')}
+                            </Text>
+                            <IconSymbol
+                              ios_icon_name="arrow.right"
+                              android_material_icon_name="arrow_forward"
+                              size={18}
+                              color="#ffffff"
+                            />
+                          </React.Fragment>
+                        )}
+                      </TouchableOpacity>
+                      {isPopular && (
+                        <MicroCopy
+                          text={language === 'en' 
+                            ? `Secure payment by ${appConfig.payment.provider === 'paypal' ? 'PayPal' : 'Stripe'}`
+                            : `Paiement sécurisé par ${appConfig.payment.provider === 'paypal' ? 'PayPal' : 'Stripe'}`}
+                          icon={{ ios: 'lock.shield.fill', android: 'security' }}
+                        />
+                      )}
+                    </View>
                   </View>
-                  
-                  {expandedFAQ === index && (
-                    <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
-                      {item.answer}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
+                </React.Fragment>
+              );
+            })}
           </View>
-        </View>
+        </ResponsiveContainer>
+
+        <ResponsiveContainer>
+          <View style={styles.faqSection}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {t.pricing.faqTitle}
+            </Text>
+            
+            <View style={styles.faqContainer}>
+              {faqItems.map((item, index) => (
+                <React.Fragment key={index}>
+                  <TouchableOpacity
+                    style={[
+                      styles.faqItem,
+                      { backgroundColor: theme.colors.card },
+                      getShadow('sm'),
+                    ]}
+                    onPress={() => toggleFAQ(index)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.faqHeader}>
+                      <Text style={[styles.faqQuestion, { color: theme.colors.text }]}>
+                        {item.question}
+                      </Text>
+                      <IconSymbol
+                        ios_icon_name={expandedFAQ === index ? "chevron.up" : "chevron.down"}
+                        android_material_icon_name={expandedFAQ === index ? "expand_less" : "expand_more"}
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                    
+                    {expandedFAQ === index && (
+                      <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
+                        {item.answer}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
+        </ResponsiveContainer>
 
         {/* Confidence Banner */}
         <ConfidenceBanner
@@ -569,10 +587,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: spacing.lg,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '600',
   },
   scrollView: {
@@ -584,48 +602,43 @@ const styles = StyleSheet.create({
   accessBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 16,
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 8,
-    padding: 20,
-    borderRadius: 16,
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
   },
   accessBannerContent: {
     flex: 1,
-    gap: 8,
+    gap: spacing.sm,
   },
   accessBannerTitle: {
-    fontSize: 18,
+    fontSize: getFontSize('lg'),
     fontWeight: '700',
   },
   accessBannerText: {
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     lineHeight: 22,
   },
   heroSection: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingVertical: spacing.huge,
   },
   subtitle: {
-    fontSize: 22,
+    fontSize: getFontSize('xxl'),
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: spacing.xl,
     lineHeight: 30,
   },
   plansContainer: {
-    paddingHorizontal: 20,
-    gap: 20,
-    marginBottom: 40,
+    gap: spacing.xl,
+    marginBottom: spacing.huge,
   },
   planCard: {
-    padding: 24,
-    borderRadius: 16,
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
-    elevation: 4,
+    padding: spacing.xxxl,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     position: 'relative',
@@ -633,93 +646,85 @@ const styles = StyleSheet.create({
   popularPlan: {
     borderWidth: 2,
     borderColor: colors.primary,
-    boxShadow: '0px 6px 16px rgba(3, 169, 244, 0.2)',
-    elevation: 6,
   },
   popularBadge: {
     position: 'absolute',
     top: -12,
-    right: 20,
+    right: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     gap: 4,
   },
   popularBadgeText: {
-    fontSize: 12,
+    fontSize: getFontSize('xs'),
     fontWeight: '700',
     color: '#ffffff',
   },
   highlightedPlan: {
     borderWidth: 3,
     borderColor: colors.accent,
-    boxShadow: '0px 8px 24px rgba(255, 152, 0, 0.3)',
-    elevation: 8,
   },
   planName: {
-    fontSize: 24,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 8,
-    marginBottom: 12,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   planPrice: {
-    fontSize: 28,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '700',
   },
   billingPeriod: {
-    fontSize: 14,
+    fontSize: getFontSize('sm'),
     fontWeight: '500',
   },
   planDescription: {
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     lineHeight: 22,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 10,
-    gap: 8,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
   },
   selectButtonDisabled: {
     opacity: 0.6,
   },
   selectButtonText: {
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     color: '#ffffff',
   },
   faqSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+    marginBottom: spacing.xxxl,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: getFontSize('xxxl'),
     fontWeight: '700',
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   faqContainer: {
-    gap: 12,
+    gap: spacing.md,
   },
   faqItem: {
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+    padding: spacing.xl,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -727,19 +732,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: spacing.md,
   },
   faqQuestion: {
     flex: 1,
-    fontSize: 16,
+    fontSize: getFontSize('md'),
     fontWeight: '700',
     lineHeight: 22,
   },
   faqAnswer: {
-    fontSize: 15,
+    fontSize: getFontSize('md'),
     lineHeight: 22,
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
