@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Redirect } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import { colors } from '@/styles/commonStyles';
 import { formatDate, formatDateTime, formatCurrency } from '@/utils/formatters';
 
 // PARTIE 2/4 – Modèle de données + Blocs Résumé / Expéditeur / Destinataire
+// PARTIE 3/4 – Colis + Prix + Timeline + Boutons + Loading/Erreur
 // SCREEN_ID: ShipmentDetails
 // TITLE: "Détails de l'envoi"
 // ROUTE: "/shipment-details"
@@ -281,6 +283,55 @@ export default function ShipmentDetailsScreen() {
     }
   }, []);
 
+  // Action button handlers
+  const handleTrackShipment = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Navigate to tracking');
+    if (state.tracking_number) {
+      router.push({
+        pathname: '/(tabs)/tracking',
+        params: { tracking_number: state.tracking_number }
+      });
+    } else {
+      Alert.alert(
+        'Information',
+        'Le numéro de suivi n\'est pas disponible pour cet envoi.'
+      );
+    }
+  }, [state.tracking_number, router]);
+
+  const handleContactSupport = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Contact support');
+    Alert.alert(
+      'Contacter le support',
+      'Comment souhaitez-vous nous contacter ?',
+      [
+        {
+          text: 'Email',
+          onPress: () => {
+            const subject = `Support - Envoi ${state.tracking_number || state.shipment_id}`;
+            const body = `Bonjour,\n\nJ'ai besoin d'aide concernant mon envoi:\n\nNuméro de suivi: ${state.tracking_number || 'N/A'}\nID: ${state.shipment_id}\n\nDescription du problème:\n\n`;
+            Linking.openURL(`mailto:support@3sglobal.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+          }
+        },
+        {
+          text: 'Téléphone',
+          onPress: () => {
+            Linking.openURL('tel:+212522000000');
+          }
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        }
+      ]
+    );
+  }, [state.tracking_number, state.shipment_id]);
+
+  const handleBackToDashboard = useCallback(() => {
+    console.log('[SHIPMENT_DETAILS] Navigate back to dashboard');
+    router.push('/(tabs)/dashboard');
+  }, [router]);
+
   // Redirect if not authenticated
   if (!user) {
     return <Redirect href="/(tabs)/login" />;
@@ -312,7 +363,7 @@ export default function ShipmentDetailsScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-            Chargement des détails...
+            Chargement des détails de l&apos;envoi...
           </Text>
         </View>
       </View>
@@ -567,7 +618,7 @@ export default function ShipmentDetailsScreen() {
           </View>
         </View>
 
-        {/* Colis Section - Poids, Type, Options */}
+        {/* BLOC 4 – Colis */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
           <View style={styles.sectionHeader}>
             <IconSymbol
@@ -577,7 +628,7 @@ export default function ShipmentDetailsScreen() {
               color={colors.primary}
             />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Détails du colis
+              Colis
             </Text>
           </View>
 
@@ -623,7 +674,7 @@ export default function ShipmentDetailsScreen() {
           </View>
         </View>
 
-        {/* Prix Section */}
+        {/* BLOC 5 – Prix */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
           <View style={styles.sectionHeader}>
             <IconSymbol
@@ -633,7 +684,7 @@ export default function ShipmentDetailsScreen() {
               color={colors.primary}
             />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Tarification
+              Tarif
             </Text>
           </View>
 
@@ -647,7 +698,7 @@ export default function ShipmentDetailsScreen() {
           </View>
         </View>
 
-        {/* Historique (Timeline) Section */}
+        {/* BLOC 6 – Timeline (Historique) */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
           <View style={styles.sectionHeader}>
             <IconSymbol
@@ -657,7 +708,7 @@ export default function ShipmentDetailsScreen() {
               color={colors.primary}
             />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Historique
+              Historique de suivi
             </Text>
           </View>
 
@@ -696,6 +747,61 @@ export default function ShipmentDetailsScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          {/* Primary Button - Voir le suivi */}
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            onPress={handleTrackShipment}
+            activeOpacity={0.8}
+          >
+            <IconSymbol
+              ios_icon_name="location.fill"
+              android_material_icon_name="my_location"
+              size={20}
+              color="#FFFFFF"
+            />
+            <Text style={styles.primaryButtonText}>Voir le suivi</Text>
+          </TouchableOpacity>
+
+          {/* Secondary Button - Contacter le support */}
+          <TouchableOpacity
+            style={[styles.secondaryButton, { 
+              backgroundColor: theme.colors.card,
+              borderColor: colors.primary,
+            }]}
+            onPress={handleContactSupport}
+            activeOpacity={0.8}
+          >
+            <IconSymbol
+              ios_icon_name="phone.fill"
+              android_material_icon_name="phone"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              Contacter le support
+            </Text>
+          </TouchableOpacity>
+
+          {/* Ghost Button - Retour à mes envois */}
+          <TouchableOpacity
+            style={styles.ghostButton}
+            onPress={handleBackToDashboard}
+            activeOpacity={0.6}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.left"
+              android_material_icon_name="arrow_back"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={[styles.ghostButtonText, { color: colors.textSecondary }]}>
+              Retour à mes envois
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Bottom spacing for tab bar */}
@@ -943,5 +1049,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Action Buttons
+  actionsContainer: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 12,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  ghostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  ghostButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
