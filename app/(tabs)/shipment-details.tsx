@@ -18,55 +18,45 @@ import { supabase } from '@/app/integrations/supabase/client';
 import { colors } from '@/styles/commonStyles';
 import { formatDate, formatDateTime, formatCurrency } from '@/utils/formatters';
 
-// PARTIE 1/4 – Contexte + Screen + State
+// PARTIE 2/4 – Modèle de données + Blocs Résumé / Expéditeur / Destinataire
 // SCREEN_ID: ShipmentDetails
 // TITLE: "Détails de l'envoi"
 // ROUTE: "/shipment-details"
 
-interface Port {
-  id: string;
+// New data structure aligned with API response
+interface OriginDestination {
   name: string;
-  city: string | null;
-  country: string | null;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
 }
 
-interface StatusHistoryEvent {
-  id: string;
-  status: string;
-  location: string | null;
-  timestamp: string;
-  notes: string | null;
-  created_by: string | null;
+interface Parcel {
+  type: string;
+  weight_kg: number;
+  declared_value: number;
+  options: string[];
+}
+
+interface ShipmentEvent {
+  date: string;
+  location: string;
+  description: string;
 }
 
 interface ShipmentData {
   id: string;
   tracking_number: string;
-  current_status: string;
-  origin_port: Port | null;
-  destination_port: Port | null;
-  eta: string | null;
-  etd: string | null;
-  cargo_type: string | null;
-  container_type: string | null;
-  incoterm: string | null;
-  client_visible_notes: string | null;
-  client: string;
+  status: string;
   created_at: string;
-  updated_at: string;
-  last_update: string | null;
-  // Additional fields for sender/receiver (from freight_quotes if available)
-  sender_name?: string;
-  sender_email?: string;
-  sender_phone?: string;
-  receiver_name?: string;
-  receiver_email?: string;
-  receiver_phone?: string;
-  // Pricing information
-  quoted_price?: number;
-  currency?: string;
-  // Status history
-  status_history?: StatusHistoryEvent[];
+  origin: OriginDestination;
+  destination: OriginDestination;
+  parcel: Parcel;
+  price_total: number;
+  currency: string;
+  events: ShipmentEvent[];
+  estimated_delivery_date: string;
 }
 
 // SCREEN_STATE (ShipmentDetails):
@@ -169,14 +159,40 @@ export default function ShipmentDetailsScreen() {
         console.error('[SHIPMENT_DETAILS] Error loading quote:', quoteError);
       }
 
-      // Combine all data
-      const fullShipmentData: ShipmentData = {
-        ...shipmentData,
-        status_history: historyData || [],
-        sender_name: quoteData?.client_name || 'Non spécifié',
-        sender_email: quoteData?.client_email || 'Non spécifié',
-        quoted_price: quoteData?.quote_amount || quoteData?.quoted_price,
-        currency: quoteData?.quote_currency || quoteData?.currency || 'EUR',
+      // Transform data to match new structure
+      const transformedData: ShipmentData = {
+        id: shipmentData.id,
+        tracking_number: shipmentData.tracking_number,
+        status: shipmentData.current_status,
+        created_at: shipmentData.created_at,
+        origin: {
+          name: quoteData?.client_name || 'Non spécifié',
+          phone: quoteData?.client_phone || quoteData?.client_email || 'Non spécifié',
+          address: shipmentData.origin_port?.name || 'Non spécifié',
+          city: shipmentData.origin_port?.city || 'Non spécifié',
+          country: shipmentData.origin_port?.country || 'Non spécifié',
+        },
+        destination: {
+          name: quoteData?.receiver_name || 'Non spécifié',
+          phone: quoteData?.receiver_phone || quoteData?.receiver_email || 'Non spécifié',
+          address: shipmentData.destination_port?.name || 'Non spécifié',
+          city: shipmentData.destination_port?.city || 'Non spécifié',
+          country: shipmentData.destination_port?.country || 'Non spécifié',
+        },
+        parcel: {
+          type: shipmentData.cargo_type || 'standard',
+          weight_kg: quoteData?.weight_kg || 0,
+          declared_value: quoteData?.declared_value || 0,
+          options: shipmentData.container_type ? [shipmentData.container_type] : [],
+        },
+        price_total: quoteData?.quote_amount || quoteData?.quoted_price || 0,
+        currency: quoteData?.quote_currency || quoteData?.currency || 'MAD',
+        events: (historyData || []).map(event => ({
+          date: event.timestamp,
+          location: event.location || 'Non spécifié',
+          description: event.notes || formatStatus(event.status),
+        })),
+        estimated_delivery_date: shipmentData.eta || 'Non spécifié',
       };
 
       console.log('[SHIPMENT_DETAILS] Shipment loaded successfully');
@@ -184,7 +200,7 @@ export default function ShipmentDetailsScreen() {
       setState(prev => ({
         ...prev,
         shipment_loading: false,
-        shipment_data: fullShipmentData,
+        shipment_data: transformedData,
       }));
     } catch (error) {
       console.error('[SHIPMENT_DETAILS] Exception loading shipment:', error);
@@ -215,6 +231,7 @@ export default function ShipmentDetailsScreen() {
       case 'at_port':
         return '#8b5cf6';
       case 'quote_pending':
+      case 'registered':
         return '#f59e0b';
       case 'draft':
         return colors.textSecondary;
@@ -231,6 +248,7 @@ export default function ShipmentDetailsScreen() {
     const statusMap: { [key: string]: string } = {
       'draft': 'Brouillon',
       'quote_pending': 'Devis en attente',
+      'registered': 'Enregistré',
       'confirmed': 'Confirmé',
       'in_transit': 'En transit',
       'at_port': 'Au port',
@@ -247,6 +265,7 @@ export default function ShipmentDetailsScreen() {
         return { ios: 'checkmark.circle.fill', android: 'check_circle' };
       case 'in_transit':
       case 'confirmed':
+      case 'registered':
         return { ios: 'shippingbox.fill', android: 'local_shipping' };
       case 'at_port':
         return { ios: 'location.fill', android: 'location_on' };
@@ -385,7 +404,7 @@ export default function ShipmentDetailsScreen() {
   }
 
   const shipment = state.shipment_data;
-  const statusIcon = getStatusIcon(shipment.current_status);
+  const statusIcon = getStatusIcon(shipment.status);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -410,161 +429,140 @@ export default function ShipmentDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status Card - Tracking, Statut, Dates */}
-        <View style={[styles.statusCard, { backgroundColor: getStatusColor(shipment.current_status) }]}>
-          <IconSymbol
-            ios_icon_name={statusIcon.ios}
-            android_material_icon_name={statusIcon.android}
-            size={48}
-            color="#FFFFFF"
-          />
-          <Text style={styles.statusTitle}>{formatStatus(shipment.current_status)}</Text>
-          <Text style={styles.trackingNumber}>N° : {shipment.tracking_number}</Text>
-          {shipment.last_update && (
-            <Text style={styles.lastUpdate}>
-              Mis à jour : {formatDate(shipment.last_update)}
-            </Text>
-          )}
+        {/* BLOC 1 – Résumé (Header) */}
+        <View style={[styles.summaryCard, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryColumn}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                N° de suivi
+              </Text>
+              <Text style={[styles.summaryValue, { color: theme.colors.text }]}>
+                {shipment.tracking_number}
+              </Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shipment.status) }]}>
+              <IconSymbol
+                ios_icon_name={statusIcon.ios}
+                android_material_icon_name={statusIcon.android}
+                size={20}
+                color="#FFFFFF"
+              />
+              <Text style={styles.statusBadgeText}>
+                {formatStatus(shipment.status)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryColumn}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                Créé le
+              </Text>
+              <Text style={[styles.summaryValue, { color: theme.colors.text }]}>
+                {formatDate(shipment.created_at)}
+              </Text>
+            </View>
+            <View style={styles.summaryColumn}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                Livraison estimée
+              </Text>
+              <Text style={[styles.summaryValue, { color: colors.accent }]}>
+                {shipment.estimated_delivery_date !== 'Non spécifié' 
+                  ? formatDate(shipment.estimated_delivery_date)
+                  : shipment.estimated_delivery_date}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Expéditeur / Destinataire Section */}
+        {/* BLOC 2 – Expéditeur */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
           <View style={styles.sectionHeader}>
             <IconSymbol
-              ios_icon_name="person.2.fill"
-              android_material_icon_name="people"
+              ios_icon_name="person.fill"
+              android_material_icon_name="person"
               size={24}
               color={colors.primary}
             />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Expéditeur / Destinataire
+              Expéditeur
             </Text>
           </View>
 
           <View style={styles.detailsGrid}>
-            {/* Expéditeur */}
-            <View style={styles.detailBlock}>
-              <Text style={[styles.detailBlockTitle, { color: colors.primary }]}>
-                Expéditeur
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Nom</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.origin.name}
               </Text>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Nom</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {shipment.sender_name || 'Non spécifié'}
-                </Text>
-              </View>
-              {shipment.sender_email && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email</Text>
-                  <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                    {shipment.sender_email}
-                  </Text>
-                </View>
-              )}
-              {shipment.sender_phone && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Téléphone</Text>
-                  <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                    {shipment.sender_phone}
-                  </Text>
-                </View>
-              )}
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* Destinataire */}
-            <View style={styles.detailBlock}>
-              <Text style={[styles.detailBlockTitle, { color: colors.secondary }]}>
-                Destinataire
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Téléphone</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.origin.phone}
               </Text>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Nom</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {shipment.receiver_name || 'Non spécifié'}
-                </Text>
-              </View>
-              {shipment.receiver_email && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email</Text>
-                  <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                    {shipment.receiver_email}
-                  </Text>
-                </View>
-              )}
-              {shipment.receiver_phone && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Téléphone</Text>
-                  <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                    {shipment.receiver_phone}
-                  </Text>
-                </View>
-              )}
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Adresse</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.origin.address}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Ville</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.origin.city}, {shipment.origin.country}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Adresses Section */}
+        {/* BLOC 3 – Destinataire */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
           <View style={styles.sectionHeader}>
             <IconSymbol
-              ios_icon_name="location.fill"
-              android_material_icon_name="location_on"
+              ios_icon_name="person.fill"
+              android_material_icon_name="person"
               size={24}
-              color={colors.primary}
+              color={colors.secondary}
             />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Itinéraire
+              Destinataire
             </Text>
           </View>
 
-          <View style={styles.routeContainer}>
-            {/* Origin */}
-            <View style={styles.routeStep}>
-              <View style={[styles.routeDot, { backgroundColor: colors.primary }]} />
-              <View style={styles.routeInfo}>
-                <Text style={[styles.routeLabel, { color: colors.textSecondary }]}>
-                  ORIGINE
-                </Text>
-                <Text style={[styles.routeValue, { color: theme.colors.text }]}>
-                  {shipment.origin_port?.name || 'Non spécifié'}
-                </Text>
-                {shipment.origin_port?.city && shipment.origin_port?.country && (
-                  <Text style={[styles.routeSubvalue, { color: colors.textSecondary }]}>
-                    {shipment.origin_port.city}, {shipment.origin_port.country}
-                  </Text>
-                )}
-                {shipment.etd && (
-                  <Text style={[styles.dateText, { color: colors.accent }]}>
-                    ETD : {formatDate(shipment.etd)}
-                  </Text>
-                )}
-              </View>
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Nom</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.destination.name}
+              </Text>
             </View>
 
-            <View style={[styles.routeConnector, { backgroundColor: colors.border }]} />
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Téléphone</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.destination.phone}
+              </Text>
+            </View>
 
-            {/* Destination */}
-            <View style={styles.routeStep}>
-              <View style={[styles.routeDot, { backgroundColor: colors.secondary }]} />
-              <View style={styles.routeInfo}>
-                <Text style={[styles.routeLabel, { color: colors.textSecondary }]}>
-                  DESTINATION
-                </Text>
-                <Text style={[styles.routeValue, { color: theme.colors.text }]}>
-                  {shipment.destination_port?.name || 'Non spécifié'}
-                </Text>
-                {shipment.destination_port?.city && shipment.destination_port?.country && (
-                  <Text style={[styles.routeSubvalue, { color: colors.textSecondary }]}>
-                    {shipment.destination_port.city}, {shipment.destination_port.country}
-                  </Text>
-                )}
-                {shipment.eta && (
-                  <Text style={[styles.dateText, { color: colors.accent }]}>
-                    ETA : {formatDate(shipment.eta)}
-                  </Text>
-                )}
-              </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Adresse</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.destination.address}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Ville</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.destination.city}, {shipment.destination.country}
+              </Text>
             </View>
           </View>
         </View>
@@ -584,60 +582,70 @@ export default function ShipmentDetailsScreen() {
           </View>
 
           <View style={styles.detailsGrid}>
-            {shipment.cargo_type && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Type de cargaison</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {shipment.cargo_type}
-                </Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Type</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.parcel.type}
+              </Text>
+            </View>
 
-            {shipment.container_type && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Type de conteneur</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {shipment.container_type}
-                </Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Poids</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {shipment.parcel.weight_kg} kg
+              </Text>
+            </View>
 
-            {shipment.incoterm && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Valeur déclarée</Text>
+              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                {formatCurrency(shipment.parcel.declared_value, shipment.currency)}
+              </Text>
+            </View>
+
+            {shipment.parcel.options.length > 0 && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Incoterm</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {shipment.incoterm}
-                </Text>
+                <Text style={styles.detailLabel}>Options</Text>
+                <View style={styles.optionsContainer}>
+                  {shipment.parcel.options.map((option, index) => (
+                    <View 
+                      key={index} 
+                      style={[styles.optionBadge, { backgroundColor: colors.accent + '20' }]}
+                    >
+                      <Text style={[styles.optionText, { color: colors.accent }]}>
+                        {option}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
           </View>
         </View>
 
         {/* Prix Section */}
-        {shipment.quoted_price && (
-          <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol
-                ios_icon_name="dollarsign.circle.fill"
-                android_material_icon_name="payments"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                Tarification
-              </Text>
-            </View>
-
-            <View style={styles.priceContainer}>
-              <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
-                Montant total
-              </Text>
-              <Text style={[styles.priceValue, { color: colors.primary }]}>
-                {formatCurrency(shipment.quoted_price, shipment.currency)}
-              </Text>
-            </View>
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeader}>
+            <IconSymbol
+              ios_icon_name="dollarsign.circle.fill"
+              android_material_icon_name="payments"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Tarification
+            </Text>
           </View>
-        )}
+
+          <View style={styles.priceContainer}>
+            <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
+              Montant total
+            </Text>
+            <Text style={[styles.priceValue, { color: colors.primary }]}>
+              {formatCurrency(shipment.price_total, shipment.currency)}
+            </Text>
+          </View>
+        </View>
 
         {/* Historique (Timeline) Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
@@ -653,29 +661,24 @@ export default function ShipmentDetailsScreen() {
             </Text>
           </View>
 
-          {shipment.status_history && shipment.status_history.length > 0 ? (
+          {shipment.events && shipment.events.length > 0 ? (
             <View style={styles.timelineContainer}>
-              {shipment.status_history.map((event, index) => (
-                <View key={event.id} style={styles.timelineItem}>
+              {shipment.events.map((event, index) => (
+                <View key={index} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
                     <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
-                    {index < shipment.status_history!.length - 1 && (
+                    {index < shipment.events.length - 1 && (
                       <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
                     )}
                   </View>
                   <View style={[styles.timelineContent, { backgroundColor: theme.colors.background }]}>
                     <Text style={[styles.timelineDate, { color: colors.textSecondary }]}>
-                      {formatDateTime(event.timestamp)}
+                      {formatDateTime(event.date)}
                       {event.location && ` — ${event.location}`}
                     </Text>
-                    <Text style={[styles.timelineStatus, { color: theme.colors.text }]}>
-                      {formatStatus(event.status)}
+                    <Text style={[styles.timelineDescription, { color: theme.colors.text }]}>
+                      {event.description}
                     </Text>
-                    {event.notes && (
-                      <Text style={[styles.timelineNotes, { color: colors.textSecondary }]}>
-                        {event.notes}
-                      </Text>
-                    )}
                   </View>
                 </View>
               ))}
@@ -694,26 +697,6 @@ export default function ShipmentDetailsScreen() {
             </View>
           )}
         </View>
-
-        {/* Notes Section */}
-        {shipment.client_visible_notes && (
-          <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol
-                ios_icon_name="note.text"
-                android_material_icon_name="note"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                Notes
-              </Text>
-            </View>
-            <Text style={[styles.notesText, { color: theme.colors.text }]}>
-              {shipment.client_visible_notes}
-            </Text>
-          </View>
-        )}
 
         {/* Bottom spacing for tab bar */}
         <View style={{ height: 120 }} />
@@ -784,37 +767,59 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  statusCard: {
+  // BLOC 1 – Résumé (Header)
+  summaryCard: {
     marginHorizontal: 20,
     marginTop: 20,
-    marginBottom: 20,
-    padding: 32,
+    marginBottom: 16,
+    padding: 20,
     borderRadius: 16,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  statusTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 16,
-    marginBottom: 8,
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 16,
   },
-  trackingNumber: {
+  summaryColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryValue: {
     fontSize: 16,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    fontWeight: '700',
   },
-  lastUpdate: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.8,
-    marginTop: 8,
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  // BLOC 2 & 3 – Expéditeur / Destinataire
   section: {
     marginHorizontal: 20,
     marginBottom: 16,
@@ -839,20 +844,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   detailsGrid: {
-    gap: 16,
-  },
-  detailBlock: {
-    gap: 12,
-  },
-  detailBlockTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    gap: 14,
   },
   detailRow: {
-    gap: 4,
+    gap: 6,
   },
   detailLabel: {
     fontSize: 12,
@@ -864,53 +859,25 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
-  divider: {
-    height: 1,
-    marginVertical: 8,
-  },
-  routeContainer: {
-    gap: 0,
-  },
-  routeStep: {
+  // Parcel options
+  optionsContainer: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  routeDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 4,
   },
-  routeConnector: {
-    width: 2,
-    height: 32,
-    marginLeft: 7,
-    marginVertical: 8,
+  optionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  routeInfo: {
-    flex: 1,
-  },
-  routeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  routeValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  routeSubvalue: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  dateText: {
+  optionText: {
     fontSize: 13,
-    fontStyle: 'italic',
+    fontWeight: '600',
   },
+  // Price section
   priceContainer: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -923,6 +890,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
   },
+  // Timeline section
   timelineContainer: {
     paddingLeft: 8,
   },
@@ -960,15 +928,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 6,
   },
-  timelineStatus: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  timelineNotes: {
-    fontSize: 14,
-    marginTop: 4,
-    lineHeight: 20,
+  timelineDescription: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   emptyTimeline: {
     padding: 32,
@@ -980,9 +943,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  notesText: {
-    fontSize: 15,
-    lineHeight: 24,
   },
 });
