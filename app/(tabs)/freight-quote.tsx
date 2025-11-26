@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Modal } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Modal, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -310,7 +310,7 @@ export default function FreightQuoteScreen() {
               text: "OK",
               onPress: () => {
                 setIsSubmitting(false);
-                router.push('/(tabs)/client-dashboard');
+                router.replace('/(tabs)/client-dashboard');
               },
             },
           ]
@@ -658,16 +658,21 @@ export default function FreightQuoteScreen() {
             disabled={isSubmitting}
             activeOpacity={0.8}
           >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande de devis"}
-            </Text>
-            {!isSubmitting && (
-              <IconSymbol
-                ios_icon_name="arrow.right"
-                android_material_icon_name="send"
-                size={20}
-                color="#ffffff"
-              />
+            {isSubmitting ? (
+              <React.Fragment>
+                <ActivityIndicator size="small" color="#ffffff" />
+                <Text style={styles.submitButtonText}>Envoi en cours...</Text>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <Text style={styles.submitButtonText}>Envoyer ma demande de devis</Text>
+                <IconSymbol
+                  ios_icon_name="arrow.right"
+                  android_material_icon_name="send"
+                  size={20}
+                  color="#ffffff"
+                />
+              </React.Fragment>
             )}
           </TouchableOpacity>
         </View>
@@ -796,7 +801,7 @@ export default function FreightQuoteScreen() {
             />
             <ScrollView style={styles.modalList}>
               {filteredPorts.map((port, index) => (
-                <React.Fragment key={port.id}>
+                <React.Fragment key={index}>
                   <TouchableOpacity
                     style={styles.modalItem}
                     onPress={() => {
@@ -847,7 +852,7 @@ export default function FreightQuoteScreen() {
             />
             <ScrollView style={styles.modalList}>
               {filteredPorts.map((port, index) => (
-                <React.Fragment key={port.id}>
+                <React.Fragment key={index}>
                   <TouchableOpacity
                     style={styles.modalItem}
                     onPress={() => {
