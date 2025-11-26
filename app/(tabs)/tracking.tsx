@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -20,21 +19,25 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/app/integrations/supabase/client';
 
 interface TrackingEvent {
-  status: string;
-  location: string;
   date: string;
+  location: string;
+  description: string;
   notes?: string | null;
 }
 
 interface TrackingData {
   tracking_number: string;
   status: string;
-  origin: string;
-  destination: string;
-  estimated_arrival: string | null;
-  actual_arrival: string | null;
-  created_at: string;
-  timeline: TrackingEvent[];
+  origin: {
+    city: string;
+    country: string;
+  };
+  destination: {
+    city: string;
+    country: string;
+  };
+  estimated_delivery_date: string | null;
+  events: TrackingEvent[];
 }
 
 export default function TrackingScreen() {
@@ -47,27 +50,27 @@ export default function TrackingScreen() {
 
   const [trackingNumber, setTrackingNumber] = useState(prefillTrackingNumber || '');
   const [loading, setLoading] = useState(false);
-  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
-  const [error, setError] = useState<string>('');
+  const [trackingError, setTrackingError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string>('');
 
   // VALIDATION: Tracking number
   const validateTrackingNumber = (): boolean => {
-    setError('');
+    setValidationError('');
 
     if (!trackingNumber.trim()) {
-      setError('Merci de saisir votre numéro de suivi.');
+      setValidationError('Merci de saisir votre numéro de suivi.');
       return false;
     }
 
     if (trackingNumber.trim().length < 6) {
-      setError('Numéro de suivi trop court.');
+      setValidationError('Numéro de suivi trop court.');
       return false;
     }
 
     // Optional: Validate USS- format
     // if (!trackingNumber.startsWith('USS-')) {
-    //   setError('Numéro de suivi invalide.');
+    //   setValidationError('Numéro de suivi invalide.');
     //   return false;
     // }
 
@@ -78,45 +81,46 @@ export default function TrackingScreen() {
   const handleTrackShipment = async () => {
     console.log('[TRACKING] Track button pressed');
 
-    // Validate form
+    // Step 1: Validate fields
     if (!validateTrackingNumber()) {
+      console.log('[TRACKING] Validation failed');
       return;
     }
 
-    // Disable button during API call
+    // Step 2: Set loading state
     setLoading(true);
-    setButtonDisabled(true);
     setTrackingData(null);
+    setTrackingError(null);
 
     try {
       console.log('[TRACKING] Calling public-tracking function with:', trackingNumber);
 
-      // Call Supabase Edge Function for public tracking
+      // Step 3: Call API
       const { data, error: functionError } = await supabase.functions.invoke('public-tracking', {
         body: { tracking_number: trackingNumber.trim().toUpperCase() },
       });
 
+      // Step 4: Set loading to false
+      setLoading(false);
+
       if (functionError) {
         console.error('[TRACKING] Function error:', functionError);
         
-        if (functionError.message?.includes('404') || functionError.message?.includes('introuvable')) {
-          Alert.alert('Erreur', 'Expédition introuvable. Vérifiez votre numéro de suivi.');
-        } else if (functionError.message?.includes('400') || functionError.message?.includes('invalide')) {
-          Alert.alert('Erreur', 'Format de numéro de suivi invalide.');
-        } else {
-          Alert.alert('Erreur', 'Service indisponible. Veuillez réessayer plus tard.');
-        }
+        // Step 5: On error - set tracking_error
+        setTrackingData(null);
+        setTrackingError('Aucun colis trouvé pour ce numéro de suivi, ou service momentanément indisponible.');
         return;
       }
 
+      // Step 6: On success - set tracking_data
       console.log('[TRACKING] Tracking data received:', data);
       setTrackingData(data);
+      setTrackingError(null);
     } catch (error) {
       console.error('[TRACKING] Unexpected error:', error);
-      Alert.alert('Erreur', 'Une erreur inattendue s\'est produite.');
-    } finally {
       setLoading(false);
-      setButtonDisabled(false);
+      setTrackingData(null);
+      setTrackingError('Aucun colis trouvé pour ce numéro de suivi, ou service momentanément indisponible.');
     }
   };
 
@@ -206,21 +210,22 @@ export default function TrackingScreen() {
                 { 
                   backgroundColor: colors.card, 
                   color: colors.text, 
-                  borderColor: error ? colors.error : colors.border,
-                  borderWidth: error ? 2 : 1,
+                  borderColor: validationError ? colors.error : colors.border,
+                  borderWidth: validationError ? 2 : 1,
                 }
               ]}
               value={trackingNumber}
               onChangeText={(text) => {
                 setTrackingNumber(text);
-                setError('');
+                setValidationError('');
+                setTrackingError(null);
               }}
               placeholder="Ex : USS-93F7X2A9"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="characters"
               editable={!loading}
             />
-            {error && (
+            {validationError && (
               <View style={styles.errorContainer}>
                 <IconSymbol
                   ios_icon_name="exclamationmark.circle.fill"
@@ -228,7 +233,7 @@ export default function TrackingScreen() {
                   size={16}
                   color={colors.error}
                 />
-                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{validationError}</Text>
               </View>
             )}
           </View>
@@ -238,12 +243,12 @@ export default function TrackingScreen() {
             style={[
               styles.trackButton,
               { 
-                backgroundColor: buttonDisabled ? colors.textSecondary : colors.primary,
-                opacity: buttonDisabled ? 0.6 : 1,
+                backgroundColor: loading ? colors.textSecondary : colors.primary,
+                opacity: loading ? 0.6 : 1,
               }
             ]}
             onPress={handleTrackShipment}
-            disabled={buttonDisabled}
+            disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -261,160 +266,125 @@ export default function TrackingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* TRACKING RESULTS */}
+        {/* ERROR DISPLAY BLOCK */}
+        {trackingError && (
+          <View style={[styles.errorBlock, { backgroundColor: colors.card, borderColor: colors.error }]}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="error"
+              size={32}
+              color={colors.error}
+            />
+            <Text style={[styles.errorBlockText, { color: colors.error }]}>
+              {trackingError}
+            </Text>
+          </View>
+        )}
+
+        {/* TRACKING RESULTS - DISPLAY BLOCK (if tracking_data non null) */}
         {trackingData && (
           <View style={styles.resultsSection}>
-            {/* STATUS CARD */}
+            {/* STATUS CARD - Statut actuel */}
             <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
-              <View style={styles.statusHeader}>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(trackingData.status) }]}>
-                  <IconSymbol
-                    ios_icon_name={trackingData.status === 'delivered' ? 'checkmark.circle.fill' : 'shippingbox.fill'}
-                    android_material_icon_name={trackingData.status === 'delivered' ? 'check_circle' : 'local_shipping'}
-                    size={24}
-                    color="#FFFFFF"
-                  />
-                </View>
-                <View style={styles.statusInfo}>
-                  <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>
-                    Statut actuel
-                  </Text>
-                  <Text style={[styles.statusValue, { color: getStatusColor(trackingData.status) }]}>
-                    {getStatusLabel(trackingData.status)}
-                  </Text>
-                </View>
+              <View style={styles.cardHeader}>
+                <IconSymbol
+                  ios_icon_name="info.circle.fill"
+                  android_material_icon_name="info"
+                  size={24}
+                  color={colors.primary}
+                />
+                <Text style={[styles.cardTitle, { color: colors.text }]}>
+                  Statut actuel
+                </Text>
               </View>
 
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-              {/* TRACKING NUMBER */}
+              {/* Numéro de suivi */}
               <View style={styles.detailRow}>
-                <View style={styles.detailLabelContainer}>
-                  <IconSymbol
-                    ios_icon_name="number.circle.fill"
-                    android_material_icon_name="tag"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Numéro de suivi
-                  </Text>
-                </View>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Numéro de suivi :
+                </Text>
                 <Text style={[styles.detailValue, { color: colors.text }]}>
                   {trackingData.tracking_number}
                 </Text>
               </View>
 
-              {/* ORIGIN */}
+              {/* Statut */}
               <View style={styles.detailRow}>
-                <View style={styles.detailLabelContainer}>
-                  <IconSymbol
-                    ios_icon_name="location.circle.fill"
-                    android_material_icon_name="place"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Origine
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Statut :
+                </Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(trackingData.status) }]}>
+                  <Text style={styles.statusBadgeText}>
+                    {getStatusLabel(trackingData.status)}
                   </Text>
                 </View>
+              </View>
+
+              {/* Origine */}
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Origine :
+                </Text>
                 <Text style={[styles.detailValue, { color: colors.text }]}>
-                  {trackingData.origin}
+                  {trackingData.origin.city}, {trackingData.origin.country}
                 </Text>
               </View>
 
-              {/* DESTINATION */}
+              {/* Destination */}
               <View style={styles.detailRow}>
-                <View style={styles.detailLabelContainer}>
-                  <IconSymbol
-                    ios_icon_name="flag.circle.fill"
-                    android_material_icon_name="flag"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Destination
-                  </Text>
-                </View>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Destination :
+                </Text>
                 <Text style={[styles.detailValue, { color: colors.text }]}>
-                  {trackingData.destination}
+                  {trackingData.destination.city}, {trackingData.destination.country}
                 </Text>
               </View>
 
-              {/* ESTIMATED ARRIVAL */}
-              {trackingData.estimated_arrival && (
+              {/* Livraison estimée */}
+              {trackingData.estimated_delivery_date && (
                 <View style={styles.detailRow}>
-                  <View style={styles.detailLabelContainer}>
-                    <IconSymbol
-                      ios_icon_name="calendar.circle.fill"
-                      android_material_icon_name="event"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                      Livraison estimée
-                    </Text>
-                  </View>
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                    Livraison estimée :
+                  </Text>
                   <Text style={[styles.detailValue, { color: colors.accent }]}>
-                    {formatDate(trackingData.estimated_arrival)}
-                  </Text>
-                </View>
-              )}
-
-              {/* ACTUAL ARRIVAL */}
-              {trackingData.actual_arrival && (
-                <View style={styles.detailRow}>
-                  <View style={styles.detailLabelContainer}>
-                    <IconSymbol
-                      ios_icon_name="checkmark.circle.fill"
-                      android_material_icon_name="check_circle"
-                      size={18}
-                      color={colors.success}
-                    />
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                      Livré le
-                    </Text>
-                  </View>
-                  <Text style={[styles.detailValue, { color: colors.success }]}>
-                    {formatDate(trackingData.actual_arrival)}
+                    {formatDate(trackingData.estimated_delivery_date)}
                   </Text>
                 </View>
               )}
             </View>
 
-            {/* TIMELINE */}
+            {/* TIMELINE - Historique */}
             <View style={styles.timelineSection}>
-              <View style={styles.timelineHeader}>
+              <View style={styles.cardHeader}>
                 <IconSymbol
                   ios_icon_name="clock.fill"
                   android_material_icon_name="history"
                   size={24}
                   color={colors.primary}
                 />
-                <Text style={[styles.timelineTitle, { color: colors.text }]}>
-                  Historique de suivi
+                <Text style={[styles.cardTitle, { color: colors.text }]}>
+                  Historique
                 </Text>
               </View>
 
-              {trackingData.timeline && trackingData.timeline.length > 0 ? (
+              {trackingData.events && trackingData.events.length > 0 ? (
                 <View style={styles.timelineContainer}>
-                  {trackingData.timeline.map((event, index) => (
+                  {trackingData.events.map((event, index) => (
                     <View key={index} style={styles.timelineItem}>
                       <View style={styles.timelineLeft}>
                         <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
-                        {index < trackingData.timeline.length - 1 && (
+                        {index < trackingData.events.length - 1 && (
                           <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
                         )}
                       </View>
                       <View style={[styles.timelineContent, { backgroundColor: colors.card }]}>
                         <Text style={[styles.timelineDate, { color: colors.textSecondary }]}>
-                          {formatDate(event.date)}
+                          {formatDate(event.date)} — {event.location}
                         </Text>
-                        <Text style={[styles.timelineLocation, { color: colors.text }]}>
-                          {event.location}
-                        </Text>
-                        <Text style={[styles.timelineDescription, { color: colors.textSecondary }]}>
-                          {event.status}
+                        <Text style={[styles.timelineDescription, { color: colors.text }]}>
+                          {event.description}
                         </Text>
                         {event.notes && (
                           <Text style={[styles.timelineNotes, { color: colors.accent }]}>
@@ -525,6 +495,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  errorBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 24,
+    gap: 12,
+  },
+  errorBlockText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
   resultsSection: {
     marginTop: 8,
   },
@@ -538,33 +523,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  statusHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    gap: 16,
+    gap: 10,
   },
-  statusBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusInfo: {
-    flex: 1,
-  },
-  statusLabel: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  statusValue: {
-    fontSize: 22,
+  cardTitle: {
+    fontSize: 20,
     fontWeight: '700',
   },
   divider: {
@@ -576,15 +542,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-  },
-  detailLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
+    flexWrap: 'wrap',
   },
   detailLabel: {
     fontSize: 14,
+    marginRight: 8,
   },
   detailValue: {
     fontSize: 14,
@@ -592,21 +554,22 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flex: 1,
   },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   timelineSection: {
     marginBottom: 24,
   },
-  timelineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 10,
-  },
-  timelineTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
   timelineContainer: {
     paddingLeft: 8,
+    marginTop: 16,
   },
   timelineItem: {
     flexDirection: 'row',
@@ -640,15 +603,11 @@ const styles = StyleSheet.create({
   },
   timelineDate: {
     fontSize: 12,
-    marginBottom: 4,
-  },
-  timelineLocation: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   timelineDescription: {
     fontSize: 14,
+    fontWeight: '600',
     marginBottom: 4,
   },
   timelineNotes: {
@@ -661,6 +620,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 16,
   },
   emptyTimelineText: {
     fontSize: 14,

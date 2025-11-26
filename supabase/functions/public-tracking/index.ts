@@ -33,9 +33,8 @@ serve(async (req) => {
       );
     }
 
-    // Validate tracking number format
-    const trackingPattern = /^USS-[A-Z0-9]{7}$/;
-    if (!trackingPattern.test(trackingRequest.tracking_number)) {
+    // Validate tracking number format (minimum 6 characters)
+    if (trackingRequest.tracking_number.length < 6) {
       return new Response(
         JSON.stringify({ error: 'Format de numéro de suivi invalide.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -63,22 +62,29 @@ serve(async (req) => {
       .eq('shipment_id', shipment.id)
       .order('timestamp', { ascending: true });
 
+    // Parse origin and destination (assuming format "City, Country")
+    const parseLocation = (location: string) => {
+      const parts = location.split(',').map(s => s.trim());
+      return {
+        city: parts[0] || location,
+        country: parts[1] || '',
+      };
+    };
+
     // SECURITY: Return LIMITED data for public tracking
     // DO NOT expose: sender name, recipient name, phone, email, package value
     const publicData = {
       tracking_number: shipment.tracking_number,
       status: shipment.current_status,
-      origin: shipment.origin_port,
-      destination: shipment.destination_port,
-      estimated_arrival: shipment.estimated_arrival,
-      actual_arrival: shipment.actual_arrival,
-      created_at: shipment.created_at,
-      timeline: timeline?.map(event => ({
-        status: event.status,
-        location: event.location,
+      origin: parseLocation(shipment.origin_port),
+      destination: parseLocation(shipment.destination_port),
+      estimated_delivery_date: shipment.estimated_arrival,
+      events: timeline?.map(event => ({
         date: event.timestamp,
+        location: event.location,
+        description: event.status,
         // Only include public-safe notes
-        notes: event.notes?.includes('public:') ? event.notes.replace('public:', '') : null,
+        notes: event.notes?.includes('public:') ? event.notes.replace('public:', '').trim() : null,
       })) || [],
     };
 
@@ -91,6 +97,8 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error tracking shipment:', error);
+    
+    // SECURITY: Never expose stack trace or technical details
     return new Response(
       JSON.stringify({ error: 'Service indisponible.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
