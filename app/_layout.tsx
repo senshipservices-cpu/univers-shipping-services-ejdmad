@@ -16,59 +16,67 @@ import { setupErrorLogging } from '@/utils/errorLogger';
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   
-  // Prevent multiple initializations
+  // Prevent multiple initializations with a ref guard
   const hasInitialized = useRef(false);
+  const isInitializing = useRef(false);
 
   // Memoize initialization function to prevent recreation
   const initializeApp = useCallback(async () => {
-    // Guard: Only initialize once
-    if (hasInitialized.current) {
+    // Guard: Prevent concurrent initializations
+    if (hasInitialized.current || isInitializing.current) {
+      console.log('[ROOT_LAYOUT] Skipping duplicate initialization');
       return;
     }
     
-    hasInitialized.current = true;
-
     try {
+      isInitializing.current = true;
+      hasInitialized.current = true;
+
       // Setup error logging (platform-agnostic)
       setupErrorLogging();
       
       // Log app startup
-      appConfig.logger.essential('='.repeat(50));
-      appConfig.logger.essential('Universal Shipping Services - Starting');
-      appConfig.logger.essential(`Environment: ${appConfig.appEnv}`);
-      appConfig.logger.essential(`Platform: ${Platform.OS}`);
-      appConfig.logger.essential(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
-      appConfig.logger.essential('='.repeat(50));
+      console.log('='.repeat(50));
+      console.log('[ROOT_LAYOUT] Universal Shipping Services - Starting');
+      console.log(`[ROOT_LAYOUT] Environment: ${appConfig.appEnv}`);
+      console.log(`[ROOT_LAYOUT] Platform: ${Platform.OS}`);
+      console.log(`[ROOT_LAYOUT] Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
+      console.log('='.repeat(50));
 
       // Validate configuration
       const validation = appConfig.validateConfig();
       if (!validation.valid) {
-        appConfig.logger.error('Configuration validation failed:');
+        console.error('[ROOT_LAYOUT] Configuration validation failed:');
         validation.errors.forEach(error => {
-          appConfig.logger.error(`  - ${error}`);
+          console.error(`  - ${error}`);
         });
       }
       
       if (validation.warnings.length > 0) {
-        appConfig.logger.warn('Configuration warnings:');
+        console.warn('[ROOT_LAYOUT] Configuration warnings:');
         validation.warnings.forEach(warning => {
-          appConfig.logger.warn(`  - ${warning}`);
+          console.warn(`  - ${warning}`);
         });
       }
 
       // Verify all services (async, non-blocking)
       // Run in background without blocking render
       verifyAllServices().catch(error => {
-        appConfig.logger.error('Service verification failed:', error);
+        console.error('[ROOT_LAYOUT] Service verification failed:', error);
       });
     } catch (error) {
-      console.error('Error in RootLayout initialization:', error);
+      console.error('[ROOT_LAYOUT] Error in initialization:', error);
+    } finally {
+      isInitializing.current = false;
     }
   }, []); // Empty deps - only create once
 
   useEffect(() => {
-    initializeApp();
-  }, [initializeApp]); // Only depends on memoized function
+    // Only run initialization once
+    if (!hasInitialized.current && !isInitializing.current) {
+      initializeApp();
+    }
+  }, [initializeApp]);
 
   return (
     <ErrorBoundary>

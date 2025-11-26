@@ -10,13 +10,14 @@
  * - Feature flags based on environment
  * - Payment provider configuration (Stripe/PayPal)
  * - Admin role management
+ * 
+ * FIXED: Removed recursive calls and circular dependencies
  */
 
 import Constants from 'expo-constants';
 
-// Get environment from environment variables
+// Get environment from environment variables (simple, no recursion)
 const APP_ENV = process.env.APP_ENV || 
-                Constants.expoConfig?.extra?.appEnv || 
                 process.env.NODE_ENV || 
                 'dev';
 
@@ -25,85 +26,165 @@ const isProduction = APP_ENV === 'production';
 const isDevelopment = !isProduction;
 
 /**
- * Get environment variable with fallback
- * Tries multiple sources in order of priority
- * FIXED: Added memoization to prevent recursive calls
+ * Simple environment variable cache
+ * Prevents recursive lookups
  */
-const envCache = new Map<string, string>();
+const envCache: Record<string, string> = {};
+let cacheInitialized = false;
 
-function getEnvVar(key: string, fallback: string = ''): string {
-  // Check cache first to prevent recursive calls
-  if (envCache.has(key)) {
-    return envCache.get(key)!;
+/**
+ * Initialize cache once at startup
+ * This prevents recursive calls during property access
+ */
+function initializeCache() {
+  if (cacheInitialized) {
+    return;
   }
-
-  let value = fallback;
-
+  
+  cacheInitialized = true;
+  
   try {
-    // Try process.env first (for web and development)
-    if (process.env[key]) {
-      value = process.env[key] as string;
-    } else {
-      // Try Constants.expoConfig.extra (for native apps)
-      const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
-      if (Constants.expoConfig?.extra?.[extraKey]) {
-        value = Constants.expoConfig.extra[extraKey] as string;
+    // Pre-populate cache with all known environment variables
+    const envVars = [
+      'EXPO_PUBLIC_SUPABASE_URL',
+      'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+      'SERVICE_ROLE_KEY',
+      'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+      'STRIPE_SECRET_KEY',
+      'STRIPE_WEBHOOK_SECRET',
+      'EXPO_PUBLIC_PAYPAL_CLIENT_ID',
+      'PAYPAL_CLIENT_SECRET',
+      'PAYPAL_WEBHOOK_ID',
+      'PAYPAL_ENV',
+      'PAYMENT_PROVIDER',
+      'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY',
+      'SMTP_HOST',
+      'SMTP_PORT',
+      'SMTP_USERNAME',
+      'SMTP_PASSWORD',
+      'ADMIN_EMAILS',
+    ];
+    
+    envVars.forEach(key => {
+      // Try process.env first
+      if (process.env[key]) {
+        envCache[key] = process.env[key] as string;
+      } else {
+        // Try Constants.expoConfig.extra
+        const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
+        if (Constants.expoConfig?.extra?.[extraKey]) {
+          envCache[key] = String(Constants.expoConfig.extra[extraKey]);
+        }
       }
-    }
+    });
+    
+    console.log('[CONFIG] Environment cache initialized');
   } catch (error) {
-    console.error(`[CONFIG] Error getting env var ${key}:`, error);
-    value = fallback;
+    console.error('[CONFIG] Error initializing cache:', error);
   }
+}
 
-  // Cache the result
-  envCache.set(key, value);
-  return value;
+/**
+ * Get environment variable with fallback
+ * Uses pre-initialized cache to prevent recursion
+ */
+function getEnvVar(key: string, fallback: string = ''): string {
+  // Initialize cache on first call
+  if (!cacheInitialized) {
+    initializeCache();
+  }
+  
+  // Return cached value or fallback
+  return envCache[key] || fallback;
 }
 
 /**
  * Environment Variables
  * All sensitive keys should be accessed through this configuration
+ * 
+ * FIXED: Using lazy getters to prevent initialization loops
  */
 export const env = {
   // App Environment
-  APP_ENV,
+  get APP_ENV() { return APP_ENV; },
   
   // Supabase Configuration
-  // Note: Using EXPO_PUBLIC_ prefix for frontend-accessible variables
-  SUPABASE_URL: getEnvVar('EXPO_PUBLIC_SUPABASE_URL', 'https://lnfsjpuffrcyenuuoxxk.supabase.co'),
+  get SUPABASE_URL() { 
+    return getEnvVar('EXPO_PUBLIC_SUPABASE_URL', 'https://lnfsjpuffrcyenuuoxxk.supabase.co');
+  },
   
-  SUPABASE_ANON_KEY: getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZnNqcHVmZnJjeWVudXVveHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MTMxNzMsImV4cCI6MjA3ODk4OTE3M30.Q-NG1rOvLUhf5j38qZB19o_ZM5CunvgjPWe85NMbmNU'),
+  get SUPABASE_ANON_KEY() { 
+    return getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZnNqcHVmZnJjeWVudXVveHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MTMxNzMsImV4cCI6MjA3ODk4OTE3M30.Q-NG1rOvLUhf5j38qZB19o_ZM5CunvgjPWe85NMbmNU');
+  },
   
   // Service key is backend-only (no EXPO_PUBLIC prefix)
-  SUPABASE_SERVICE_KEY: getEnvVar('SERVICE_ROLE_KEY', ''),
+  get SUPABASE_SERVICE_KEY() { 
+    return getEnvVar('SERVICE_ROLE_KEY', '');
+  },
   
   // Stripe Configuration (Legacy - kept for backward compatibility)
-  STRIPE_PUBLIC_KEY: getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
-  STRIPE_SECRET_KEY: getEnvVar('STRIPE_SECRET_KEY', ''),
-  STRIPE_WEBHOOK_SECRET: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
+  get STRIPE_PUBLIC_KEY() { 
+    return getEnvVar('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', '');
+  },
+  
+  get STRIPE_SECRET_KEY() { 
+    return getEnvVar('STRIPE_SECRET_KEY', '');
+  },
+  
+  get STRIPE_WEBHOOK_SECRET() { 
+    return getEnvVar('STRIPE_WEBHOOK_SECRET', '');
+  },
   
   // PayPal Configuration
-  PAYPAL_CLIENT_ID: getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', ''),
-  PAYPAL_CLIENT_SECRET: getEnvVar('PAYPAL_CLIENT_SECRET', ''),
-  PAYPAL_WEBHOOK_ID: getEnvVar('PAYPAL_WEBHOOK_ID', ''),
-  PAYPAL_ENV: getEnvVar('PAYPAL_ENV', isDevelopment ? 'sandbox' : 'live'),
+  get PAYPAL_CLIENT_ID() { 
+    return getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', '');
+  },
+  
+  get PAYPAL_CLIENT_SECRET() { 
+    return getEnvVar('PAYPAL_CLIENT_SECRET', '');
+  },
+  
+  get PAYPAL_WEBHOOK_ID() { 
+    return getEnvVar('PAYPAL_WEBHOOK_ID', '');
+  },
+  
+  get PAYPAL_ENV() { 
+    return getEnvVar('PAYPAL_ENV', isDevelopment ? 'sandbox' : 'live');
+  },
   
   // Payment Provider Configuration
-  PAYMENT_PROVIDER: getEnvVar('PAYMENT_PROVIDER', 'paypal'), // 'stripe' or 'paypal'
+  get PAYMENT_PROVIDER() { 
+    return getEnvVar('PAYMENT_PROVIDER', 'paypal');
+  },
   
   // Google Maps Configuration
-  GOOGLE_MAPS_API_KEY: getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
+  get GOOGLE_MAPS_API_KEY() { 
+    return getEnvVar('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY', '');
+  },
   
   // SMTP Configuration
-  SMTP_HOST: getEnvVar('SMTP_HOST', ''),
-  SMTP_PORT: getEnvVar('SMTP_PORT', '587'),
-  SMTP_USERNAME: getEnvVar('SMTP_USERNAME', ''),
-  SMTP_PASSWORD: getEnvVar('SMTP_PASSWORD', ''),
+  get SMTP_HOST() { 
+    return getEnvVar('SMTP_HOST', '');
+  },
+  
+  get SMTP_PORT() { 
+    return getEnvVar('SMTP_PORT', '587');
+  },
+  
+  get SMTP_USERNAME() { 
+    return getEnvVar('SMTP_USERNAME', '');
+  },
+  
+  get SMTP_PASSWORD() { 
+    return getEnvVar('SMTP_PASSWORD', '');
+  },
   
   // Admin Configuration
-  ADMIN_EMAILS: getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
-    .split(',')
-    .map(email => email.trim().toLowerCase()),
+  get ADMIN_EMAILS() {
+    return getEnvVar('ADMIN_EMAILS', 'cheikh@universalshipping.com')
+      .split(',')
+      .map(email => email.trim().toLowerCase());
+  },
 };
 
 /**
@@ -122,24 +203,28 @@ export const isAdmin = (userEmail: string | null | undefined): boolean => {
  */
 export const payment = {
   // Active payment provider
-  provider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
+  get provider() { 
+    return env.PAYMENT_PROVIDER as 'stripe' | 'paypal';
+  },
   
   // PayPal configuration
   paypal: {
-    clientId: env.PAYPAL_CLIENT_ID,
-    environment: env.PAYPAL_ENV as 'sandbox' | 'live',
-    isSandbox: env.PAYPAL_ENV === 'sandbox',
-    isLive: env.PAYPAL_ENV === 'live',
-    apiUrl: env.PAYPAL_ENV === 'sandbox' 
-      ? 'https://api-m.sandbox.paypal.com'
-      : 'https://api-m.paypal.com',
+    get clientId() { return env.PAYPAL_CLIENT_ID; },
+    get environment() { return env.PAYPAL_ENV as 'sandbox' | 'live'; },
+    get isSandbox() { return env.PAYPAL_ENV === 'sandbox'; },
+    get isLive() { return env.PAYPAL_ENV === 'live'; },
+    get apiUrl() { 
+      return env.PAYPAL_ENV === 'sandbox' 
+        ? 'https://api-m.sandbox.paypal.com'
+        : 'https://api-m.paypal.com';
+    },
   },
   
   // Stripe configuration (legacy)
   stripe: {
-    publishableKey: env.STRIPE_PUBLIC_KEY,
-    isTestMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_test_'),
-    isLiveMode: env.STRIPE_PUBLIC_KEY.startsWith('pk_live_'),
+    get publishableKey() { return env.STRIPE_PUBLIC_KEY; },
+    get isTestMode() { return env.STRIPE_PUBLIC_KEY.startsWith('pk_test_'); },
+    get isLiveMode() { return env.STRIPE_PUBLIC_KEY.startsWith('pk_live_'); },
   },
   
   // Helper to check if payment provider is configured
@@ -205,8 +290,12 @@ export const logger = {
  */
 export const features = {
   // Payment features
-  enableStripePayments: env.PAYMENT_PROVIDER === 'stripe' && !!env.STRIPE_PUBLIC_KEY,
-  enablePayPalPayments: env.PAYMENT_PROVIDER === 'paypal' && !!env.PAYPAL_CLIENT_ID,
+  get enableStripePayments() { 
+    return env.PAYMENT_PROVIDER === 'stripe' && !!env.STRIPE_PUBLIC_KEY;
+  },
+  get enablePayPalPayments() { 
+    return env.PAYMENT_PROVIDER === 'paypal' && !!env.PAYPAL_CLIENT_ID;
+  },
   enableTestMode: isDevelopment,
   
   // Logging and debugging
@@ -228,13 +317,13 @@ export const features = {
  */
 export const api = {
   // Supabase
-  supabaseUrl: env.SUPABASE_URL,
-  supabaseAnonKey: env.SUPABASE_ANON_KEY,
+  get supabaseUrl() { return env.SUPABASE_URL; },
+  get supabaseAnonKey() { return env.SUPABASE_ANON_KEY; },
   
   // Payment providers
-  paypalClientId: env.PAYPAL_CLIENT_ID,
-  paypalApiUrl: payment.paypal.apiUrl,
-  stripePublicKey: env.STRIPE_PUBLIC_KEY,
+  get paypalClientId() { return env.PAYPAL_CLIENT_ID; },
+  get paypalApiUrl() { return payment.paypal.apiUrl; },
+  get stripePublicKey() { return env.STRIPE_PUBLIC_KEY; },
   
   // Timeouts
   defaultTimeout: isProduction ? 30000 : 60000, // 30s prod, 60s dev
@@ -339,10 +428,11 @@ const appConfig = {
   appEnv: APP_ENV,
   isProduction,
   isDevelopment,
+  isDev: isDevelopment, // Alias for compatibility
   
   // Payment provider
-  paymentProvider: env.PAYMENT_PROVIDER as 'stripe' | 'paypal',
-  paypalEnv: env.PAYPAL_ENV as 'sandbox' | 'live',
+  get paymentProvider() { return env.PAYMENT_PROVIDER as 'stripe' | 'paypal'; },
+  get paypalEnv() { return env.PAYPAL_ENV as 'sandbox' | 'live'; },
   
   // Environment variables
   env,
