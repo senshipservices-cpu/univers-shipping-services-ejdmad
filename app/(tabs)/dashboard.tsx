@@ -77,14 +77,19 @@ export default function DashboardScreen() {
   ];
 
   // Load shipments from API
-  const loadShipments = useCallback(async (page: number = 1, status: string = 'all') => {
+  const loadShipments = useCallback(async (
+    page: number = 1, 
+    status: string = 'all',
+    search: string = '',
+    append: boolean = false
+  ) => {
     if (!user?.id || !client?.id) {
       console.log('[DASHBOARD] No user or client ID available');
       return;
     }
 
     try {
-      console.log('[DASHBOARD] Loading shipments - Page:', page, 'Status:', status);
+      console.log('[DASHBOARD] Loading shipments - Page:', page, 'Status:', status, 'Search:', search);
       
       setState(prev => ({ 
         ...prev, 
@@ -113,6 +118,11 @@ export default function DashboardScreen() {
         query = query.eq('current_status', status);
       }
 
+      // Filter by tracking number if search is provided
+      if (search && search.trim() !== '') {
+        query = query.ilike('tracking_number', `%${search.trim()}%`);
+      }
+
       const { data, error, count } = await query;
 
       if (error) {
@@ -120,7 +130,9 @@ export default function DashboardScreen() {
         setState(prev => ({
           ...prev,
           shipments_loading: false,
-          shipments_error: 'Impossible de charger vos envois pour le moment.',
+          shipments_error: search 
+            ? 'Aucun envoi trouvé ou service indisponible.'
+            : 'Impossible de charger vos envois pour le moment.',
         }));
         return;
       }
@@ -148,7 +160,7 @@ export default function DashboardScreen() {
 
       setState(prev => ({
         ...prev,
-        shipments_list: shipments,
+        shipments_list: append ? [...prev.shipments_list, ...shipments] : shipments,
         shipments_loading: false,
         current_page: page,
         has_more: hasMore,
@@ -158,35 +170,39 @@ export default function DashboardScreen() {
       setState(prev => ({
         ...prev,
         shipments_loading: false,
-        shipments_error: 'Impossible de charger vos envois pour le moment.',
+        shipments_error: search 
+          ? 'Aucun envoi trouvé ou service indisponible.'
+          : 'Impossible de charger vos envois pour le moment.',
       }));
     }
   }, [user, client]);
 
-  // Initial load - ON_SCREEN_LOAD
+  // ⭐ 1. Initial load - ON_SCREEN_LOAD
   useEffect(() => {
     if (user && client) {
       console.log('[DASHBOARD] Initial load triggered');
-      loadShipments(1, filterStatus);
+      loadShipments(1, filterStatus, '');
     }
   }, [user, client]);
 
-  // Handle refresh - ON_CLICK (btn_refresh)
+  // ⭐ 2. Handle refresh - ON_CLICK (btn_refresh)
   const onRefresh = useCallback(() => {
     console.log('[DASHBOARD] Refresh triggered');
     setRefreshing(true);
-    setFilterStatus('all'); // Reset filter on refresh
-    loadShipments(1, 'all').finally(() => setRefreshing(false));
+    setFilterStatus('all');
+    setSearchTracking('');
+    loadShipments(1, 'all', '').finally(() => setRefreshing(false));
   }, [loadShipments]);
 
-  // Handle filter change - ON_CHANGE (filter_status)
+  // ⭐ 3. Handle filter change - ON_CHANGE (filter_status)
   const handleFilterChange = useCallback((status: string) => {
     console.log('[DASHBOARD] Filter changed to:', status);
     setFilterStatus(status);
-    loadShipments(1, status);
+    setSearchTracking(''); // Clear search when filtering
+    loadShipments(1, status, '');
   }, [loadShipments]);
 
-  // Handle search
+  // ⭐ 5. Handle search - ON_CLICK (btn_search)
   const handleSearch = useCallback(() => {
     if (!searchTracking.trim()) {
       Alert.alert('Recherche', 'Veuillez saisir un numéro de suivi');
@@ -194,33 +210,31 @@ export default function DashboardScreen() {
     }
 
     console.log('[DASHBOARD] Searching for:', searchTracking);
+    
+    // Reset to page 1 and search
+    loadShipments(1, filterStatus, searchTracking);
+  }, [searchTracking, filterStatus, loadShipments]);
 
-    // Filter shipments by tracking number
-    const filtered = state.shipments_list.filter(shipment =>
-      shipment.tracking_number.toLowerCase().includes(searchTracking.toLowerCase())
-    );
-
-    if (filtered.length === 0) {
-      Alert.alert('Aucun résultat', 'Aucun envoi trouvé avec ce numéro de suivi');
-    } else {
-      // Navigate to the first matching shipment
-      router.push({
-        pathname: '/(tabs)/shipment-detail',
-        params: {
-          shipment_id: filtered[0].id,
-          tracking_number: filtered[0].tracking_number,
-        },
-      });
+  // ⭐ 6. Handle load more - ON_CLICK (btn_load_more)
+  const handleLoadMore = useCallback(() => {
+    if (state.shipments_loading || !state.has_more) {
+      return;
     }
-  }, [searchTracking, state.shipments_list, router]);
 
-  // Handle new shipment button
+    console.log('[DASHBOARD] Load more triggered');
+    const nextPage = state.current_page + 1;
+    
+    // Load next page and append results
+    loadShipments(nextPage, filterStatus, searchTracking, true);
+  }, [state.shipments_loading, state.has_more, state.current_page, filterStatus, searchTracking, loadShipments]);
+
+  // ⭐ 8. Handle new shipment button - ON_CLICK (btn_new_shipment)
   const handleNewShipment = useCallback(() => {
     console.log('[DASHBOARD] New shipment button clicked');
     router.push('/(tabs)/new-shipment');
   }, [router]);
 
-  // Handle shipment card click
+  // ⭐ 7. Handle shipment card click - ON_CLICK (list_shipments.item)
   const handleShipmentClick = useCallback((shipment: Shipment) => {
     console.log('[DASHBOARD] Shipment clicked:', shipment.id);
     router.push({
@@ -323,6 +337,7 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={[styles.searchButton, { backgroundColor: colors.primary }]}
             onPress={handleSearch}
+            disabled={state.shipments_loading}
           >
             <IconSymbol
               ios_icon_name="magnifyingglass"
@@ -375,8 +390,8 @@ export default function DashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Loading State */}
-        {state.shipments_loading && (
+        {/* ⭐ 4. Loading State - DISPLAY (si shipments_loading == true) */}
+        {state.shipments_loading && state.shipments_list.length === 0 && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: theme.colors.text }]}>
@@ -385,8 +400,8 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Error State */}
-        {state.shipments_error && !state.shipments_loading && (
+        {/* ⭐ 4. Error State - DISPLAY (si shipments_error non nul) */}
+        {state.shipments_error && !state.shipments_loading && state.shipments_list.length === 0 && (
           <View style={styles.errorContainer}>
             <IconSymbol
               ios_icon_name="exclamationmark.triangle"
@@ -399,7 +414,7 @@ export default function DashboardScreen() {
             </Text>
             <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: colors.primary }]}
-              onPress={() => loadShipments(1, filterStatus)}
+              onPress={() => loadShipments(1, filterStatus, searchTracking)}
             >
               <Text style={styles.retryButtonText}>Réessayer</Text>
             </TouchableOpacity>
@@ -421,6 +436,7 @@ export default function DashboardScreen() {
             <Text style={[styles.emptyStateDescription, { color: colors.textSecondary }]}>
               Créez un premier envoi pour le voir apparaître ici.
             </Text>
+            {/* ⭐ 8. Empty state button - ON_CLICK (btn_empty_new) */}
             <TouchableOpacity
               style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
               onPress={handleNewShipment}
@@ -431,7 +447,7 @@ export default function DashboardScreen() {
         )}
 
         {/* Shipments List */}
-        {!state.shipments_loading && !state.shipments_error && state.shipments_list.length > 0 && (
+        {!state.shipments_loading && state.shipments_list.length > 0 && (
           <View style={styles.shipmentsContainer}>
             {state.shipments_list.map((shipment, index) => (
               <TouchableOpacity
@@ -493,16 +509,26 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Load More Button */}
-        {state.has_more && !state.shipments_loading && (
+        {/* ⭐ 6. Load More Button - Pagination */}
+        {state.has_more && !state.shipments_loading && state.shipments_list.length > 0 && (
           <TouchableOpacity
             style={[styles.loadMoreButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-            onPress={() => loadShipments(state.current_page + 1, filterStatus)}
+            onPress={handleLoadMore}
           >
             <Text style={[styles.loadMoreText, { color: colors.primary }]}>
               Charger plus
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* Loading indicator for pagination */}
+        {state.shipments_loading && state.shipments_list.length > 0 && (
+          <View style={styles.paginationLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.paginationLoadingText, { color: colors.textSecondary }]}>
+              Chargement...
+            </Text>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -719,5 +745,15 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  paginationLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  paginationLoadingText: {
+    fontSize: 14,
   },
 });
