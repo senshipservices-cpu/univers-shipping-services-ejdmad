@@ -235,10 +235,11 @@ export default function DashboardScreen() {
   }, [router]);
 
   // ⭐ 7. Handle shipment card click - ON_CLICK (list_shipments.item)
+  // UPDATED: Navigate to shipment-details instead of shipment-detail
   const handleShipmentClick = useCallback((shipment: Shipment) => {
     console.log('[DASHBOARD] Shipment clicked:', shipment.id);
     router.push({
-      pathname: '/(tabs)/shipment-detail',
+      pathname: '/(tabs)/shipment-details',
       params: {
         shipment_id: shipment.id,
         tracking_number: shipment.tracking_number,
