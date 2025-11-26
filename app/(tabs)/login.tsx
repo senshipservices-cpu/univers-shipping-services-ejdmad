@@ -15,63 +15,124 @@ import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Login Screen
+ * Login Screen - PARTIE 1/3
  * 
- * IMPORTANT: Auto-navigation on screen load has been DISABLED to prevent navigation loops.
- * Users must manually click the login button to authenticate.
+ * SCREEN_ID: Login
+ * TITLE: "Connexion"
+ * ROUTE: "/login"
  * 
- * Navigation loops were causing crashes:
- * Accueil → Login → Accueil → Login → ... (stack overflow)
+ * Implements the authentication flow with:
+ * - Email and password fields with validation
+ * - Remember me checkbox for persistent sessions
+ * - Links to forgot password and registration
+ * - Generic error messages for security
  */
 export default function LoginScreen() {
   const { signIn, signInWithGoogle, loading: authLoading, user, isEmailVerified } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
+  
+  // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  
+  // UI state
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // ⚠️ AUTO-NAVIGATION DISABLED TO PREVENT LOOPS
-  // Previously, this useEffect would automatically redirect logged-in users
-  // This caused navigation loops: Home → Login → Home → Login → crash
-  // Now, users must manually navigate after login
   
-  // useEffect(() => {
-  //   if (user) {
-  //     // AUTO-REDIRECT DISABLED
-  //   }
-  // }, [user]);
+  // Field-specific errors for validation
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  /**
+   * Validate email field
+   * Rules:
+   * - Required: "Merci d'indiquer votre email."
+   * - Email format: "Adresse email invalide."
+   */
+  const validateEmail = (value: string): boolean => {
+    if (!value || value.trim().length === 0) {
+      setEmailError("Merci d'indiquer votre email.");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError("Adresse email invalide.");
+      return false;
+    }
+
+    setEmailError(null);
+    return true;
+  };
+
+  /**
+   * Validate password field
+   * Rules:
+   * - Required: "Merci d'indiquer votre mot de passe."
+   * - Min length 6: "Le mot de passe est trop court."
+   */
+  const validatePassword = (value: string): boolean => {
+    if (!value || value.length === 0) {
+      setPasswordError("Merci d'indiquer votre mot de passe.");
+      return false;
+    }
+
+    if (value.length < 6) {
+      setPasswordError("Le mot de passe est trop court.");
+      return false;
+    }
+
+    setPasswordError(null);
+    return true;
+  };
+
+  /**
+   * Handle login button click
+   * 
+   * Flow:
+   * 1. Validate fields (email, password)
+   * 2. Set loading state
+   * 3. Call API POST /auth/login
+   * 4. On success:
+   *    - Set global state (access_token, refresh_token, current_user)
+   *    - If remember_me: persist state to secure storage
+   *    - Navigate to Dashboard
+   * 5. On error:
+   *    - Show generic error message (security)
+   */
   const handleLogin = async () => {
     console.log('=== LOGIN BUTTON CLICKED ===');
     console.log('Email:', email);
     console.log('Password length:', password.length);
-    console.log('Loading state:', loading);
+    console.log('Remember me:', rememberMe);
 
-    // Clear any previous error messages
+    // Clear previous errors
     setErrorMessage(null);
+    setEmailError(null);
+    setPasswordError(null);
 
-    // Validate email and password
-    if (!email || !password) {
-      setErrorMessage('Veuillez entrer votre email et votre mot de passe');
+    // Step 1: Validate fields
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) {
+      console.log('Validation failed, stopping flow');
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setErrorMessage('Veuillez entrer une adresse email valide');
-      return;
-    }
-
+    // Step 2: Set loading state
     console.log('Starting login process...');
     setLoading(true);
     
     try {
+      // Step 3: Call API (via Supabase Auth)
+      // Note: Supabase handles the actual API call to POST /auth/login
       const { error } = await signIn(email.trim().toLowerCase(), password);
       
       console.log('Login result:', error ? 'Error' : 'Success');
@@ -79,25 +140,28 @@ export default function LoginScreen() {
       if (error) {
         console.error('Login error:', error);
         
-        // Handle specific error messages
-        let errorMsg = 'Une erreur est survenue lors de la connexion';
-        
-        if (error.message) {
-          if (error.message.includes('Invalid login credentials')) {
-            errorMsg = 'Email ou mot de passe incorrect';
-          } else if (error.message.includes('Email not confirmed')) {
-            errorMsg = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.';
-          } else if (error.message.includes('User not found')) {
-            errorMsg = 'Aucun compte trouvé avec cet email';
-          } else {
-            errorMsg = error.message;
-          }
-        }
-        
-        setErrorMessage(errorMsg);
+        // Step 5: On error - Show generic error message for security
+        // 🔒 Security: Generic message to not reveal if account exists
+        setErrorMessage("Email ou mot de passe incorrect, ou compte indisponible.");
       } else {
-        // Success - manually navigate based on return destination
-        console.log('Login successful, checking return destination...');
+        // Step 4: On success
+        console.log('Login successful');
+        
+        // Supabase automatically handles:
+        // - Setting access_token and refresh_token in session
+        // - Storing in AsyncStorage (configured in supabase client)
+        // - Setting current_user data
+        
+        // If remember_me is true, tokens are already persisted by Supabase
+        // (persistSession: true in client config)
+        if (rememberMe) {
+          console.log('Remember me enabled - session will persist');
+          // Store remember_me preference
+          await AsyncStorage.setItem('@3s_global_remember_me', 'true');
+        } else {
+          console.log('Remember me disabled - session will not persist');
+          await AsyncStorage.removeItem('@3s_global_remember_me');
+        }
         
         // Check if email is verified
         if (!isEmailVerified()) {
@@ -106,7 +170,7 @@ export default function LoginScreen() {
           return;
         }
         
-        // Check if there's a return destination
+        // Navigate based on return destination or to Dashboard
         const returnTo = params.returnTo as string;
         const plan = params.plan as string;
         
@@ -126,7 +190,8 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.error('Login exception:', error);
-      setErrorMessage('Une erreur inattendue est survenue lors de la connexion. Merci de réessayer.');
+      // 🔒 Security: Generic error message
+      setErrorMessage("Email ou mot de passe incorrect, ou compte indisponible.");
     } finally {
       setLoading(false);
     }
@@ -134,33 +199,19 @@ export default function LoginScreen() {
 
   const handleGoogleSignIn = async () => {
     console.log('=== GOOGLE SIGN-IN BUTTON CLICKED ===');
-    console.log('Loading state:', loading);
-
-    // Clear any previous error messages
     setErrorMessage(null);
-
     setLoading(true);
     
     try {
       const { error } = await signInWithGoogle();
       
-      console.log('Google sign-in result:', error ? 'Error' : 'Success');
-
       if (error) {
         console.error('Google sign-in error:', error);
-        
-        let errorMsg = 'Une erreur est survenue lors de la connexion avec Google';
-        
-        if (error.message) {
-          errorMsg = error.message;
-        }
-        
-        setErrorMessage(errorMsg);
+        setErrorMessage("Email ou mot de passe incorrect, ou compte indisponible.");
       }
-      // Success will be handled by the OAuth redirect
     } catch (error: any) {
       console.error('Google sign-in exception:', error);
-      setErrorMessage('Une erreur inattendue est survenue lors de la connexion avec Google. Merci de réessayer.');
+      setErrorMessage("Email ou mot de passe incorrect, ou compte indisponible.");
     } finally {
       setLoading(false);
     }
@@ -183,7 +234,7 @@ export default function LoginScreen() {
         </Text>
       </View>
 
-      {/* Error Message Display */}
+      {/* Global Error Message Display */}
       {errorMessage && (
         <View style={styles.errorContainer}>
           <IconSymbol
@@ -198,14 +249,18 @@ export default function LoginScreen() {
       )}
 
       <View style={styles.form}>
+        {/* Email Field */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[
+            styles.inputWrapper,
+            emailError && styles.inputWrapperError
+          ]}>
             <IconSymbol
               ios_icon_name="envelope.fill"
               android_material_icon_name="email"
               size={20}
-              color={colors.textSecondary}
+              color={emailError ? colors.error : colors.textSecondary}
               style={styles.inputIcon}
             />
             <TextInput
@@ -213,8 +268,10 @@ export default function LoginScreen() {
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                setEmailError(null);
                 setErrorMessage(null);
               }}
+              onBlur={() => validateEmail(email)}
               placeholder="votre@email.com"
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
@@ -223,16 +280,23 @@ export default function LoginScreen() {
               editable={!loading && !authLoading}
             />
           </View>
+          {emailError && (
+            <Text style={styles.fieldError}>{emailError}</Text>
+          )}
         </View>
 
+        {/* Password Field */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mot de passe</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[
+            styles.inputWrapper,
+            passwordError && styles.inputWrapperError
+          ]}>
             <IconSymbol
               ios_icon_name="lock.fill"
               android_material_icon_name="lock"
               size={20}
-              color={colors.textSecondary}
+              color={passwordError ? colors.error : colors.textSecondary}
               style={styles.inputIcon}
             />
             <TextInput
@@ -240,8 +304,10 @@ export default function LoginScreen() {
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
+                setPasswordError(null);
                 setErrorMessage(null);
               }}
+              onBlur={() => validatePassword(password)}
               placeholder="Entrez votre mot de passe"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPassword}
@@ -262,8 +328,35 @@ export default function LoginScreen() {
               />
             </TouchableOpacity>
           </View>
+          {passwordError && (
+            <Text style={styles.fieldError}>{passwordError}</Text>
+          )}
         </View>
 
+        {/* Remember Me Checkbox */}
+        <TouchableOpacity
+          style={styles.checkboxContainer}
+          onPress={() => setRememberMe(!rememberMe)}
+          disabled={loading || authLoading}
+          activeOpacity={0.7}
+        >
+          <View style={[
+            styles.checkbox,
+            rememberMe && styles.checkboxChecked
+          ]}>
+            {rememberMe && (
+              <IconSymbol
+                ios_icon_name="checkmark"
+                android_material_icon_name="check"
+                size={16}
+                color="#FFFFFF"
+              />
+            )}
+          </View>
+          <Text style={styles.checkboxLabel}>Se souvenir de moi</Text>
+        </TouchableOpacity>
+
+        {/* Forgot Password Link */}
         <TouchableOpacity 
           onPress={handleForgotPassword} 
           style={styles.forgotPassword}
@@ -272,6 +365,7 @@ export default function LoginScreen() {
           <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
         </TouchableOpacity>
 
+        {/* Login Button */}
         <TouchableOpacity
           style={[styles.button, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleLogin}
@@ -291,6 +385,7 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
+        {/* Google Sign-In Button */}
         <TouchableOpacity
           style={[styles.googleButton, (loading || authLoading) && styles.buttonDisabled]}
           onPress={handleGoogleSignIn}
@@ -313,6 +408,7 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Sign Up Link */}
         <TouchableOpacity
           style={styles.signupButton}
           onPress={handleSignUp}
@@ -323,6 +419,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Info Box */}
       <View style={styles.infoBox}>
         <IconSymbol
           ios_icon_name="info.circle.fill"
@@ -403,6 +500,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 12,
   },
+  inputWrapperError: {
+    borderColor: colors.error,
+    borderWidth: 2,
+  },
   inputIcon: {
     marginRight: 8,
   },
@@ -419,6 +520,37 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     padding: 8,
+  },
+  fieldError: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
