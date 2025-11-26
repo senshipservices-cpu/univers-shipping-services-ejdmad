@@ -95,8 +95,20 @@ export default function ProfileScreen() {
   const handleEditProfile = useCallback(() => {
     console.log('[PROFILE] Edit profile button clicked');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/(tabs)/client-profile');
-  }, [router]);
+    
+    // Navigate to EditProfile with initial profile data
+    if (profileData) {
+      router.push({
+        pathname: '/(tabs)/edit-profile',
+        params: {
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          account_type: profileData.account_type,
+        },
+      });
+    }
+  }, [router, profileData]);
 
   // Handle change password button
   const handleChangePassword = useCallback(() => {
