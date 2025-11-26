@@ -27,21 +27,37 @@ const isDevelopment = !isProduction;
 /**
  * Get environment variable with fallback
  * Tries multiple sources in order of priority
+ * FIXED: Added memoization to prevent recursive calls
  */
+const envCache = new Map<string, string>();
+
 function getEnvVar(key: string, fallback: string = ''): string {
-  // Try process.env first (for web and development)
-  if (process.env[key]) {
-    return process.env[key] as string;
+  // Check cache first to prevent recursive calls
+  if (envCache.has(key)) {
+    return envCache.get(key)!;
   }
-  
-  // Try Constants.expoConfig.extra (for native apps)
-  const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
-  if (Constants.expoConfig?.extra?.[extraKey]) {
-    return Constants.expoConfig.extra[extraKey] as string;
+
+  let value = fallback;
+
+  try {
+    // Try process.env first (for web and development)
+    if (process.env[key]) {
+      value = process.env[key] as string;
+    } else {
+      // Try Constants.expoConfig.extra (for native apps)
+      const extraKey = key.replace('EXPO_PUBLIC_', '').toLowerCase().replace(/_/g, '');
+      if (Constants.expoConfig?.extra?.[extraKey]) {
+        value = Constants.expoConfig.extra[extraKey] as string;
+      }
+    }
+  } catch (error) {
+    console.error(`[CONFIG] Error getting env var ${key}:`, error);
+    value = fallback;
   }
-  
-  // Return fallback
-  return fallback;
+
+  // Cache the result
+  envCache.set(key, value);
+  return value;
 }
 
 /**

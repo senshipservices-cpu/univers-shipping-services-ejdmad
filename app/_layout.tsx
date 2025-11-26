@@ -2,7 +2,7 @@
 import { Stack } from 'expo-router';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useColorScheme, Platform } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AdminProvider } from '@/contexts/AdminContext';
@@ -15,8 +15,19 @@ import { setupErrorLogging } from '@/utils/errorLogger';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  
+  // Prevent multiple initializations
+  const hasInitialized = useRef(false);
 
-  useEffect(() => {
+  // Memoize initialization function to prevent recreation
+  const initializeApp = useCallback(async () => {
+    // Guard: Only initialize once
+    if (hasInitialized.current) {
+      return;
+    }
+    
+    hasInitialized.current = true;
+
     try {
       // Setup error logging (platform-agnostic)
       setupErrorLogging();
@@ -46,13 +57,18 @@ export default function RootLayout() {
       }
 
       // Verify all services (async, non-blocking)
+      // Run in background without blocking render
       verifyAllServices().catch(error => {
         appConfig.logger.error('Service verification failed:', error);
       });
     } catch (error) {
-      console.error('Error in RootLayout useEffect:', error);
+      console.error('Error in RootLayout initialization:', error);
     }
-  }, []);
+  }, []); // Empty deps - only create once
+
+  useEffect(() => {
+    initializeApp();
+  }, [initializeApp]); // Only depends on memoized function
 
   return (
     <ErrorBoundary>

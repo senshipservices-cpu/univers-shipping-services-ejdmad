@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { supabase } from '@/app/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Tables } from '@/app/integrations/supabase/types';
@@ -35,27 +35,54 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function AuthProviderInner({ children }: { children: ReactNode }) {
-  // Configure Google Sign-In
+  // Prevent multiple Google Sign-In configurations
+  const hasConfiguredGoogle = useRef(false);
+  
+  // Configure Google Sign-In (only once)
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
-      offlineAccess: true,
-      scopes: ['profile', 'email'],
-    });
+    if (hasConfiguredGoogle.current) {
+      return;
+    }
+    
+    hasConfiguredGoogle.current = true;
+    
+    try {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+        offlineAccess: true,
+        scopes: ['profile', 'email'],
+      });
+      console.log('[AUTH] Google Sign-In configured');
+    } catch (error) {
+      console.error('[AUTH] Error configuring Google Sign-In:', error);
+    }
   }, []);
   
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Prevent multiple simultaneous client fetches
+  const isFetchingClient = useRef(false);
+  const lastFetchedUserId = useRef<string | null>(null);
 
   // Compute admin status based on user email
   const currentUserIsAdmin = appConfig.isAdmin(user?.email);
 
   // Fetch client record for the current user
   const fetchClient = useCallback(async (userId: string) => {
+    // Guard: Prevent multiple simultaneous fetches for the same user
+    if (isFetchingClient.current || lastFetchedUserId.current === userId) {
+      console.log('[AUTH] Skipping duplicate client fetch for user:', userId);
+      return;
+    }
+
     try {
-      console.log('Fetching client record for user:', userId);
+      isFetchingClient.current = true;
+      lastFetchedUserId.current = userId;
+      
+      console.log('[AUTH] Fetching client record for user:', userId);
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -63,33 +90,37 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error('Error fetching client:', error);
+        console.error('[AUTH] Error fetching client:', error);
         setClient(null);
         return;
       }
 
-      console.log('Client record fetched:', data);
+      console.log('[AUTH] Client record fetched:', data);
       setClient(data);
       
       // Load user's preferred language if available, default to 'en' if not specified
       const userLanguage = data.preferred_language || 'en';
-      console.log('Loading user preferred language:', userLanguage);
+      console.log('[AUTH] Loading user preferred language:', userLanguage);
       
       // Save language preference to AsyncStorage
       try {
         await AsyncStorage.setItem('@3s_global_language', userLanguage);
         await AsyncStorage.setItem('lang', userLanguage);
       } catch (storageError) {
-        console.error('Error saving language preference:', storageError);
+        console.error('[AUTH] Error saving language preference:', storageError);
       }
     } catch (error) {
-      console.error('Exception fetching client:', error);
+      console.error('[AUTH] Exception fetching client:', error);
       setClient(null);
+    } finally {
+      isFetchingClient.current = false;
     }
   }, []);
 
   const refreshClient = useCallback(async () => {
     if (user?.id) {
+      // Reset the last fetched user ID to allow refresh
+      lastFetchedUserId.current = null;
       await fetchClient(user.id);
     }
   }, [user?.id, fetchClient]);
@@ -97,13 +128,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const isEmailVerified = useCallback(() => {
     // Check if user exists and has email_confirmed_at field
     if (!user) {
-      console.log('isEmailVerified: No user');
+      console.log('[AUTH] isEmailVerified: No user');
       return false;
     }
 
     // If email_confirmed_at exists and is not null, email is verified
     const isVerified = !!user.email_confirmed_at;
-    console.log('isEmailVerified check:', {
+    console.log('[AUTH] isEmailVerified check:', {
       userId: user.id,
       email: user.email,
       email_confirmed_at: user.email_confirmed_at,
@@ -113,12 +144,22 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     return isVerified;
   }, [user]);
 
+  // Prevent multiple session initializations
+  const hasInitializedSession = useRef(false);
+
   useEffect(() => {
+    // Guard: Only initialize session once
+    if (hasInitializedSession.current) {
+      return;
+    }
+    
+    hasInitializedSession.current = true;
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session ? 'Found' : 'Not found');
+      console.log('[AUTH] Initial session:', session ? 'Found' : 'Not found');
       if (session) {
-        console.log('Session user email_confirmed_at:', session.user.email_confirmed_at);
+        console.log('[AUTH] Session user email_confirmed_at:', session.user.email_confirmed_at);
       }
       setSession(session);
       setUser(session?.user ?? null);
@@ -132,17 +173,20 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event);
+      console.log('[AUTH] Auth state changed:', _event);
       if (session) {
-        console.log('New session user email_confirmed_at:', session.user.email_confirmed_at);
+        console.log('[AUTH] New session user email_confirmed_at:', session.user.email_confirmed_at);
       }
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user?.id) {
+        // Reset last fetched user ID on auth state change
+        lastFetchedUserId.current = null;
         fetchClient(session.user.id);
       } else {
         setClient(null);
+        lastFetchedUserId.current = null;
       }
       
       setLoading(false);
@@ -159,15 +203,17 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       });
       
       if (error) {
-        console.error('Sign in error:', error);
+        console.error('[AUTH] Sign in error:', error);
         return { error };
       }
       
-      console.log('Sign in successful');
-      console.log('User email_confirmed_at:', data.user?.email_confirmed_at);
+      console.log('[AUTH] Sign in successful');
+      console.log('[AUTH] User email_confirmed_at:', data.user?.email_confirmed_at);
       
       // Fetch client record after successful sign in
       if (data.user?.id) {
+        // Reset last fetched user ID
+        lastFetchedUserId.current = null;
         await fetchClient(data.user.id);
         
         // Log login event
@@ -182,7 +228,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       
       return { error: null };
     } catch (error) {
-      console.error('Sign in exception:', error);
+      console.error('[AUTH] Sign in exception:', error);
       return { error };
     }
   };
@@ -209,25 +255,25 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       });
       
       if (error) {
-        console.error('Sign up error:', error);
+        console.error('[AUTH] Sign up error:', error);
         return { error };
       }
       
-      console.log('Sign up successful:', data);
+      console.log('[AUTH] Sign up successful:', data);
       
       // Note: The client record will be created automatically by the database trigger
       // after the user confirms their email
       
       return { error: null };
     } catch (error) {
-      console.error('Sign up exception:', error);
+      console.error('[AUTH] Sign up exception:', error);
       return { error };
     }
   };
 
   const signInWithGoogle = async () => {
     try {
-      console.log('Starting Google Sign-In...');
+      console.log('[AUTH] Starting Google Sign-In...');
       
       // Get the current app language for new users
       const currentLanguage = await AsyncStorage.getItem('lang') || 'en';
@@ -239,11 +285,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
       // Sign in with Google
       const userInfo = await GoogleSignin.signIn();
-      console.log('Google Sign-In successful:', userInfo);
+      console.log('[AUTH] Google Sign-In successful:', userInfo);
 
       // Check if we have an ID token
       if (!userInfo.data?.idToken) {
-        console.error('No ID token received from Google');
+        console.error('[AUTH] No ID token received from Google');
         return { error: { message: 'Aucun jeton d\'identification reçu de Google' } };
       }
 
@@ -260,14 +306,16 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error('Supabase sign-in error:', error);
+        console.error('[AUTH] Supabase sign-in error:', error);
         return { error };
       }
 
-      console.log('Supabase sign-in successful:', data);
+      console.log('[AUTH] Supabase sign-in successful:', data);
 
       // Fetch or create client record
       if (data.user?.id) {
+        // Reset last fetched user ID
+        lastFetchedUserId.current = null;
         await fetchClient(data.user.id);
         
         // Log login event
@@ -282,7 +330,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (error: any) {
-      console.error('Google sign-in exception:', error);
+      console.error('[AUTH] Google sign-in exception:', error);
       
       // Handle specific Google Sign-In errors
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -306,9 +354,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       
       await supabase.auth.signOut();
       setClient(null);
-      console.log('Sign out successful');
+      lastFetchedUserId.current = null;
+      console.log('[AUTH] Sign out successful');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('[AUTH] Sign out error:', error);
     }
   };
 
