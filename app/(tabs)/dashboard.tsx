@@ -42,6 +42,8 @@ interface ShipmentListState {
   has_more: boolean;
 }
 
+const PAGE_SIZE = 20;
+
 export default function DashboardScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -64,57 +66,47 @@ export default function DashboardScreen() {
   // Status options for filter
   const statusOptions = [
     { label: 'Tous', value: 'all' },
-    { label: 'Enregistré', value: 'registered' },
+    { label: 'Brouillon', value: 'draft' },
+    { label: 'Devis en attente', value: 'quote_pending' },
+    { label: 'Confirmé', value: 'confirmed' },
     { label: 'En transit', value: 'in_transit' },
+    { label: 'Au port', value: 'at_port' },
     { label: 'Livré', value: 'delivered' },
+    { label: 'En attente', value: 'on_hold' },
     { label: 'Annulé', value: 'cancelled' },
   ];
 
   // Load shipments from API
   const loadShipments = useCallback(async (page: number = 1, status: string = 'all') => {
-    if (!user?.id) {
-      console.log('[DASHBOARD] No user ID available');
+    if (!user?.id || !client?.id) {
+      console.log('[DASHBOARD] No user or client ID available');
       return;
     }
 
     try {
-      setState(prev => ({ ...prev, shipments_loading: true, shipments_error: null }));
-
-      // Get access token
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[DASHBOARD] Loading shipments - Page:', page, 'Status:', status);
       
-      if (!session) {
-        setState(prev => ({
-          ...prev,
-          shipments_loading: false,
-          shipments_error: 'Non authentifié',
-        }));
-        return;
-      }
+      setState(prev => ({ 
+        ...prev, 
+        shipments_loading: true, 
+        shipments_error: null,
+        current_page: page,
+      }));
 
-      // Build query parameters
-      const params: any = {
-        mine: true,
-        page: page,
-      };
-
-      if (status !== 'all') {
-        params.status = status;
-      }
-
-      // Call the shipments API endpoint
-      // Note: This assumes you have a Supabase Edge Function or API endpoint
-      // For now, we'll query the shipments table directly
+      // Build query with joins to get port information
       let query = supabase
         .from('shipments')
-        .select('*', { count: 'exact' })
+        .select(`
+          id,
+          tracking_number,
+          current_status,
+          created_at,
+          origin_port:ports!shipments_origin_port_fkey(city, country),
+          destination_port:ports!shipments_destination_port_fkey(city, country)
+        `, { count: 'exact' })
+        .eq('client', client.id)
         .order('created_at', { ascending: false })
-        .range((page - 1) * 20, page * 20 - 1);
-
-      // Filter by client if available
-      if (client?.id) {
-        query = query.eq('client', client.id);
-      }
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
       // Filter by status if not 'all'
       if (status !== 'all') {
@@ -128,27 +120,31 @@ export default function DashboardScreen() {
         setState(prev => ({
           ...prev,
           shipments_loading: false,
-          shipments_error: 'Erreur lors du chargement des envois',
+          shipments_error: 'Impossible de charger vos envois pour le moment.',
         }));
         return;
       }
+
+      console.log('[DASHBOARD] Loaded shipments:', data?.length || 0);
 
       // Transform data to match the expected format
       const shipments: Shipment[] = (data || []).map(item => ({
         id: item.id,
         tracking_number: item.tracking_number || 'N/A',
-        status: item.current_status || 'unknown',
+        status: item.current_status || 'draft',
         created_at: item.created_at,
-        origin_city: item.origin_city || 'N/A',
-        origin_country: item.origin_country || 'N/A',
-        destination_city: item.destination_city || 'N/A',
-        destination_country: item.destination_country || 'N/A',
-        price_total: item.total_price || 0,
-        currency: item.currency || 'MAD',
+        origin_city: (item.origin_port as any)?.city || 'N/A',
+        origin_country: (item.origin_port as any)?.country || 'N/A',
+        destination_city: (item.destination_port as any)?.city || 'N/A',
+        destination_country: (item.destination_port as any)?.country || 'N/A',
+        price_total: 0, // Will be populated from freight_quotes if needed
+        currency: 'MAD',
       }));
 
       const totalCount = count || 0;
-      const hasMore = totalCount > page * 20;
+      const hasMore = shipments.length > 0 && (page * PAGE_SIZE < totalCount);
+
+      console.log('[DASHBOARD] Total count:', totalCount, 'Has more:', hasMore);
 
       setState(prev => ({
         ...prev,
@@ -162,26 +158,30 @@ export default function DashboardScreen() {
       setState(prev => ({
         ...prev,
         shipments_loading: false,
-        shipments_error: 'Une erreur est survenue',
+        shipments_error: 'Impossible de charger vos envois pour le moment.',
       }));
     }
   }, [user, client]);
 
-  // Initial load
+  // Initial load - ON_SCREEN_LOAD
   useEffect(() => {
     if (user && client) {
+      console.log('[DASHBOARD] Initial load triggered');
       loadShipments(1, filterStatus);
     }
-  }, [user, client, loadShipments, filterStatus]);
+  }, [user, client]);
 
-  // Handle refresh
+  // Handle refresh - ON_CLICK (btn_refresh)
   const onRefresh = useCallback(() => {
+    console.log('[DASHBOARD] Refresh triggered');
     setRefreshing(true);
-    loadShipments(1, filterStatus).finally(() => setRefreshing(false));
-  }, [loadShipments, filterStatus]);
+    setFilterStatus('all'); // Reset filter on refresh
+    loadShipments(1, 'all').finally(() => setRefreshing(false));
+  }, [loadShipments]);
 
-  // Handle filter change
+  // Handle filter change - ON_CHANGE (filter_status)
   const handleFilterChange = useCallback((status: string) => {
+    console.log('[DASHBOARD] Filter changed to:', status);
     setFilterStatus(status);
     loadShipments(1, status);
   }, [loadShipments]);
@@ -193,6 +193,8 @@ export default function DashboardScreen() {
       return;
     }
 
+    console.log('[DASHBOARD] Searching for:', searchTracking);
+
     // Filter shipments by tracking number
     const filtered = state.shipments_list.filter(shipment =>
       shipment.tracking_number.toLowerCase().includes(searchTracking.toLowerCase())
@@ -202,17 +204,25 @@ export default function DashboardScreen() {
       Alert.alert('Aucun résultat', 'Aucun envoi trouvé avec ce numéro de suivi');
     } else {
       // Navigate to the first matching shipment
-      router.push(`/(tabs)/shipment-detail?id=${filtered[0].id}`);
+      router.push({
+        pathname: '/(tabs)/shipment-detail',
+        params: {
+          shipment_id: filtered[0].id,
+          tracking_number: filtered[0].tracking_number,
+        },
+      });
     }
   }, [searchTracking, state.shipments_list, router]);
 
   // Handle new shipment button
   const handleNewShipment = useCallback(() => {
+    console.log('[DASHBOARD] New shipment button clicked');
     router.push('/(tabs)/new-shipment');
   }, [router]);
 
   // Handle shipment card click
   const handleShipmentClick = useCallback((shipment: Shipment) => {
+    console.log('[DASHBOARD] Shipment clicked:', shipment.id);
     router.push({
       pathname: '/(tabs)/shipment-detail',
       params: {
@@ -229,8 +239,16 @@ export default function DashboardScreen() {
         return '#10b981';
       case 'in_transit':
         return colors.primary;
-      case 'registered':
-        return colors.secondary;
+      case 'confirmed':
+        return '#3b82f6';
+      case 'at_port':
+        return '#8b5cf6';
+      case 'quote_pending':
+        return '#f59e0b';
+      case 'draft':
+        return colors.textSecondary;
+      case 'on_hold':
+        return '#f97316';
       case 'cancelled':
         return '#ef4444';
       default:
@@ -241,9 +259,13 @@ export default function DashboardScreen() {
   // Format status text
   const formatStatus = useCallback((status: string) => {
     const statusMap: { [key: string]: string } = {
-      'registered': 'Enregistré',
+      'draft': 'Brouillon',
+      'quote_pending': 'Devis en attente',
+      'confirmed': 'Confirmé',
       'in_transit': 'En transit',
+      'at_port': 'Au port',
       'delivered': 'Livré',
+      'on_hold': 'En attente',
       'cancelled': 'Annulé',
     };
     return statusMap[status] || status;
@@ -329,6 +351,7 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={[styles.ghostButton, { borderColor: colors.border }]}
             onPress={onRefresh}
+            disabled={state.shipments_loading}
           >
             <IconSymbol
               ios_icon_name="arrow.clockwise"
@@ -357,7 +380,7 @@ export default function DashboardScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-              Chargement des envois...
+              Chargement...
             </Text>
           </View>
         )}
@@ -440,7 +463,7 @@ export default function DashboardScreen() {
                   </View>
                 </View>
 
-                {/* Line 3: Status and Price */}
+                {/* Line 3: Status */}
                 <View style={styles.cardLine}>
                   <View style={styles.cardLineContent}>
                     <View style={styles.statusRow}>
@@ -453,9 +476,6 @@ export default function DashboardScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Text style={[styles.cardSecondaryText, { color: colors.textSecondary }]}>
-                      Tarif : {shipment.price_total} {shipment.currency}
-                    </Text>
                   </View>
                 </View>
 
