@@ -1,87 +1,209 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert } from 'react-native';
+import { useRouter, Redirect } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
 import { IconSymbol } from '@/components/IconSymbol';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Language } from '@/i18n/translations';
+import { supabase } from '@/app/integrations/supabase/client';
 import { colors } from '@/styles/commonStyles';
 import * as Haptics from 'expo-haptics';
+
+interface ProfileData {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  account_type: 'individual' | 'business';
+  company_name?: string;
+  country?: string;
+  city?: string;
+  preferred_language?: string;
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { language, setLanguage } = useLanguage();
-  const { signOut, user } = useAuth();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { user, signOut, isEmailVerified } = useAuth();
+
+  // Screen state
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const languageOptions = [
-    { code: 'fr' as Language, flag: '🇫🇷', name: 'Français' },
-    { code: 'en' as Language, flag: '🇬🇧', name: 'English' },
-    { code: 'es' as Language, flag: '🇪🇸', name: 'Español' },
-    { code: 'ar' as Language, flag: '🇸🇦', name: 'العربية' },
-  ];
-
-  const handleLanguageChange = async (lang: Language) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await setLanguage(lang);
-      console.log('Language changed to:', lang);
-    } catch (error) {
-      console.error('Error changing language:', error);
+  // Load profile data from API
+  const loadProfile = useCallback(async () => {
+    if (!user?.id) {
+      console.log('[PROFILE] No user ID available');
+      return;
     }
-  };
 
-  const handleLogout = async () => {
+    try {
+      console.log('[PROFILE] Loading profile data...');
+      setProfileLoading(true);
+      setProfileError(null);
+
+      // Fetch user data from clients table
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('[PROFILE] Error loading profile:', error);
+        setProfileError('Impossible de charger vos informations pour le moment.');
+        setProfileLoading(false);
+        return;
+      }
+
+      console.log('[PROFILE] Profile data loaded:', data);
+
+      // Transform data to match ProfileData interface
+      const profile: ProfileData = {
+        id: data.id,
+        name: data.contact_name || data.company_name || user.email || 'Utilisateur',
+        email: data.email || user.email || '',
+        phone: data.phone || '',
+        account_type: data.account_type || 'individual',
+        company_name: data.company_name,
+        country: data.country,
+        city: data.city,
+        preferred_language: data.preferred_language,
+      };
+
+      setProfileData(profile);
+      setProfileLoading(false);
+    } catch (error) {
+      console.error('[PROFILE] Exception loading profile:', error);
+      setProfileError('Impossible de charger vos informations pour le moment.');
+      setProfileLoading(false);
+    }
+  }, [user]);
+
+  // Load profile on mount
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
+
+  // Handle edit profile button
+  const handleEditProfile = useCallback(() => {
+    console.log('[PROFILE] Edit profile button clicked');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/(tabs)/client-profile');
+  }, [router]);
+
+  // Handle change password button
+  const handleChangePassword = useCallback(() => {
+    console.log('[PROFILE] Change password button clicked');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    Alert.alert(
+      'Changer le mot de passe',
+      'Un email de réinitialisation va être envoyé à votre adresse email.',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Envoyer',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.auth.resetPasswordForEmail(
+                user?.email || '',
+                {
+                  redirectTo: 'https://natively.dev/reset-password',
+                }
+              );
+
+              if (error) {
+                console.error('[PROFILE] Error sending reset email:', error);
+                Alert.alert('Erreur', 'Impossible d\'envoyer l\'email de réinitialisation.');
+              } else {
+                Alert.alert(
+                  'Email envoyé',
+                  'Un email de réinitialisation a été envoyé à votre adresse email.'
+                );
+              }
+            } catch (error) {
+              console.error('[PROFILE] Exception sending reset email:', error);
+              Alert.alert('Erreur', 'Une erreur est survenue.');
+            }
+          },
+        },
+      ]
+    );
+  }, [user]);
+
+  // Handle logout button
+  const handleLogout = useCallback(async () => {
     try {
       setIsLoggingOut(true);
-      setLogoutError(null);
+      console.log('[PROFILE] Starting logout process...');
       
-      console.log('Starting logout process...');
       await signOut();
       
-      console.log('Logout successful, redirecting to home...');
+      console.log('[PROFILE] Logout successful, redirecting to home...');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Navigate to home page after successful logout
       router.replace('/(tabs)/(home)/');
     } catch (error) {
-      console.error('Logout error:', error);
-      setLogoutError('La déconnexion a échoué, merci de réessayer.');
+      console.error('[PROFILE] Logout error:', error);
+      Alert.alert('Erreur', 'La déconnexion a échoué, merci de réessayer.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsLoggingOut(false);
     }
-  };
+  }, [signOut, router]);
 
-  const confirmLogout = () => {
+  // Confirm logout
+  const confirmLogout = useCallback(() => {
     Alert.alert(
-      language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
-      language === 'fr' ? 'Êtes-vous sûr de vouloir vous déconnecter ?' : language === 'es' ? '¿Está seguro de que desea cerrar sesión?' : language === 'ar' ? 'هل أنت متأكد أنك تريد تسجيل الخروج؟' : 'Are you sure you want to logout?',
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
         {
-          text: language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : language === 'ar' ? 'إلغاء' : 'Cancel',
+          text: 'Annuler',
           style: 'cancel',
         },
         {
-          text: language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout',
+          text: 'Déconnexion',
           style: 'destructive',
           onPress: handleLogout,
         },
       ]
     );
-  };
+  }, [handleLogout]);
+
+  // Format account type
+  const formatAccountType = useCallback((type: string) => {
+    return type === 'individual' ? 'Particulier' : 'Entreprise';
+  }, []);
+
+  // Redirect if not authenticated
+  if (!user) {
+    return <Redirect href="/(tabs)/login" />;
+  }
+
+  // Redirect if email is not verified
+  if (!isEmailVerified()) {
+    return <Redirect href="/(tabs)/verify-email" />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        {user && (
+      {/* Header */}
+      <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          Mon profil
+        </Text>
+        {!profileLoading && profileData && (
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={styles.logoutIconButton}
             onPress={confirmLogout}
             disabled={isLoggingOut}
           >
@@ -89,145 +211,280 @@ export default function ProfileScreen() {
               ios_icon_name="rectangle.portrait.and.arrow.right"
               android_material_icon_name="logout"
               size={24}
-              color="#ffffff"
+              color={colors.error}
             />
           </TouchableOpacity>
         )}
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {logoutError && (
+        {/* Loading State */}
+        {profileLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+              Chargement de votre profil...
+            </Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {profileError && !profileLoading && (
           <View style={styles.errorContainer}>
             <IconSymbol
               ios_icon_name="exclamationmark.triangle.fill"
               android_material_icon_name="error"
-              size={20}
-              color="#ef4444"
+              size={48}
+              color={colors.error}
             />
-            <Text style={styles.errorText}>{logoutError}</Text>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              {profileError}
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.primary }]}
+              onPress={loadProfile}
+            >
+              <Text style={styles.retryButtonText}>Réessayer</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconSymbol
-              ios_icon_name="globe"
-              android_material_icon_name="language"
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Language / Langue / Idioma / اللغة
-            </Text>
-          </View>
+        {/* Profile Content */}
+        {!profileLoading && !profileError && profileData && (
+          <View style={styles.contentContainer}>
+            {/* Profile Header */}
+            <View style={styles.profileHeader}>
+              <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+                <IconSymbol
+                  ios_icon_name="person.fill"
+                  android_material_icon_name="person"
+                  size={48}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={[styles.profileName, { color: theme.colors.text }]}>
+                {profileData.name}
+              </Text>
+              <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                {profileData.email}
+              </Text>
+            </View>
 
-          <View style={styles.languageList}>
-            {languageOptions.map((option, index) => (
-              <React.Fragment key={option.code}>
-                <TouchableOpacity
-                  style={[
-                    styles.languageItem,
-                    { backgroundColor: theme.colors.card },
-                    language === option.code && styles.languageItemSelected,
-                  ]}
-                  onPress={() => handleLanguageChange(option.code)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.languageItemLeft}>
-                    <Text style={styles.languageFlag}>{option.flag}</Text>
-                    <Text style={[styles.languageName, { color: theme.colors.text }]}>
-                      {option.name}
+            {/* Profile Information Card */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Mes informations
+              </Text>
+              
+              <View style={[styles.infoCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+                {/* Name */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoLabelContainer}>
+                    <IconSymbol
+                      ios_icon_name="person.fill"
+                      android_material_icon_name="person"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                      Nom
                     </Text>
                   </View>
-                  {language === option.code && (
+                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                    {profileData.name}
+                  </Text>
+                </View>
+
+                {/* Email */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoLabelContainer}>
                     <IconSymbol
-                      ios_icon_name="checkmark.circle.fill"
-                      android_material_icon_name="check_circle"
-                      size={24}
-                      color={colors.primary}
+                      ios_icon_name="envelope.fill"
+                      android_material_icon_name="email"
+                      size={20}
+                      color={colors.textSecondary}
                     />
-                  )}
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                      Email
+                    </Text>
+                  </View>
+                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                    {profileData.email}
+                  </Text>
+                </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconSymbol
-              ios_icon_name="info.circle"
-              android_material_icon_name="info"
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              About
-            </Text>
-          </View>
+                {/* Phone */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoLabelContainer}>
+                    <IconSymbol
+                      ios_icon_name="phone.fill"
+                      android_material_icon_name="phone"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                      Téléphone
+                    </Text>
+                  </View>
+                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                    {profileData.phone || 'Non renseigné'}
+                  </Text>
+                </View>
 
-          <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.appName, { color: theme.colors.text }]}>
-              3S Global
-            </Text>
-            <Text style={styles.appSubtitle}>
-              Univers Shipping Services
-            </Text>
-            <Text style={styles.appVersion}>
-              Version 1.0.0
-            </Text>
-          </View>
-        </View>
+                {/* Account Type */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoLabelContainer}>
+                    <IconSymbol
+                      ios_icon_name="briefcase.fill"
+                      android_material_icon_name="work"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                      Type de compte
+                    </Text>
+                  </View>
+                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                    {formatAccountType(profileData.account_type)}
+                  </Text>
+                </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.colors.card }]}
-            onPress={() => router.push('/(tabs)/(home)/')}
-            activeOpacity={0.7}
-          >
-            <IconSymbol
-              ios_icon_name="house.fill"
-              android_material_icon_name="home"
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={[styles.actionButtonText, { color: theme.colors.text }]}>
-              Go to Home
-            </Text>
-            <IconSymbol
-              ios_icon_name="chevron.right"
-              android_material_icon_name="chevron_right"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+                {/* Company Name (if business) */}
+                {profileData.account_type === 'business' && profileData.company_name && (
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoLabelContainer}>
+                      <IconSymbol
+                        ios_icon_name="building.2.fill"
+                        android_material_icon_name="business"
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                        Entreprise
+                      </Text>
+                    </View>
+                    <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                      {profileData.company_name}
+                    </Text>
+                  </View>
+                )}
 
-        {user && (
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[styles.logoutButtonLarge, { opacity: isLoggingOut ? 0.6 : 1 }]}
-              onPress={confirmLogout}
-              activeOpacity={0.7}
-              disabled={isLoggingOut}
-            >
-              <IconSymbol
-                ios_icon_name="rectangle.portrait.and.arrow.right"
-                android_material_icon_name="logout"
-                size={24}
-                color="#ffffff"
-              />
-              <Text style={styles.logoutButtonText}>
-                {isLoggingOut 
-                  ? (language === 'fr' ? 'Déconnexion...' : language === 'es' ? 'Cerrando sesión...' : language === 'ar' ? 'جاري تسجيل الخروج...' : 'Logging out...')
-                  : (language === 'fr' ? 'Déconnexion' : language === 'es' ? 'Cerrar sesión' : language === 'ar' ? 'تسجيل الخروج' : 'Logout')
-                }
+                {/* Country */}
+                {profileData.country && (
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoLabelContainer}>
+                      <IconSymbol
+                        ios_icon_name="globe"
+                        android_material_icon_name="public"
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                        Pays
+                      </Text>
+                    </View>
+                    <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                      {profileData.country}
+                    </Text>
+                  </View>
+                )}
+
+                {/* City */}
+                {profileData.city && (
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoLabelContainer}>
+                      <IconSymbol
+                        ios_icon_name="mappin.circle.fill"
+                        android_material_icon_name="location_city"
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                        Ville
+                      </Text>
+                    </View>
+                    <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                      {profileData.city}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Actions
               </Text>
-            </TouchableOpacity>
+
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                style={[styles.actionButton, styles.primaryActionButton, { backgroundColor: colors.primary }]}
+                onPress={handleEditProfile}
+                activeOpacity={0.7}
+              >
+                <IconSymbol
+                  ios_icon_name="pencil"
+                  android_material_icon_name="edit"
+                  size={24}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.actionButtonText}>
+                  Modifier mes informations
+                </Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="chevron_right"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+
+              {/* Change Password Button */}
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                onPress={handleChangePassword}
+                activeOpacity={0.7}
+              >
+                <IconSymbol
+                  ios_icon_name="lock.fill"
+                  android_material_icon_name="lock"
+                  size={24}
+                  color={colors.secondary}
+                />
+                <Text style={[styles.actionButtonTextSecondary, { color: colors.secondary }]}>
+                  Changer mon mot de passe
+                </Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="chevron_right"
+                  size={20}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={[styles.actionButton, styles.dangerActionButton, { backgroundColor: colors.error, opacity: isLoggingOut ? 0.6 : 1 }]}
+                onPress={confirmLogout}
+                activeOpacity={0.7}
+                disabled={isLoggingOut}
+              >
+                <IconSymbol
+                  ios_icon_name="rectangle.portrait.and.arrow.right"
+                  android_material_icon_name="logout"
+                  size={24}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.actionButtonText}>
+                  {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -240,112 +497,111 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? 60 : 80,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#ffffff',
-    flex: 1,
-    textAlign: 'center',
+    fontWeight: '700',
   },
-  logoutButton: {
+  logoutIconButton: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
     paddingBottom: 120,
   },
-  errorContainer: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fee2e2',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    gap: 12,
+    paddingVertical: 60,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    gap: 16,
   },
   errorText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#991b1b',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
-  section: {
-    marginBottom: 32,
+  contentContainer: {
+    padding: 20,
+    gap: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
+  profileHeader: {
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    paddingVertical: 20,
+  },
+  avatarContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  profileEmail: {
+    fontSize: 16,
+  },
+  section: {
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-  },
-  languageList: {
-    gap: 12,
-  },
-  languageItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  languageItemSelected: {
-    borderColor: colors.primary,
-    boxShadow: '0px 4px 12px rgba(3, 169, 244, 0.2)',
-    elevation: 4,
-  },
-  languageItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  languageFlag: {
-    fontSize: 32,
-  },
-  languageName: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  infoCard: {
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: '800',
     marginBottom: 4,
   },
-  appSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 8,
+  infoCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 16,
   },
-  appVersion: {
+  infoRow: {
+    gap: 8,
+  },
+  infoLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 16,
+    marginLeft: 28,
   },
   actionButton: {
     flexDirection: 'row',
@@ -353,29 +609,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderRadius: 12,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
-    elevation: 2,
+    gap: 12,
+  },
+  primaryActionButton: {
+    // backgroundColor set inline
+  },
+  secondaryActionButton: {
+    borderWidth: 2,
+  },
+  dangerActionButton: {
+    // backgroundColor set inline
   },
   actionButtonText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 12,
+    color: '#FFFFFF',
   },
-  logoutButtonLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
-    boxShadow: '0px 2px 8px rgba(239, 68, 68, 0.3)',
-    elevation: 2,
-    gap: 12,
-  },
-  logoutButtonText: {
+  actionButtonTextSecondary: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: '600',
   },
 });
