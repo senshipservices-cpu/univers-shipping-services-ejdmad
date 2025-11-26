@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -49,16 +49,7 @@ export default function PricingScreen() {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [highlightedPlan, setHighlightedPlan] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPlans();
-    
-    // Check for highlight parameter
-    if (params.highlight) {
-      setHighlightedPlan(params.highlight as string);
-    }
-  }, [params.highlight]);
-
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -86,7 +77,16 @@ export default function PricingScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [language]);
+
+  useEffect(() => {
+    fetchPlans();
+    
+    // Check for highlight parameter
+    if (params.highlight) {
+      setHighlightedPlan(params.highlight as string);
+    }
+  }, [fetchPlans, params.highlight]);
 
   const handleSelectPlan = async (plan: PricingPlan) => {
     // Determine plan type from plan code

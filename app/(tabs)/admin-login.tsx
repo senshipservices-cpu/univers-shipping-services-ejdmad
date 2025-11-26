@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -29,12 +29,7 @@ export default function AdminLoginScreen() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Check if already logged in as admin
-  useEffect(() => {
-    checkExistingSession();
-  }, []);
-
-  const checkExistingSession = async () => {
+  const checkExistingSession = useCallback(async () => {
     try {
       const { data: { session } } = await supabaseAdmin.auth.getSession();
       
@@ -49,7 +44,12 @@ export default function AdminLoginScreen() {
     } catch (error) {
       console.error('Error checking session:', error);
     }
-  };
+  }, [router]);
+
+  // Check if already logged in as admin
+  useEffect(() => {
+    checkExistingSession();
+  }, [checkExistingSession]);
 
   const handleLogin = async () => {
     // Clear previous errors

@@ -8,7 +8,6 @@ import { Logo } from '@/components/Logo';
 import { colors } from '@/styles/commonStyles';
 import { getFontSize, spacing, borderRadius, getShadow } from '@/styles/responsiveStyles';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
-import * as Updates from 'expo-updates';
 
 /**
  * USS Error Screen - Universal Error Handler
@@ -17,7 +16,7 @@ import * as Updates from 'expo-updates';
  * It provides a consistent error experience across Web, iOS, and Android.
  * 
  * Features:
- * - Retry functionality (reloads app on native, navigates home on web)
+ * - Retry functionality (navigates home)
  * - Support contact information
  * - Professional USS branding
  * - Platform-specific behavior
@@ -30,22 +29,9 @@ export default function ErrorScreen() {
     console.log('🔄 [ERROR_SCREEN] User clicked Retry button');
     
     try {
-      // On native platforms, try to reload the app
-      if (Platform.OS !== 'web') {
-        console.log('[ERROR_SCREEN] Attempting to reload app via Expo Updates...');
-        try {
-          await Updates.reloadAsync();
-        } catch (updateError) {
-          console.error('[ERROR_SCREEN] Updates.reloadAsync failed:', updateError);
-          // Fallback: navigate to home
-          console.log('[ERROR_SCREEN] Fallback: Navigating to home screen');
-          router.replace('/(tabs)/(home)/');
-        }
-      } else {
-        // On web, navigate to home
-        console.log('[ERROR_SCREEN] Web platform: Navigating to home screen');
-        router.replace('/(tabs)/(home)/');
-      }
+      // Navigate to home screen
+      console.log('[ERROR_SCREEN] Navigating to home screen');
+      router.replace('/(tabs)/(home)/');
     } catch (error) {
       console.error('[ERROR_SCREEN] Error during retry:', error);
       // Last resort: just navigate to home

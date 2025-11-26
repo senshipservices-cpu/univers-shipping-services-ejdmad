@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -36,33 +36,7 @@ export default function PortCoverageScreen() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Port[]>([]);
 
-  useEffect(() => {
-    loadPorts();
-  }, []);
-
-  // Autocomplete logic
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      const suggestions = ports
-        .filter(port => {
-          const searchLower = searchQuery.toLowerCase();
-          return (
-            port.name.toLowerCase().includes(searchLower) ||
-            port.country.toLowerCase().includes(searchLower) ||
-            (port.city && port.city.toLowerCase().includes(searchLower))
-          );
-        })
-        .slice(0, 5); // Limit to 5 suggestions
-      
-      setAutocompleteSuggestions(suggestions);
-      setShowAutocomplete(suggestions.length > 0);
-    } else {
-      setShowAutocomplete(false);
-      setAutocompleteSuggestions([]);
-    }
-  }, [searchQuery, ports]);
-
-  const loadPorts = async () => {
+  const loadPorts = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Loading ports from database...');
@@ -92,7 +66,33 @@ export default function PortCoverageScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [language]);
+
+  useEffect(() => {
+    loadPorts();
+  }, [loadPorts]);
+
+  // Autocomplete logic
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const suggestions = ports
+        .filter(port => {
+          const searchLower = searchQuery.toLowerCase();
+          return (
+            port.name.toLowerCase().includes(searchLower) ||
+            port.country.toLowerCase().includes(searchLower) ||
+            (port.city && port.city.toLowerCase().includes(searchLower))
+          );
+        })
+        .slice(0, 5); // Limit to 5 suggestions
+      
+      setAutocompleteSuggestions(suggestions);
+      setShowAutocomplete(suggestions.length > 0);
+    } else {
+      setShowAutocomplete(false);
+      setAutocompleteSuggestions([]);
+    }
+  }, [searchQuery, ports]);
 
   const handleAutocompleteSelect = (port: Port) => {
     setSearchQuery(port.name);

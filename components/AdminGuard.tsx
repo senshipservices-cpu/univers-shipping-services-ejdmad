@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
@@ -30,23 +30,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    checkAdminAccess();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabaseAdmin.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log('Admin auth state changed:', _event);
-        checkAdminAccess();
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const checkAdminAccess = async () => {
+  const checkAdminAccess = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -95,7 +79,23 @@ export function AdminGuard({ children }: AdminGuardProps) {
       setIsAdmin(false);
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAdminAccess();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabaseAdmin.auth.onAuthStateChange(
+      (_event, session) => {
+        console.log('Admin auth state changed:', _event);
+        checkAdminAccess();
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [checkAdminAccess]);
 
   // Show loading state
   if (loading) {
