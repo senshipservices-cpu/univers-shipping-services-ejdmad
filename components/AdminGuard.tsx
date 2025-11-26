@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
@@ -34,69 +34,69 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const hasCheckedAccess = useRef(false);
   const isNavigating = useRef(false);
 
-  useEffect(() => {
+  const checkAdminAccess = useCallback(async () => {
     // Prevent multiple checks
     if (hasCheckedAccess.current) {
       return;
     }
 
-    const checkAdminAccess = async () => {
-      try {
-        hasCheckedAccess.current = true;
-        setLoading(true);
-        
-        console.log('[ADMIN_GUARD] Checking admin access...');
+    try {
+      hasCheckedAccess.current = true;
+      setLoading(true);
+      
+      console.log('[ADMIN_GUARD] Checking admin access...');
 
-        // Get current session
-        const { data: { session }, error } = await supabaseAdmin.auth.getSession();
+      // Get current session
+      const { data: { session }, error } = await supabaseAdmin.auth.getSession();
 
-        if (error) {
-          console.error('[ADMIN_GUARD] Error getting session:', error);
-          setUser(null);
-          setIsAdmin(false);
-          setLoading(false);
-          return;
-        }
-
-        if (!session?.user) {
-          // Not authenticated, redirect to login
-          console.log('[ADMIN_GUARD] No user session, redirecting to admin login');
-          setUser(null);
-          setIsAdmin(false);
-          setLoading(false);
-          
-          if (!isNavigating.current) {
-            isNavigating.current = true;
-            router.replace('/(tabs)/admin-login');
-          }
-          return;
-        }
-
-        // Check if user is admin
-        const userEmail = session.user.email;
-        const adminStatus = appConfig.isAdmin(userEmail);
-
-        console.log('[ADMIN_GUARD] Admin access check:', {
-          email: userEmail,
-          isAdmin: adminStatus,
-        });
-
-        setUser(session.user);
-        setIsAdmin(adminStatus);
-        setLoading(false);
-
-        // If not admin, don't redirect but show access denied message
-        if (!adminStatus) {
-          console.log('[ADMIN_GUARD] User is not admin, showing access denied');
-        }
-      } catch (error) {
-        console.error('[ADMIN_GUARD] Exception checking admin access:', error);
+      if (error) {
+        console.error('[ADMIN_GUARD] Error getting session:', error);
         setUser(null);
         setIsAdmin(false);
         setLoading(false);
+        return;
       }
-    };
 
+      if (!session?.user) {
+        // Not authenticated, redirect to login
+        console.log('[ADMIN_GUARD] No user session, redirecting to admin login');
+        setUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+        
+        if (!isNavigating.current) {
+          isNavigating.current = true;
+          router.replace('/(tabs)/admin-login');
+        }
+        return;
+      }
+
+      // Check if user is admin
+      const userEmail = session.user.email;
+      const adminStatus = appConfig.isAdmin(userEmail);
+
+      console.log('[ADMIN_GUARD] Admin access check:', {
+        email: userEmail,
+        isAdmin: adminStatus,
+      });
+
+      setUser(session.user);
+      setIsAdmin(adminStatus);
+      setLoading(false);
+
+      // If not admin, don't redirect but show access denied message
+      if (!adminStatus) {
+        console.log('[ADMIN_GUARD] User is not admin, showing access denied');
+      }
+    } catch (error) {
+      console.error('[ADMIN_GUARD] Exception checking admin access:', error);
+      setUser(null);
+      setIsAdmin(false);
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
     checkAdminAccess();
 
     // Listen for auth state changes
@@ -115,7 +115,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [checkAdminAccess]);
 
   // Show loading state
   if (loading) {

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -52,48 +52,48 @@ export default function PricingScreen() {
   // Prevent infinite loops
   const hasFetchedPlans = useRef(false);
 
-  useEffect(() => {
+  const fetchPlans = useCallback(async () => {
     // Only fetch plans once
     if (hasFetchedPlans.current) {
       return;
     }
 
-    const fetchPlans = async () => {
-      try {
-        hasFetchedPlans.current = true;
-        setLoading(true);
-        console.log('[PRICING] Fetching plans...');
-        
-        const { data, error } = await supabase
-          .from('pricing_plans')
-          .select('*')
-          .eq('is_active', true)
-          .order('price_eur', { ascending: true });
+    try {
+      hasFetchedPlans.current = true;
+      setLoading(true);
+      console.log('[PRICING] Fetching plans...');
+      
+      const { data, error } = await supabase
+        .from('pricing_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('price_eur', { ascending: true });
 
-        if (error) {
-          console.error('[PRICING] Error fetching plans:', error);
-          Alert.alert(
-            language === 'en' ? 'Error' : 'Erreur',
-            language === 'en' ? 'Unable to load pricing plans.' : 'Impossible de charger les plans tarifaires.'
-          );
-          return;
-        }
-
-        setPlans(data || []);
-        console.log('[PRICING] Plans loaded:', data?.length);
-      } catch (error) {
-        console.error('[PRICING] Exception fetching plans:', error);
+      if (error) {
+        console.error('[PRICING] Error fetching plans:', error);
         Alert.alert(
           language === 'en' ? 'Error' : 'Erreur',
-          language === 'en' ? 'An error occurred while loading plans.' : 'Une erreur est survenue lors du chargement des plans.'
+          language === 'en' ? 'Unable to load pricing plans.' : 'Impossible de charger les plans tarifaires.'
         );
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
+      setPlans(data || []);
+      console.log('[PRICING] Plans loaded:', data?.length);
+    } catch (error) {
+      console.error('[PRICING] Exception fetching plans:', error);
+      Alert.alert(
+        language === 'en' ? 'Error' : 'Erreur',
+        language === 'en' ? 'An error occurred while loading plans.' : 'Une erreur est survenue lors du chargement des plans.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [language]);
+
+  useEffect(() => {
     fetchPlans();
-  }, []); // Empty dependency array - only run once
+  }, [fetchPlans]);
 
   useEffect(() => {
     // Check for highlight parameter

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
@@ -39,47 +39,47 @@ export default function PortCoverageScreen() {
   // Prevent infinite loops
   const hasLoadedPorts = useRef(false);
 
-  useEffect(() => {
+  const loadPorts = useCallback(async () => {
     // Only load ports once
     if (hasLoadedPorts.current) {
       return;
     }
 
-    const loadPorts = async () => {
-      try {
-        hasLoadedPorts.current = true;
-        setLoading(true);
-        console.log('[PORT_COVERAGE] Loading ports from database...');
-        
-        const { data, error } = await supabase
-          .from('ports')
-          .select('*')
-          .eq('status', 'active')
-          .order('name', { ascending: true });
+    try {
+      hasLoadedPorts.current = true;
+      setLoading(true);
+      console.log('[PORT_COVERAGE] Loading ports from database...');
+      
+      const { data, error } = await supabase
+        .from('ports')
+        .select('*')
+        .eq('status', 'active')
+        .order('name', { ascending: true });
 
-        if (error) {
-          console.error('[PORT_COVERAGE] Error loading ports:', error);
-          Alert.alert(
-            language === 'en' ? 'Error' : 'Erreur',
-            language === 'en' ? 'Unable to load ports.' : 'Impossible de charger les ports.'
-          );
-        } else {
-          setPorts(data || []);
-          console.log('[PORT_COVERAGE] Ports loaded successfully:', data?.length);
-        }
-      } catch (error) {
-        console.error('[PORT_COVERAGE] Exception loading ports:', error);
+      if (error) {
+        console.error('[PORT_COVERAGE] Error loading ports:', error);
         Alert.alert(
           language === 'en' ? 'Error' : 'Erreur',
-          language === 'en' ? 'An error occurred while loading ports.' : 'Une erreur est survenue lors du chargement des ports.'
+          language === 'en' ? 'Unable to load ports.' : 'Impossible de charger les ports.'
         );
-      } finally {
-        setLoading(false);
+      } else {
+        setPorts(data || []);
+        console.log('[PORT_COVERAGE] Ports loaded successfully:', data?.length);
       }
-    };
+    } catch (error) {
+      console.error('[PORT_COVERAGE] Exception loading ports:', error);
+      Alert.alert(
+        language === 'en' ? 'Error' : 'Erreur',
+        language === 'en' ? 'An error occurred while loading ports.' : 'Une erreur est survenue lors du chargement des ports.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [language]);
 
+  useEffect(() => {
     loadPorts();
-  }, []); // Empty dependency array - only run once
+  }, [loadPorts]);
 
   // Autocomplete logic
   useEffect(() => {

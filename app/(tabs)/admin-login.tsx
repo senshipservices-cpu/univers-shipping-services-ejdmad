@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -34,36 +34,36 @@ export default function AdminLoginScreen() {
   const isNavigating = useRef(false);
 
   // Check if already logged in as admin (only once on mount)
-  useEffect(() => {
+  const checkExistingSession = useCallback(async () => {
     // Prevent multiple checks
     if (hasCheckedSession.current || isNavigating.current) {
       return;
     }
 
-    const checkExistingSession = async () => {
-      try {
-        hasCheckedSession.current = true;
-        console.log('[ADMIN_LOGIN] Checking existing session...');
+    try {
+      hasCheckedSession.current = true;
+      console.log('[ADMIN_LOGIN] Checking existing session...');
+      
+      const { data: { session } } = await supabaseAdmin.auth.getSession();
+      
+      if (session?.user) {
+        const isAdmin = appConfig.isAdmin(session.user.email);
         
-        const { data: { session } } = await supabaseAdmin.auth.getSession();
-        
-        if (session?.user) {
-          const isAdmin = appConfig.isAdmin(session.user.email);
-          
-          if (isAdmin && !isNavigating.current) {
-            // Already logged in as admin, redirect to dashboard
-            console.log('[ADMIN_LOGIN] Admin session found, redirecting to dashboard');
-            isNavigating.current = true;
-            router.replace('/(tabs)/admin-dashboard');
-          }
+        if (isAdmin && !isNavigating.current) {
+          // Already logged in as admin, redirect to dashboard
+          console.log('[ADMIN_LOGIN] Admin session found, redirecting to dashboard');
+          isNavigating.current = true;
+          router.replace('/(tabs)/admin-dashboard');
         }
-      } catch (error) {
-        console.error('[ADMIN_LOGIN] Error checking session:', error);
       }
-    };
+    } catch (error) {
+      console.error('[ADMIN_LOGIN] Error checking session:', error);
+    }
+  }, [router]);
 
+  useEffect(() => {
     checkExistingSession();
-  }, []); // Empty dependency array - only run once on mount
+  }, [checkExistingSession]);
 
   const handleLogin = async () => {
     // Prevent multiple simultaneous login attempts
