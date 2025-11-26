@@ -16,89 +16,167 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { supabase } from '@/app/integrations/supabase/client';
 
+/**
+ * ForgotPassword Screen - PARTIE 3/3
+ * 
+ * SCREEN_ID: ForgotPassword
+ * TITLE: "Mot de passe oublié"
+ * ROUTE: "/forgot-password"
+ * 
+ * Implements the password reset flow with:
+ * - Email field with validation
+ * - Reset button that calls the forgot password API
+ * - Generic success/error messages for security
+ * - Navigation to Login screen after API call
+ * 
+ * SECURITY NOTES:
+ * - API is silent (same response whether email exists or not)
+ * - Generic message prevents account enumeration
+ * - Reset link expires after limited time (handled by backend)
+ */
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  
+  // Form fields
   const [email, setEmail] = useState('');
+  
+  // UI state
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Field-specific errors for validation
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      Alert.alert('Erreur', 'Veuillez entrer votre adresse email');
-      return;
+  /**
+   * Validate email field
+   * Rules:
+   * - Required: "Merci d'indiquer votre email."
+   * - Email format: "Adresse email invalide."
+   */
+  const validateEmail = (value: string): boolean => {
+    if (!value || value.trim().length === 0) {
+      setEmailError("Merci d'indiquer votre email.");
+      return false;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
+    if (!emailRegex.test(value)) {
+      setEmailError("Adresse email invalide.");
+      return false;
+    }
+
+    setEmailError(null);
+    return true;
+  };
+
+  /**
+   * Show toast message
+   * Helper function to display toast notifications
+   */
+  const showToast = (message: string, variant: 'success' | 'error') => {
+    if (variant === 'success') {
+      Alert.alert('Succès', message);
+    } else {
+      Alert.alert('Information', message);
+    }
+  };
+
+  /**
+   * Handle reset password button click
+   * 
+   * LOGIQUE BOUTON Réinitialiser mon mot de passe
+   * 
+   * Flow:
+   * 1. Validate email field
+   * 2. Set loading state on button
+   * 3. Call API POST /auth/forgot-password (via Supabase)
+   * 4. On success:
+   *    - Set loading to false
+   *    - Show generic success toast
+   *    - Navigate to Login
+   * 5. On error:
+   *    - Set loading to false
+   *    - Show generic success toast (same message for security)
+   * 
+   * 🔒 Security: Generic message to prevent revealing if email exists
+   */
+  const handleResetPassword = async () => {
+    console.log('=== RESET PASSWORD BUTTON CLICKED ===');
+    console.log('Email:', email);
+
+    // Clear previous errors
+    setErrorMessage(null);
+    setEmailError(null);
+
+    // Step 1: Validate email field
+    const isEmailValid = validateEmail(email);
+
+    if (!isEmailValid) {
+      console.log('Validation failed, stopping flow');
       return;
     }
 
+    // Step 2: Set loading state on button
+    console.log('Starting password reset process...');
     setLoading(true);
-
+    
     try {
+      // Step 3: Call API POST /auth/forgot-password
+      // Note: Supabase handles the actual API call
+      console.log('Calling password reset API for email:', email.trim().toLowerCase());
+      
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
         {
           redirectTo: 'https://natively.dev/email-confirmed',
         }
       );
-
+      
+      console.log('Password reset API result:', error ? 'Error' : 'Success');
+      
+      // Step 4 & 5: On success OR error - Show generic message
+      // 🔒 Security: Same message regardless of whether email exists
       setLoading(false);
-
+      
+      const genericMessage = "Si un compte existe avec cet email, un lien de réinitialisation vous a été envoyé.";
+      
       if (error) {
         console.error('Password reset error:', error);
-        // Don't reveal if the email exists or not for security reasons
-        setEmailSent(true);
+        // Still show success message for security
+        showToast(genericMessage, 'success');
       } else {
         console.log('Password reset email sent successfully');
-        setEmailSent(true);
+        showToast(genericMessage, 'success');
       }
-    } catch (error) {
+      
+      // Navigate to Login screen
+      console.log('Navigating to Login screen...');
+      router.replace('/(tabs)/login');
+      
+    } catch (error: any) {
       console.error('Password reset exception:', error);
+      
+      // Step 5: On error - Set loading to false and show generic message
       setLoading(false);
-      setEmailSent(true);
+      
+      // 🔒 Security: Generic message even on exception
+      const genericMessage = "Si un compte existe avec cet email, un lien de réinitialisation vous a été envoyé.";
+      showToast(genericMessage, 'success');
+      
+      // Navigate to Login screen
+      console.log('Navigating to Login screen...');
+      router.replace('/(tabs)/login');
     }
   };
 
+  /**
+   * Handle back to login
+   * Navigate to Login screen
+   */
   const handleBackToLogin = () => {
+    console.log('Navigating back to Login screen...');
     router.back();
   };
-
-  if (emailSent) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.successContainer}>
-          <View style={styles.successIconContainer}>
-            <IconSymbol
-              ios_icon_name="checkmark.circle.fill"
-              android_material_icon_name="check_circle"
-              size={64}
-              color={colors.success}
-            />
-          </View>
-          
-          <Text style={styles.successTitle}>Email envoyé</Text>
-          
-          <Text style={styles.successMessage}>
-            Si un compte existe avec cet email, un lien de réinitialisation vous a été envoyé.
-          </Text>
-
-          <Text style={styles.successNote}>
-            Veuillez vérifier votre boîte de réception et vos spams. Le lien est valide pendant 24 heures.
-          </Text>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleBackToLogin}
-          >
-            <Text style={styles.buttonText}>Retour à la connexion</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    );
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -112,27 +190,50 @@ export default function ForgotPasswordScreen() {
           />
         </TouchableOpacity>
         
-        <Text style={styles.title}>Mot de passe oublié ?</Text>
+        <Text style={styles.title}>Mot de passe oublié</Text>
         <Text style={styles.subtitle}>
           Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
         </Text>
       </View>
 
+      {/* Global Error Message Display */}
+      {errorMessage && (
+        <View style={styles.errorContainer}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle.fill"
+            android_material_icon_name="error"
+            size={20}
+            color={colors.error}
+            style={styles.errorIcon}
+          />
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
+
       <View style={styles.form}>
+        {/* Email Field */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={styles.label}>Email associé au compte</Text>
+          <View style={[
+            styles.inputWrapper,
+            emailError && styles.inputWrapperError
+          ]}>
             <IconSymbol
               ios_icon_name="envelope.fill"
               android_material_icon_name="email"
               size={20}
-              color={colors.textSecondary}
+              color={emailError ? colors.error : colors.textSecondary}
               style={styles.inputIcon}
             />
             <TextInput
               style={styles.input}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setEmailError(null);
+                setErrorMessage(null);
+              }}
+              onBlur={() => validateEmail(email)}
               placeholder="votre@email.com"
               placeholderTextColor={colors.textSecondary}
               keyboardType="email-address"
@@ -141,12 +242,17 @@ export default function ForgotPasswordScreen() {
               editable={!loading}
             />
           </View>
+          {emailError && (
+            <Text style={styles.fieldError}>{emailError}</Text>
+          )}
         </View>
 
+        {/* Reset Button - btn_reset */}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleResetPassword}
           disabled={loading}
+          activeOpacity={0.8}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -156,18 +262,38 @@ export default function ForgotPasswordScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Security Info Box */}
       <View style={styles.infoBox}>
         <IconSymbol
-          ios_icon_name="info.circle.fill"
-          android_material_icon_name="info"
+          ios_icon_name="lock.shield.fill"
+          android_material_icon_name="security"
           size={20}
           color={colors.primary}
           style={styles.infoIcon}
         />
         <View style={styles.infoTextContainer}>
-          <Text style={styles.infoTitle}>Sécurité</Text>
+          <Text style={styles.infoTitle}>Sécurité et confidentialité</Text>
           <Text style={styles.infoText}>
-            Pour des raisons de sécurité, nous ne révélons pas si un compte existe avec cet email. Si vous avez un compte, vous recevrez un email de réinitialisation.
+            Pour des raisons de sécurité, nous ne révélons pas si un compte existe avec cet email. 
+            Si vous avez un compte, vous recevrez un email de réinitialisation. 
+            Le lien est valide pendant 24 heures.
+          </Text>
+        </View>
+      </View>
+
+      {/* Additional Info Box */}
+      <View style={styles.helpBox}>
+        <IconSymbol
+          ios_icon_name="questionmark.circle.fill"
+          android_material_icon_name="help"
+          size={20}
+          color={colors.textSecondary}
+          style={styles.infoIcon}
+        />
+        <View style={styles.infoTextContainer}>
+          <Text style={styles.helpTitle}>Besoin d&apos;aide ?</Text>
+          <Text style={styles.helpText}>
+            Si vous ne recevez pas l&apos;email, vérifiez vos spams ou contactez notre support.
           </Text>
         </View>
       </View>
@@ -191,6 +317,8 @@ const styles = StyleSheet.create({
   backButton: {
     marginBottom: 16,
     alignSelf: 'flex-start',
+    padding: 8,
+    marginLeft: -8,
   },
   title: {
     fontSize: 32,
@@ -202,6 +330,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     lineHeight: 24,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error + '15',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.error + '30',
+  },
+  errorIcon: {
+    marginRight: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.error,
+    lineHeight: 20,
   },
   form: {
     marginBottom: 24,
@@ -224,6 +371,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 12,
   },
+  inputWrapperError: {
+    borderColor: colors.error,
+    borderWidth: 2,
+  },
   inputIcon: {
     marginRight: 8,
   },
@@ -232,6 +383,12 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 16,
     color: colors.text,
+  },
+  fieldError: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+    marginLeft: 4,
   },
   button: {
     backgroundColor: colors.primary,
@@ -254,7 +411,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: 16,
+    marginBottom: 16,
   },
   infoIcon: {
     marginRight: 12,
@@ -274,34 +431,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  successContainer: {
-    alignItems: 'center',
-    paddingTop: 40,
+  helpBox: {
+    flexDirection: 'row',
+    backgroundColor: colors.highlight,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  successIconContainer: {
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  successMessage: {
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 16,
-    paddingHorizontal: 20,
-  },
-  successNote: {
+  helpTitle: {
     fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  helpText: {
+    fontSize: 13,
     color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    lineHeight: 18,
   },
 });
