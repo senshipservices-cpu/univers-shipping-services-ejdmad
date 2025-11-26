@@ -72,7 +72,7 @@ export default function BecomeAgentScreen() {
       const { data, error } = await supabase
         .from("ports")
         .select("id, name, city, country, region")
-        .eq("status", "actif")
+        .eq("status", "active")
         .order("region")
         .order("name");
 
@@ -110,14 +110,19 @@ export default function BecomeAgentScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log('=== BECOME AGENT SUBMIT BUTTON CLICKED ===');
+    console.log('Form data:', formData);
+    console.log('Loading state:', loading);
+
     if (!validateForm()) {
-      Alert.alert(t.becomeAgent.errorTitle, "Please fill in all required fields correctly");
+      Alert.alert(t.becomeAgent.errorTitle, "Veuillez remplir tous les champs obligatoires correctement");
       return;
     }
 
     setLoading(true);
 
     try {
+      // Insert agent application into database
       const { data, error } = await supabase
         .from("global_agents")
         .insert({
@@ -137,12 +142,50 @@ export default function BecomeAgentScreen() {
         .single();
 
       if (error) {
+        console.error('Error submitting agent application:', error);
         throw error;
       }
 
-      console.log("Application submitted successfully:", data);
+      console.log("Agent application submitted successfully:", data);
       
+      // Send email notifications via Edge Function (don't fail if emails fail)
+      try {
+        const emailPayload = {
+          applicationId: data.id,
+          companyName: formData.companyName,
+          email: formData.email,
+          portName: formData.selectedPort!.name,
+          portCity: formData.selectedPort!.city || '',
+          portCountry: formData.selectedPort!.country || '',
+          activities: formData.selectedActivities,
+          yearsExperience: formData.yearsExperience ? Number(formData.yearsExperience) : undefined,
+          whatsapp: formData.whatsapp || undefined,
+          website: formData.website || undefined,
+          certifications: formData.certifications || undefined,
+        };
+
+        console.log('Sending agent application emails:', emailPayload);
+
+        const { data: emailData, error: emailError } = await supabase.functions.invoke(
+          'send-agent-application-email',
+          { body: emailPayload }
+        );
+
+        if (emailError) {
+          console.error('Error sending agent application emails:', emailError);
+          // Don't fail the application submission if emails fail
+        } else {
+          console.log('Agent application emails sent successfully:', emailData);
+        }
+      } catch (emailException) {
+        console.error('Exception sending agent application emails:', emailException);
+        // Don't fail the application submission if emails fail
+      }
+
+      // Show success message
       setShowSuccessMessage(true);
+      
+      // Reset form
       setFormData({
         companyName: "",
         email: "",
@@ -277,6 +320,7 @@ export default function BecomeAgentScreen() {
                 placeholderTextColor={colors.textSecondary}
                 value={formData.companyName}
                 onChangeText={(text) => setFormData({ ...formData, companyName: text })}
+                editable={!loading}
               />
               {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
             </View>
@@ -287,7 +331,8 @@ export default function BecomeAgentScreen() {
               </Text>
               <TouchableOpacity
                 style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: errors.port ? "#ff4444" : colors.border }]}
-                onPress={() => setShowPortPicker(true)}
+                onPress={() => !loading && setShowPortPicker(true)}
+                disabled={loading}
               >
                 <Text style={[styles.pickerButtonText, { color: formData.selectedPort ? theme.colors.text : colors.textSecondary }]}>
                   {formData.selectedPort
@@ -310,11 +355,12 @@ export default function BecomeAgentScreen() {
               </Text>
               <TouchableOpacity
                 style={[styles.pickerButton, { backgroundColor: theme.colors.card, borderColor: errors.activities ? "#ff4444" : colors.border }]}
-                onPress={() => setShowActivityPicker(true)}
+                onPress={() => !loading && setShowActivityPicker(true)}
+                disabled={loading}
               >
                 <Text style={[styles.pickerButtonText, { color: formData.selectedActivities.length > 0 ? theme.colors.text : colors.textSecondary }]}>
                   {formData.selectedActivities.length > 0
-                    ? `${formData.selectedActivities.length} selected`
+                    ? `${formData.selectedActivities.length} sélectionné(s)`
                     : t.becomeAgent.selectActivities}
                 </Text>
                 <IconSymbol
@@ -338,6 +384,7 @@ export default function BecomeAgentScreen() {
                 value={formData.yearsExperience}
                 onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
                 keyboardType="number-pad"
+                editable={!loading}
               />
             </View>
 
@@ -352,6 +399,7 @@ export default function BecomeAgentScreen() {
                 value={formData.whatsapp}
                 onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
                 keyboardType="phone-pad"
+                editable={!loading}
               />
             </View>
 
@@ -367,6 +415,7 @@ export default function BecomeAgentScreen() {
                 onChangeText={(text) => setFormData({ ...formData, email: text })}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!loading}
               />
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
@@ -383,6 +432,7 @@ export default function BecomeAgentScreen() {
                 onChangeText={(text) => setFormData({ ...formData, website: text })}
                 keyboardType="url"
                 autoCapitalize="none"
+                editable={!loading}
               />
             </View>
 
@@ -399,6 +449,7 @@ export default function BecomeAgentScreen() {
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+                editable={!loading}
               />
             </View>
           </View>
@@ -407,6 +458,7 @@ export default function BecomeAgentScreen() {
             style={[styles.submitButton, { backgroundColor: colors.accent, opacity: loading ? 0.6 : 1 }]}
             onPress={handleSubmit}
             disabled={loading}
+            activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#ffffff" />
