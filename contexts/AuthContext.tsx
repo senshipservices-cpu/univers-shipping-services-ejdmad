@@ -16,6 +16,7 @@ interface SignUpMetadata {
   company?: string;
   phone?: string;
   preferred_language?: string;
+  account_type?: 'individual' | 'business';
 }
 
 interface AuthContextType {
@@ -250,6 +251,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             company: metadata?.company || 'To be specified',
             phone: metadata?.phone || '',
             preferred_language: metadata?.preferred_language || 'en',
+            account_type: metadata?.account_type || 'individual',
           },
         },
       });
