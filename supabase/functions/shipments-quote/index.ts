@@ -32,6 +32,25 @@ interface QuoteRequest {
   };
 }
 
+// Validation functions
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validatePhone(phone: string): boolean {
+  const cleanPhone = phone.replace(/[\s\-()]/g, '');
+  return cleanPhone.length >= 8 && /^[\d+]+$/.test(cleanPhone);
+}
+
+function sanitizeInput(input: string): string {
+  return input
+    .trim()
+    .replace(/[<>]/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '');
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -49,7 +68,7 @@ serve(async (req) => {
       }
     );
 
-    // Get the authorization header
+    // SECURITY: Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -70,7 +89,7 @@ serve(async (req) => {
     // Parse request body
     const quoteRequest: QuoteRequest = await req.json();
 
-    // Validate request
+    // SECURITY: Validate all required fields
     if (!quoteRequest.sender || !quoteRequest.pickup || !quoteRequest.delivery || !quoteRequest.parcel) {
       return new Response(
         JSON.stringify({ error: 'Informations incorrectes.' }),
@@ -78,11 +97,64 @@ serve(async (req) => {
       );
     }
 
-    // Calculate quote (simplified pricing logic)
+    // SECURITY: Validate email format
+    if (!validateEmail(quoteRequest.sender.email)) {
+      return new Response(
+        JSON.stringify({ error: 'Email invalide.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SECURITY: Validate phone format
+    if (!validatePhone(quoteRequest.sender.phone)) {
+      return new Response(
+        JSON.stringify({ error: 'Numéro de téléphone incorrect.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SECURITY: Validate weight
+    if (quoteRequest.parcel.weight_kg <= 0 || quoteRequest.parcel.weight_kg > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Poids non valide (doit être > 0 et <= 100 kg).' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SECURITY: Validate declared value
+    if (quoteRequest.parcel.declared_value < 0) {
+      return new Response(
+        JSON.stringify({ error: 'Valeur déclarée invalide.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SECURITY: Sanitize all string inputs
+    const sanitizedRequest = {
+      sender: {
+        ...quoteRequest.sender,
+        name: sanitizeInput(quoteRequest.sender.name),
+        email: sanitizeInput(quoteRequest.sender.email),
+        phone: sanitizeInput(quoteRequest.sender.phone),
+      },
+      pickup: {
+        address: sanitizeInput(quoteRequest.pickup.address),
+        city: sanitizeInput(quoteRequest.pickup.city),
+        country: sanitizeInput(quoteRequest.pickup.country),
+      },
+      delivery: {
+        address: sanitizeInput(quoteRequest.delivery.address),
+        city: sanitizeInput(quoteRequest.delivery.city),
+        country: sanitizeInput(quoteRequest.delivery.country),
+      },
+      parcel: quoteRequest.parcel,
+    };
+
+    // Calculate quote (SERVER-SIDE ONLY - prevent manipulation)
     let basePrice = 50; // Base price in EUR
 
     // Add weight-based pricing
-    basePrice += quoteRequest.parcel.weight_kg * 5;
+    basePrice += sanitizedRequest.parcel.weight_kg * 5;
 
     // Add parcel type pricing
     const typeMultipliers = {
@@ -91,45 +163,51 @@ serve(async (req) => {
       fragile: 1.5,
       express: 2.0,
     };
-    basePrice *= typeMultipliers[quoteRequest.parcel.type];
+    basePrice *= typeMultipliers[sanitizedRequest.parcel.type];
 
     // Add options pricing
-    if (quoteRequest.parcel.options.includes('insurance')) {
-      basePrice += quoteRequest.parcel.declared_value * 0.02; // 2% of declared value
+    if (sanitizedRequest.parcel.options.includes('insurance')) {
+      basePrice += sanitizedRequest.parcel.declared_value * 0.02; // 2% of declared value
     }
-    if (quoteRequest.parcel.options.includes('express')) {
+    if (sanitizedRequest.parcel.options.includes('express')) {
       basePrice *= 1.5;
     }
-    if (quoteRequest.parcel.options.includes('signature')) {
+    if (sanitizedRequest.parcel.options.includes('signature')) {
       basePrice += 10;
     }
 
     // Calculate estimated delivery date
-    const daysToDeliver = quoteRequest.parcel.options.includes('express') ? 3 : 7;
+    const daysToDeliver = sanitizedRequest.parcel.options.includes('express') ? 3 : 7;
     const estimatedDelivery = new Date();
     estimatedDelivery.setDate(estimatedDelivery.getDate() + daysToDeliver);
 
     // Generate quote ID
     const quoteId = crypto.randomUUID();
 
-    // Store quote in database (optional - for tracking)
+    // Store quote in database with user_id association
     const { error: insertError } = await supabaseClient
       .from('freight_quotes')
       .insert({
         id: quoteId,
-        client_email: quoteRequest.sender.email,
-        client_name: quoteRequest.sender.name,
-        cargo_type: quoteRequest.parcel.type,
-        volume_details: `${quoteRequest.parcel.weight_kg} kg`,
+        client_email: sanitizedRequest.sender.email,
+        client_name: sanitizedRequest.sender.name,
+        cargo_type: sanitizedRequest.parcel.type,
+        volume_details: `${sanitizedRequest.parcel.weight_kg} kg`,
         quote_amount: basePrice.toFixed(2),
         quote_currency: 'EUR',
         status: 'received',
         payment_status: 'unpaid',
         can_pay_online: true,
+        // SECURITY: Associate with authenticated user
+        created_by_user_id: user.id,
       });
 
     if (insertError) {
       console.error('Error storing quote:', insertError);
+      return new Response(
+        JSON.stringify({ error: 'Erreur lors de la création du devis.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Return quote response
@@ -141,9 +219,9 @@ serve(async (req) => {
         estimated_delivery: estimatedDelivery.toISOString(),
         breakdown: {
           base: 50,
-          weight: quoteRequest.parcel.weight_kg * 5,
-          type_multiplier: typeMultipliers[quoteRequest.parcel.type],
-          options: quoteRequest.parcel.options,
+          weight: sanitizedRequest.parcel.weight_kg * 5,
+          type_multiplier: typeMultipliers[sanitizedRequest.parcel.type],
+          options: sanitizedRequest.parcel.options,
         },
       }),
       {

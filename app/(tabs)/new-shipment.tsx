@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/app/integrations/supabase/client';
+import { calculateQuoteWithTimeout } from '@/utils/apiClient';
 
 // Validation utilities
 const validateEmail = (email: string): boolean => {
@@ -45,6 +45,7 @@ export default function NewShipmentScreen() {
   const colors = useColors();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
 
   // Form state
   const [senderType, setSenderType] = useState<'individual' | 'company'>('individual');
@@ -120,7 +121,9 @@ export default function NewShipmentScreen() {
       return;
     }
 
+    // SECURITY: Disable button during API call
     setLoading(true);
+    setButtonDisabled(true);
 
     try {
       // Prepare payload
@@ -149,16 +152,18 @@ export default function NewShipmentScreen() {
         },
       };
 
-      console.log('Calculating quote with payload:', payload);
+      console.log('[NEW_SHIPMENT] Calculating quote with payload:', payload);
 
-      // Call API endpoint (you'll need to create this edge function)
-      const { data, error } = await supabase.functions.invoke('shipments-quote', {
-        body: payload,
-      });
+      // SECURITY: Call API with timeout
+      const { data, error } = await calculateQuoteWithTimeout(payload);
 
       if (error) {
-        console.error('Quote calculation error:', error);
-        if (error.message.includes('400')) {
+        console.error('[NEW_SHIPMENT] Quote calculation error:', error);
+        
+        // Handle specific error messages
+        if (error.message?.includes('timeout') || error.message?.includes('expiré')) {
+          Alert.alert('Erreur', 'La requête a expiré. Veuillez réessayer.');
+        } else if (error.message?.includes('400') || error.message?.includes('incorrectes')) {
           Alert.alert('Erreur', 'Informations incorrectes.');
         } else {
           Alert.alert('Erreur', 'Service indisponible.');
@@ -166,7 +171,7 @@ export default function NewShipmentScreen() {
         return;
       }
 
-      console.log('Quote calculated successfully:', data);
+      console.log('[NEW_SHIPMENT] Quote calculated successfully:', data);
 
       // Navigate to summary screen with quote data
       router.push({
@@ -179,10 +184,12 @@ export default function NewShipmentScreen() {
         },
       });
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('[NEW_SHIPMENT] Unexpected error:', error);
       Alert.alert('Erreur', 'Une erreur inattendue s\'est produite.');
     } finally {
+      // SECURITY: Re-enable button after API call completes
       setLoading(false);
+      setButtonDisabled(false);
     }
   };
 
@@ -210,6 +217,7 @@ export default function NewShipmentScreen() {
         placeholder={placeholder}
         placeholderTextColor={colors.textSecondary}
         keyboardType={keyboardType}
+        editable={!loading}
       />
       {error && <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>}
     </View>
@@ -237,6 +245,7 @@ export default function NewShipmentScreen() {
                 }
               ]}
               onPress={() => setSenderType('individual')}
+              disabled={loading}
             >
               <Text style={[
                 styles.typeButtonText,
@@ -254,6 +263,7 @@ export default function NewShipmentScreen() {
                 }
               ]}
               onPress={() => setSenderType('company')}
+              disabled={loading}
             >
               <Text style={[
                 styles.typeButtonText,
@@ -304,6 +314,7 @@ export default function NewShipmentScreen() {
                   }
                 ]}
                 onPress={() => setParcelType(type)}
+                disabled={loading}
               >
                 <Text style={[
                   styles.parcelTypeText,
@@ -338,6 +349,7 @@ export default function NewShipmentScreen() {
                   }
                 ]}
                 onPress={() => toggleOption(option)}
+                disabled={loading}
               >
                 <IconSymbol
                   ios_icon_name={options.includes(option) ? 'checkmark.circle.fill' : 'circle'}
@@ -361,12 +373,12 @@ export default function NewShipmentScreen() {
           style={[
             styles.calculateButton,
             { 
-              backgroundColor: loading ? colors.textSecondary : colors.primary,
-              opacity: loading ? 0.6 : 1,
+              backgroundColor: buttonDisabled ? colors.textSecondary : colors.primary,
+              opacity: buttonDisabled ? 0.6 : 1,
             }
           ]}
           onPress={handleCalculateQuote}
-          disabled={loading}
+          disabled={buttonDisabled}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />

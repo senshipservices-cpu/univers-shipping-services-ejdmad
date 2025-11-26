@@ -15,7 +15,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/app/integrations/supabase/client';
+import { processPaymentWithSecurity } from '@/utils/apiClient';
+import { generateIdempotencyKey } from '@/utils/trackingGenerator';
 
 type PaymentMethod = 'card' | 'mobile_money' | 'cash_on_delivery';
 
@@ -24,6 +25,7 @@ export default function ShipmentSummaryScreen() {
   const { t } = useLanguage();
   const params = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [quoteData, setQuoteData] = useState<any>(null);
 
@@ -32,9 +34,9 @@ export default function ShipmentSummaryScreen() {
       try {
         const data = JSON.parse(params.quoteData as string);
         setQuoteData(data);
-        console.log('Quote data loaded:', data);
+        console.log('[SHIPMENT_SUMMARY] Quote data loaded:', data);
       } catch (error) {
-        console.error('Error parsing quote data:', error);
+        console.error('[SHIPMENT_SUMMARY] Error parsing quote data:', error);
         Alert.alert('Erreur', 'Données de devis invalides.');
         router.back();
       }
@@ -52,28 +54,35 @@ export default function ShipmentSummaryScreen() {
       return;
     }
 
+    // SECURITY: Disable button during API call
     setLoading(true);
+    setButtonDisabled(true);
 
     try {
-      // Prepare payment payload
-      const payload = {
-        quote_id: quoteData.quote.quote_id,
-        payment_method: paymentMethod,
-        payment_token: '<secure_token>', // This would come from a payment provider SDK
-      };
+      // SECURITY: Generate idempotency key to prevent duplicate payments
+      const idempotencyKey = generateIdempotencyKey();
+      
+      console.log('[SHIPMENT_SUMMARY] Processing payment with idempotency key:', idempotencyKey);
 
-      console.log('Processing payment with payload:', payload);
-
-      // Call API endpoint (you'll need to create this edge function)
-      const { data, error } = await supabase.functions.invoke('shipments-create-and-pay', {
-        body: payload,
-      });
+      // SECURITY: Call API with rate limiting and idempotency
+      const { data, error } = await processPaymentWithSecurity(
+        quoteData.quote.quote_id,
+        paymentMethod,
+        '<secure_token>', // This would come from a payment provider SDK
+        idempotencyKey
+      );
 
       if (error) {
-        console.error('Payment error:', error);
-        if (error.message.includes('refused')) {
+        console.error('[SHIPMENT_SUMMARY] Payment error:', error);
+        
+        // Handle specific error messages
+        if (error.message?.includes('timeout') || error.message?.includes('expiré')) {
+          Alert.alert('Erreur', 'La requête a expiré. Veuillez réessayer.');
+        } else if (error.message?.includes('tentatives')) {
+          Alert.alert('Erreur', error.message);
+        } else if (error.message?.includes('refused') || error.message?.includes('refusé')) {
           Alert.alert('Erreur', 'Paiement refusé.');
-        } else if (error.message.includes('invalid')) {
+        } else if (error.message?.includes('invalid') || error.message?.includes('invalide')) {
           Alert.alert('Erreur', 'Montant invalide.');
         } else {
           Alert.alert('Erreur', 'Une erreur s\'est produite lors du paiement.');
@@ -81,7 +90,7 @@ export default function ShipmentSummaryScreen() {
         return;
       }
 
-      console.log('Payment successful:', data);
+      console.log('[SHIPMENT_SUMMARY] Payment successful:', data);
 
       // Navigate to confirmation screen
       router.replace({
@@ -92,10 +101,12 @@ export default function ShipmentSummaryScreen() {
         },
       });
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('[SHIPMENT_SUMMARY] Unexpected error:', error);
       Alert.alert('Erreur', 'Une erreur inattendue s\'est produite.');
     } finally {
+      // SECURITY: Re-enable button after API call completes
       setLoading(false);
+      setButtonDisabled(false);
     }
   };
 
@@ -218,6 +229,7 @@ export default function ShipmentSummaryScreen() {
               }
             ]}
             onPress={() => setPaymentMethod('card')}
+            disabled={loading}
           >
             <IconSymbol
               ios_icon_name="creditcard.fill"
@@ -242,6 +254,7 @@ export default function ShipmentSummaryScreen() {
               }
             ]}
             onPress={() => setPaymentMethod('mobile_money')}
+            disabled={loading}
           >
             <IconSymbol
               ios_icon_name="phone.fill"
@@ -266,6 +279,7 @@ export default function ShipmentSummaryScreen() {
               }
             ]}
             onPress={() => setPaymentMethod('cash_on_delivery')}
+            disabled={loading}
           >
             <IconSymbol
               ios_icon_name="banknote.fill"
@@ -287,12 +301,12 @@ export default function ShipmentSummaryScreen() {
           style={[
             styles.payButton,
             { 
-              backgroundColor: loading || !paymentMethod ? colors.textSecondary : colors.success,
-              opacity: loading || !paymentMethod ? 0.6 : 1,
+              backgroundColor: buttonDisabled || !paymentMethod ? colors.textSecondary : colors.success,
+              opacity: buttonDisabled || !paymentMethod ? 0.6 : 1,
             }
           ]}
           onPress={handlePayment}
-          disabled={loading || !paymentMethod}
+          disabled={buttonDisabled || !paymentMethod}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />

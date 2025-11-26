@@ -1,378 +1,334 @@
 
-# SECURITY QUICK REFERENCE GUIDE
-## Universal Shipping Services - Security Implementation
+# 🔒 SECURITY QUICK REFERENCE
 
-**Last Updated:** 2024
-**Status:** ✅ Production Ready
+Quick reference for security features in Universal Shipping Services.
 
 ---
 
-## 🔒 AUTHENTICATION & AUTHORIZATION
+## 🔑 TOKEN MANAGEMENT
 
-### Public Screens (No Auth Required)
 ```typescript
-// These screens are accessible without authentication
-- /(tabs)/(home)/index.tsx          // Home
-- /(tabs)/global-services.tsx       // Services
-- /(tabs)/port-coverage.tsx         // Ports
-- /(tabs)/pricing.tsx               // Pricing
-- /(tabs)/become-agent.tsx          // Become Agent
-- /(tabs)/freight-quote.tsx         // Quote Request
-- /(tabs)/login.tsx                 // Login
-- /(tabs)/signup.tsx                // Signup
-```
+import { 
+  storeAccessToken, 
+  getAccessToken, 
+  clearAllTokens 
+} from '@/utils/secureStorage';
 
-### Protected Screens (Auth Required)
-```typescript
-// Wrap with ProtectedRoute component
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+// Store token
+await storeAccessToken(token, 3600); // 1 hour expiry
 
-<ProtectedRoute requireEmailVerification={true}>
-  <YourComponent />
-</ProtectedRoute>
+// Get token (null if expired)
+const token = await getAccessToken();
 
-// Protected screens:
-- /(tabs)/client-dashboard.tsx      // Client Dashboard
-- /(tabs)/client-profile.tsx        // Client Profile
-- /(tabs)/quote-details.tsx         // Quote Details
-- /(tabs)/shipment-detail.tsx       // Shipment Details
-```
-
-### Admin Screens (Admin Role Required)
-```typescript
-// Wrap with AdminGuard component
-import { AdminGuard } from '@/components/AdminGuard';
-
-<AdminGuard>
-  <YourAdminComponent />
-</AdminGuard>
-
-// Admin screens:
-- /(tabs)/admin-dashboard.tsx       // Admin Dashboard
-- /(tabs)/admin-clients.tsx         // Client Management
-- /(tabs)/admin-quotes.tsx          // Quote Management
-- /(tabs)/admin-shipments.tsx       // Shipment Management
-- /(tabs)/admin-agents-ports.tsx    // Agent/Port Management
-- /(tabs)/admin-subscriptions.tsx   // Subscription Management
+// Clear on logout
+await clearAllTokens();
 ```
 
 ---
 
-## 👤 ADMIN ROLE MANAGEMENT
+## 🌐 API CALLS
 
-### Check if User is Admin
 ```typescript
-import appConfig from '@/config/appConfig';
+import { 
+  makeAuthenticatedRequest,
+  calculateQuoteWithTimeout,
+  processPaymentWithSecurity 
+} from '@/utils/apiClient';
 
-// Client-side check
-const isAdmin = appConfig.isAdmin(user?.email);
+// Quote calculation (10s timeout)
+const { data, error } = await calculateQuoteWithTimeout(payload);
 
-// In component
-import { useAuth } from '@/contexts/AuthContext';
-const { currentUserIsAdmin } = useAuth();
-
-// In admin context
-import { useAdmin } from '@/contexts/AdminContext';
-const { isAdmin } = useAdmin();
-```
-
-### Configure Admin Emails
-```bash
-# In .env or Natively Environment Variables
-ADMIN_EMAILS=cheikh@universalshipping.com,admin2@example.com,admin3@example.com
-```
-
-### Database Admin Function
-```sql
--- Check if current user is admin
-SELECT is_admin_user();
-
--- Use in RLS policies
-CREATE POLICY "Admins have full access"
-ON your_table FOR ALL
-USING (is_admin_user())
-WITH CHECK (is_admin_user());
-```
-
----
-
-## 🛡️ ROW LEVEL SECURITY (RLS) PATTERNS
-
-### Pattern 1: User Can Only Access Own Data
-```sql
--- SELECT policy
-CREATE POLICY "Users can view their own records"
-ON your_table FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-
--- INSERT policy
-CREATE POLICY "Users can insert their own records"
-ON your_table FOR INSERT
-TO authenticated
-WITH CHECK (user_id = auth.uid());
-
--- UPDATE policy
-CREATE POLICY "Users can update their own records"
-ON your_table FOR UPDATE
-TO authenticated
-USING (user_id = auth.uid());
-
--- DELETE policy
-CREATE POLICY "Users can delete their own records"
-ON your_table FOR DELETE
-TO authenticated
-USING (user_id = auth.uid());
-```
-
-### Pattern 2: Public Read, Authenticated Write
-```sql
--- Anyone can read
-CREATE POLICY "Public can view records"
-ON your_table FOR SELECT
-USING (true);
-
--- Only authenticated users can insert
-CREATE POLICY "Authenticated users can insert"
-ON your_table FOR INSERT
-TO authenticated
-WITH CHECK (true);
-```
-
-### Pattern 3: Admin Full Access + User Limited Access
-```sql
--- Admins have full access
-CREATE POLICY "Admins have full access"
-ON your_table FOR ALL
-USING (is_admin_user())
-WITH CHECK (is_admin_user());
-
--- Users can view their own records
-CREATE POLICY "Users can view their own records"
-ON your_table FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-```
-
-### Pattern 4: Join-Based Access Control
-```sql
--- Users can view records related to their client profile
-CREATE POLICY "Users can view their related records"
-ON your_table FOR SELECT
-TO authenticated
-USING (
-  client_id IN (
-    SELECT id FROM clients WHERE user_id = auth.uid()
-  )
-);
-```
-
-### Pattern 5: Status-Based Protection
-```sql
--- Users can update their records but not change status
-CREATE POLICY "Users can update their records"
-ON your_table FOR UPDATE
-TO authenticated
-USING (user_id = auth.uid())
-WITH CHECK (
-  is_admin_user() OR 
-  status = (SELECT status FROM your_table WHERE id = id)
+// Payment (20s timeout + idempotency)
+const { data, error } = await processPaymentWithSecurity(
+  quoteId,
+  paymentMethod,
+  paymentToken,
+  idempotencyKey
 );
 ```
 
 ---
 
-## 🔐 SECRETS MANAGEMENT
+## 🔢 TRACKING NUMBERS
 
-### Public Variables (Frontend-Safe)
 ```typescript
-// Use EXPO_PUBLIC_ prefix for frontend-accessible variables
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-EXPO_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_key
-```
+import { 
+  generateTrackingNumber,
+  isValidTrackingNumber 
+} from '@/utils/trackingGenerator';
 
-### Secret Variables (Backend-Only)
-```typescript
-// NO EXPO_PUBLIC_ prefix - never exposed to frontend
-SERVICE_ROLE_KEY=your_service_role_key
-PAYPAL_CLIENT_SECRET=your_paypal_secret
-PAYPAL_WEBHOOK_ID=your_webhook_id
-SMTP_PASSWORD=your_smtp_password
-ADMIN_EMAILS=admin@example.com
-```
+// Generate: USS-7G94X2Q
+const trackingNumber = generateTrackingNumber();
 
-### Access Secrets in Code
-```typescript
-// Client-side (public variables only)
-import appConfig from '@/config/appConfig';
-const supabaseUrl = appConfig.env.SUPABASE_URL;
-const anonKey = appConfig.env.SUPABASE_ANON_KEY;
-
-// Edge Functions (can access secrets)
-const serviceKey = Deno.env.get('SERVICE_ROLE_KEY');
-const paypalSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+// Validate format
+const isValid = isValidTrackingNumber('USS-7G94X2Q'); // true
 ```
 
 ---
 
-## 🚨 SECURITY CHECKLIST
+## 💳 PAYMENT SECURITY
 
-### Before Deploying to Production
-
-- [ ] All sensitive tables have RLS enabled
-- [ ] No `USING (true)` policies on sensitive tables
-- [ ] Admin emails configured in environment variables
-- [ ] All secrets use proper naming (no EXPO_PUBLIC_ for secrets)
-- [ ] AdminGuard protects all admin routes
-- [ ] ProtectedRoute protects all private routes
-- [ ] Email verification required for sensitive operations
-- [ ] Rate limiting implemented on public forms
-- [ ] Audit logging enabled for admin actions
-- [ ] HTTPS enforced (Supabase default)
-- [ ] CORS properly configured
-- [ ] Error messages don't leak sensitive information
-
-### Regular Security Audits
-
-- [ ] Review RLS policies quarterly
-- [ ] Review admin access logs monthly
-- [ ] Update dependencies regularly
-- [ ] Scan for vulnerabilities (npm audit)
-- [ ] Review failed authentication attempts
-- [ ] Check for unusual data access patterns
-- [ ] Verify admin email list is current
-
----
-
-## 🔍 TESTING SECURITY
-
-### Test Authentication
 ```typescript
-// Test 1: Unauthenticated user cannot access protected route
-// Expected: Redirect to login
+import { generateIdempotencyKey } from '@/utils/trackingGenerator';
 
-// Test 2: Authenticated user can access protected route
-// Expected: Route accessible
+// Generate unique key
+const idempotencyKey = generateIdempotencyKey();
 
-// Test 3: Non-admin user cannot access admin route
-// Expected: Access denied message
-
-// Test 4: Admin user can access admin route
-// Expected: Route accessible
-```
-
-### Test RLS Policies
-```sql
--- Test 1: User can only view own data
--- Login as user1, try to access user2's data
--- Expected: No results
-
--- Test 2: Admin can view all data
--- Login as admin, try to access any user's data
--- Expected: All results visible
-
--- Test 3: Anonymous user can only access public data
--- Not logged in, try to access protected data
--- Expected: No results or error
-```
-
-### Test Secrets
-```typescript
-// Test 1: Public variables accessible in frontend
-console.log(appConfig.env.SUPABASE_URL); // Should work
-
-// Test 2: Secret variables NOT accessible in frontend
-console.log(appConfig.env.SUPABASE_SERVICE_KEY); // Should be empty or undefined
-
-// Test 3: Secrets accessible in Edge Functions
-// In Edge Function:
-const serviceKey = Deno.env.get('SERVICE_ROLE_KEY'); // Should work
-```
-
----
-
-## 🚀 COMMON SECURITY TASKS
-
-### Add a New Admin
-```bash
-# 1. Update environment variable
-ADMIN_EMAILS=existing@example.com,newadmin@example.com
-
-# 2. Restart application (or update in Natively dashboard)
-
-# 3. Verify admin access
-# Login as new admin and check admin dashboard access
-```
-
-### Protect a New Table
-```sql
--- 1. Enable RLS
-ALTER TABLE your_new_table ENABLE ROW LEVEL SECURITY;
-
--- 2. Add policies
-CREATE POLICY "Users can view their own records"
-ON your_new_table FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-
-CREATE POLICY "Admins have full access"
-ON your_new_table FOR ALL
-USING (is_admin_user())
-WITH CHECK (is_admin_user());
-
--- 3. Test policies
--- Login as regular user and admin, verify access
-```
-
-### Add a New Protected Route
-```typescript
-// 1. Wrap component with ProtectedRoute
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-
-export default function YourScreen() {
-  return (
-    <ProtectedRoute requireEmailVerification={true}>
-      <YourComponent />
-    </ProtectedRoute>
-  );
+// Use in payment request header
+headers: {
+  'Idempotency-Key': idempotencyKey
 }
-
-// 2. Test authentication
-// Try accessing without login - should redirect
-// Try accessing with login - should work
 ```
 
-### Add a New Admin Route
+---
+
+## 🛡️ RATE LIMITING
+
 ```typescript
-// 1. Wrap component with AdminGuard
-import { AdminGuard } from '@/components/AdminGuard';
+import { loginWithRateLimit } from '@/utils/apiClient';
 
-export default function YourAdminScreen() {
-  return (
-    <AdminGuard>
-      <YourAdminComponent />
-    </AdminGuard>
-  );
-}
+// Login: 5 attempts / 15 min
+const { error } = await loginWithRateLimit(email, password);
 
-// 2. Test admin access
-// Try accessing as regular user - should show access denied
-// Try accessing as admin - should work
+// Tracking: 10 requests / 1 min
+const { data, error } = await trackShipmentWithRateLimit(trackingNumber);
+
+// Payment: 3 attempts / 5 min
+// Automatic in processPaymentWithSecurity()
 ```
 
 ---
 
-## 📚 ADDITIONAL RESOURCES
+## 🎯 BUTTON STATES
 
-- [Supabase RLS Documentation](https://supabase.com/docs/guides/auth/row-level-security)
-- [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
-- [Security Audit Report](./SECURITY_AUDIT_REPORT.md)
-- [Environment Variables Reference](./ENVIRONMENT_VARIABLES_REFERENCE.md)
-- [Admin Security Implementation](./ADMIN_SECURITY_IMPLEMENTATION.md)
+```typescript
+const [loading, setLoading] = useState(false);
+const [buttonDisabled, setButtonDisabled] = useState(false);
+
+const handleAction = async () => {
+  setLoading(true);
+  setButtonDisabled(true);
+  
+  try {
+    await apiCall();
+  } finally {
+    setLoading(false);
+    setButtonDisabled(false);
+  }
+};
+
+<TouchableOpacity disabled={buttonDisabled}>
+  {loading ? <ActivityIndicator /> : <Text>Submit</Text>}
+</TouchableOpacity>
+```
 
 ---
 
-**Questions or Issues?**
-Contact: cheikh@universalshipping.com
+## ✅ VALIDATION
+
+```typescript
+import { 
+  validateEmail,
+  validatePhone,
+  validateWeight,
+  validateDeclaredValue 
+} from '@/utils/validation';
+
+// Email
+const result = validateEmail(email);
+if (!result.isValid) console.log(result.error);
+
+// Phone (min 8 chars, digits + +)
+const result = validatePhone(phone);
+
+// Weight (> 0, <= 100 kg)
+const result = validateWeight(weight);
+
+// Declared value (>= 0)
+const result = validateDeclaredValue(value);
+```
+
+---
+
+## 🔒 INPUT SANITIZATION
+
+```typescript
+import { sanitizeInput } from '@/utils/security';
+
+// Remove dangerous characters
+const clean = sanitizeInput(userInput);
+// Removes: <>, javascript:, data:
+```
+
+---
+
+## 📊 PUBLIC TRACKING
+
+**Public endpoint returns ONLY:**
+- Tracking number
+- Status
+- Origin/destination cities
+- Dates
+- Timeline
+
+**NOT exposed:**
+- Names
+- Phone/email
+- Package value
+
+**Authenticated users see all data.**
+
+---
+
+## ⏱️ TIMEOUTS
+
+- Default: 15 seconds
+- Quote: 10 seconds
+- Payment: 20 seconds
+
+```typescript
+// Automatic in apiClient functions
+const { data, error } = await calculateQuoteWithTimeout(payload);
+
+// Handle timeout
+if (error?.message?.includes('timeout')) {
+  Alert.alert('Erreur', 'La requête a expiré.');
+}
+```
+
+---
+
+## 🚨 ERROR HANDLING
+
+```typescript
+try {
+  setLoading(true);
+  const { data, error } = await apiCall();
+  
+  if (error) {
+    // Specific errors
+    if (error.message?.includes('timeout')) {
+      Alert.alert('Erreur', 'Requête expirée');
+    } else if (error.message?.includes('tentatives')) {
+      Alert.alert('Erreur', 'Trop de tentatives');
+    } else {
+      Alert.alert('Erreur', error.message);
+    }
+    return;
+  }
+  
+  // Success
+  router.push('/success');
+} catch (error) {
+  Alert.alert('Erreur', 'Erreur inattendue');
+} finally {
+  setLoading(false);
+}
+```
+
+---
+
+## 🗄️ DATABASE SECURITY
+
+**RLS Policies:**
+- Users see only their own data
+- Admins see all data
+- Public tracking has limited access
+
+**Tables:**
+- `payment_idempotency` - Prevents duplicates
+- `shipment_status_history` - Tracking timeline
+- `freight_quotes` - Has `created_by_user_id`
+- `shipments` - Has `created_by_user_id`
+
+---
+
+## 🔐 EDGE FUNCTION SECURITY
+
+**All authenticated endpoints:**
+```typescript
+// Verify auth header
+const authHeader = req.headers.get('Authorization');
+if (!authHeader) return 401;
+
+// Verify user
+const { data: { user }, error } = await supabaseClient.auth.getUser();
+if (error || !user) return 401;
+
+// Validate input
+if (!request.field) return 400;
+
+// Sanitize input
+const clean = sanitizeInput(request.field);
+
+// Server-side calculations
+const price = calculatePrice(data); // Never trust client
+```
+
+---
+
+## 📋 DEPLOYMENT CHECKLIST
+
+- [ ] Configure payment provider
+- [ ] Set environment variables
+- [ ] Test rate limiting
+- [ ] Test idempotency keys
+- [ ] Verify RLS policies
+- [ ] Test public tracking
+- [ ] Test token expiration
+- [ ] Review error messages
+- [ ] Enable logging
+- [ ] Set up monitoring
+
+---
+
+## 🆘 COMMON ISSUES
+
+**Token Expired:**
+```typescript
+// Automatic refresh by Supabase
+// If persists, user needs to re-login
+```
+
+**Rate Limit:**
+```typescript
+// Wait for time window to expire
+// Or reset: rateLimiter.reset(key)
+```
+
+**Duplicate Payment:**
+```typescript
+// Prevented by idempotency keys
+// Check payment_idempotency table
+```
+
+**Timeout:**
+```typescript
+// Check network
+// Increase timeout if needed
+```
+
+---
+
+## 📚 FILES
+
+**Security Utils:**
+- `utils/secureStorage.ts`
+- `utils/apiClient.ts`
+- `utils/trackingGenerator.ts`
+- `utils/security.ts`
+- `utils/validation.ts`
+
+**Edge Functions:**
+- `supabase/functions/shipments-quote/index.ts`
+- `supabase/functions/shipments-create-and-pay/index.ts`
+- `supabase/functions/public-tracking/index.ts`
+
+**Screens:**
+- `app/(tabs)/new-shipment.tsx`
+- `app/(tabs)/shipment-summary.tsx`
+- `app/(tabs)/shipment-confirmation.tsx`
+
+---
+
+**Quick Access:** `docs/SECURITY_IMPLEMENTATION_COMPLETE.md` for full details.
