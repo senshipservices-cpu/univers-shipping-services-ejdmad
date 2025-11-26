@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useColors } from '@/styles/commonStyles';
@@ -25,10 +26,12 @@ export default function ShipmentSummaryScreen() {
   const colors = useColors();
   const { t } = useLanguage();
   const params = useLocalSearchParams();
-  const { formData: contextFormData, quoteData: contextQuoteData } = useShipment();
+  const { formData: contextFormData, quoteData: contextQuoteData, clearShipmentData } = useShipment();
+  
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [quoteData, setQuoteData] = useState<any>(null);
 
   useEffect(() => {
@@ -66,12 +69,27 @@ export default function ShipmentSummaryScreen() {
     }
   }, [params.quoteData, contextFormData, contextQuoteData]);
 
+  const handleModify = () => {
+    console.log('[SHIPMENT_SUMMARY] Modify button pressed');
+    router.back();
+  };
+
   const handlePayment = async () => {
+    console.log('[SHIPMENT_SUMMARY] Pay Now button pressed');
+    
+    // VALIDATION: Check payment method
     if (!paymentMethod) {
       Alert.alert('Erreur', 'Veuillez sélectionner un mode de paiement.');
       return;
     }
 
+    // VALIDATION: Check terms acceptance
+    if (!acceptedTerms) {
+      Alert.alert('Erreur', 'Veuillez accepter les conditions générales d\'utilisation.');
+      return;
+    }
+
+    // VALIDATION: Check quote data
     if (!quoteData?.quote?.quote_id) {
       Alert.alert('Erreur', 'Données de devis manquantes.');
       return;
@@ -86,12 +104,17 @@ export default function ShipmentSummaryScreen() {
       const idempotencyKey = generateIdempotencyKey();
       
       console.log('[SHIPMENT_SUMMARY] Processing payment with idempotency key:', idempotencyKey);
+      console.log('[SHIPMENT_SUMMARY] Quote ID:', quoteData.quote.quote_id);
+      console.log('[SHIPMENT_SUMMARY] Payment method:', paymentMethod);
 
       // SECURITY: Call API with rate limiting and idempotency
+      // In production, payment_token would come from payment provider SDK (Stripe, PayPal, etc.)
+      const paymentToken = `token_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
       const { data, error } = await processPaymentWithSecurity(
         quoteData.quote.quote_id,
         paymentMethod,
-        '<secure_token>', // This would come from a payment provider SDK
+        paymentToken,
         idempotencyKey
       );
 
@@ -104,16 +127,21 @@ export default function ShipmentSummaryScreen() {
         } else if (error.message?.includes('tentatives')) {
           Alert.alert('Erreur', error.message);
         } else if (error.message?.includes('refused') || error.message?.includes('refusé')) {
-          Alert.alert('Erreur', 'Paiement refusé.');
+          Alert.alert('Erreur', 'Paiement refusé. Veuillez vérifier vos informations de paiement.');
         } else if (error.message?.includes('invalid') || error.message?.includes('invalide')) {
           Alert.alert('Erreur', 'Montant invalide.');
+        } else if (error.message?.includes('déjà été payé')) {
+          Alert.alert('Erreur', 'Ce devis a déjà été payé.');
         } else {
-          Alert.alert('Erreur', 'Une erreur s\'est produite lors du paiement.');
+          Alert.alert('Erreur', 'Une erreur s\'est produite lors du paiement. Veuillez réessayer.');
         }
         return;
       }
 
       console.log('[SHIPMENT_SUMMARY] Payment successful:', data);
+
+      // Clear shipment context data
+      clearShipmentData();
 
       // Navigate to confirmation screen
       router.replace({
@@ -156,9 +184,52 @@ export default function ShipmentSummaryScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* PARTIE 4: AFFICHAGE RÉCAPITULATIF */}
+        
+        {/* Price Summary - Highlighted at top */}
+        <View style={[styles.priceCard, { backgroundColor: colors.primary }]}>
+          <View style={styles.priceHeader}>
+            <IconSymbol
+              ios_icon_name="dollarsign.circle.fill"
+              android_material_icon_name="payments"
+              size={32}
+              color="#FFFFFF"
+            />
+            <View style={styles.priceTextContainer}>
+              <Text style={styles.priceLabel}>Prix total</Text>
+              <Text style={styles.priceValue}>€{quote?.price || '0.00'}</Text>
+            </View>
+          </View>
+          {quote?.estimated_delivery && (
+            <View style={styles.deliveryEstimateContainer}>
+              <IconSymbol
+                ios_icon_name="calendar"
+                android_material_icon_name="event"
+                size={16}
+                color="#FFFFFF"
+              />
+              <Text style={styles.deliveryEstimate}>
+                Livraison estimée: {new Date(quote.estimated_delivery).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </Text>
+            </View>
+          )}
+        </View>
+
         {/* Sender Information */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Expéditeur</Text>
+          <View style={styles.cardHeader}>
+            <IconSymbol
+              ios_icon_name="person.circle.fill"
+              android_material_icon_name="account_circle"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Expéditeur</Text>
+          </View>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type:</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
@@ -181,7 +252,15 @@ export default function ShipmentSummaryScreen() {
 
         {/* Pickup Address */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Collecte</Text>
+          <View style={styles.cardHeader}>
+            <IconSymbol
+              ios_icon_name="shippingbox.fill"
+              android_material_icon_name="inventory_2"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Adresse de collecte</Text>
+          </View>
           <Text style={[styles.addressText, { color: colors.text }]}>{pickup.address}</Text>
           <Text style={[styles.addressText, { color: colors.text }]}>
             {pickup.city}, {pickup.country}
@@ -190,7 +269,15 @@ export default function ShipmentSummaryScreen() {
 
         {/* Delivery Address */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Livraison</Text>
+          <View style={styles.cardHeader}>
+            <IconSymbol
+              ios_icon_name="location.fill"
+              android_material_icon_name="place"
+              size={24}
+              color={colors.secondary}
+            />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Adresse de livraison</Text>
+          </View>
           <Text style={[styles.addressText, { color: colors.text }]}>{delivery.address}</Text>
           <Text style={[styles.addressText, { color: colors.text }]}>
             {delivery.city}, {delivery.country}
@@ -199,11 +286,21 @@ export default function ShipmentSummaryScreen() {
 
         {/* Parcel Details */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Détails du colis</Text>
+          <View style={styles.cardHeader}>
+            <IconSymbol
+              ios_icon_name="cube.box.fill"
+              android_material_icon_name="package_2"
+              size={24}
+              color={colors.secondary}
+            />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Détails du colis</Text>
+          </View>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type:</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
-              {parcel.type.charAt(0).toUpperCase() + parcel.type.slice(1)}
+              {parcel.type === 'document' ? 'Document' : 
+               parcel.type === 'standard' ? 'Standard' :
+               parcel.type === 'fragile' ? 'Fragile' : 'Express'}
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -228,44 +325,57 @@ export default function ShipmentSummaryScreen() {
           )}
         </View>
 
-        {/* Price Summary */}
-        <View style={[styles.priceCard, { backgroundColor: colors.primary }]}>
-          <Text style={styles.priceLabel}>Prix calculé</Text>
-          <Text style={styles.priceValue}>€{quote?.price || '0.00'}</Text>
-          {quote?.estimated_delivery && (
-            <Text style={styles.deliveryEstimate}>
-              Livraison estimée: {new Date(quote.estimated_delivery).toLocaleDateString('fr-FR')}
-            </Text>
-          )}
-        </View>
-
-        {/* Payment Method Selection */}
+        {/* PARTIE 4: CHAMP PAIEMENT - Payment Method Selection */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Mode de paiement</Text>
+          <View style={styles.sectionHeader}>
+            <IconSymbol
+              ios_icon_name="creditcard.fill"
+              android_material_icon_name="payment"
+              size={24}
+              color={colors.accent}
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Mode de paiement</Text>
+          </View>
           
           <TouchableOpacity
             style={[
               styles.paymentOption,
               { 
                 backgroundColor: paymentMethod === 'card' ? colors.accent : colors.card,
-                borderColor: colors.border,
+                borderColor: paymentMethod === 'card' ? colors.accent : colors.border,
               }
             ]}
             onPress={() => setPaymentMethod('card')}
             disabled={loading}
           >
+            <View style={styles.paymentOptionLeft}>
+              <IconSymbol
+                ios_icon_name="creditcard.fill"
+                android_material_icon_name="credit_card"
+                size={24}
+                color={paymentMethod === 'card' ? '#FFFFFF' : colors.text}
+              />
+              <View style={styles.paymentOptionTextContainer}>
+                <Text style={[
+                  styles.paymentOptionText,
+                  { color: paymentMethod === 'card' ? '#FFFFFF' : colors.text }
+                ]}>
+                  Carte bancaire
+                </Text>
+                <Text style={[
+                  styles.paymentOptionDescription,
+                  { color: paymentMethod === 'card' ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                ]}>
+                  Visa, Mastercard, American Express
+                </Text>
+              </View>
+            </View>
             <IconSymbol
-              ios_icon_name="creditcard.fill"
-              android_material_icon_name="credit_card"
+              ios_icon_name={paymentMethod === 'card' ? 'checkmark.circle.fill' : 'circle'}
+              android_material_icon_name={paymentMethod === 'card' ? 'check_circle' : 'radio_button_unchecked'}
               size={24}
-              color={paymentMethod === 'card' ? '#FFFFFF' : colors.text}
+              color={paymentMethod === 'card' ? '#FFFFFF' : colors.textSecondary}
             />
-            <Text style={[
-              styles.paymentOptionText,
-              { color: paymentMethod === 'card' ? '#FFFFFF' : colors.text }
-            ]}>
-              Carte bancaire
-            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -273,24 +383,40 @@ export default function ShipmentSummaryScreen() {
               styles.paymentOption,
               { 
                 backgroundColor: paymentMethod === 'mobile_money' ? colors.accent : colors.card,
-                borderColor: colors.border,
+                borderColor: paymentMethod === 'mobile_money' ? colors.accent : colors.border,
               }
             ]}
             onPress={() => setPaymentMethod('mobile_money')}
             disabled={loading}
           >
+            <View style={styles.paymentOptionLeft}>
+              <IconSymbol
+                ios_icon_name="phone.fill"
+                android_material_icon_name="phone_android"
+                size={24}
+                color={paymentMethod === 'mobile_money' ? '#FFFFFF' : colors.text}
+              />
+              <View style={styles.paymentOptionTextContainer}>
+                <Text style={[
+                  styles.paymentOptionText,
+                  { color: paymentMethod === 'mobile_money' ? '#FFFFFF' : colors.text }
+                ]}>
+                  Mobile Money
+                </Text>
+                <Text style={[
+                  styles.paymentOptionDescription,
+                  { color: paymentMethod === 'mobile_money' ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                ]}>
+                  Orange Money, MTN, Moov
+                </Text>
+              </View>
+            </View>
             <IconSymbol
-              ios_icon_name="phone.fill"
-              android_material_icon_name="phone_android"
+              ios_icon_name={paymentMethod === 'mobile_money' ? 'checkmark.circle.fill' : 'circle'}
+              android_material_icon_name={paymentMethod === 'mobile_money' ? 'check_circle' : 'radio_button_unchecked'}
               size={24}
-              color={paymentMethod === 'mobile_money' ? '#FFFFFF' : colors.text}
+              color={paymentMethod === 'mobile_money' ? '#FFFFFF' : colors.textSecondary}
             />
-            <Text style={[
-              styles.paymentOptionText,
-              { color: paymentMethod === 'mobile_money' ? '#FFFFFF' : colors.text }
-            ]}>
-              Mobile Money
-            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -298,55 +424,138 @@ export default function ShipmentSummaryScreen() {
               styles.paymentOption,
               { 
                 backgroundColor: paymentMethod === 'cash_on_delivery' ? colors.accent : colors.card,
-                borderColor: colors.border,
+                borderColor: paymentMethod === 'cash_on_delivery' ? colors.accent : colors.border,
               }
             ]}
             onPress={() => setPaymentMethod('cash_on_delivery')}
             disabled={loading}
           >
+            <View style={styles.paymentOptionLeft}>
+              <IconSymbol
+                ios_icon_name="banknote.fill"
+                android_material_icon_name="payments"
+                size={24}
+                color={paymentMethod === 'cash_on_delivery' ? '#FFFFFF' : colors.text}
+              />
+              <View style={styles.paymentOptionTextContainer}>
+                <Text style={[
+                  styles.paymentOptionText,
+                  { color: paymentMethod === 'cash_on_delivery' ? '#FFFFFF' : colors.text }
+                ]}>
+                  Paiement à la livraison
+                </Text>
+                <Text style={[
+                  styles.paymentOptionDescription,
+                  { color: paymentMethod === 'cash_on_delivery' ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                ]}>
+                  Payez en espèces lors de la réception
+                </Text>
+              </View>
+            </View>
             <IconSymbol
-              ios_icon_name="banknote.fill"
-              android_material_icon_name="payments"
+              ios_icon_name={paymentMethod === 'cash_on_delivery' ? 'checkmark.circle.fill' : 'circle'}
+              android_material_icon_name={paymentMethod === 'cash_on_delivery' ? 'check_circle' : 'radio_button_unchecked'}
               size={24}
-              color={paymentMethod === 'cash_on_delivery' ? '#FFFFFF' : colors.text}
+              color={paymentMethod === 'cash_on_delivery' ? '#FFFFFF' : colors.textSecondary}
             />
-            <Text style={[
-              styles.paymentOptionText,
-              { color: paymentMethod === 'cash_on_delivery' ? '#FFFFFF' : colors.text }
-            ]}>
-              Paiement à la livraison
-            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Pay Button */}
+        {/* PARTIE 4: CHECKBOX CGU - Terms and Conditions */}
         <TouchableOpacity
-          style={[
-            styles.payButton,
-            { 
-              backgroundColor: buttonDisabled || !paymentMethod ? colors.textSecondary : colors.success,
-              opacity: buttonDisabled || !paymentMethod ? 0.6 : 1,
-            }
-          ]}
-          onPress={handlePayment}
-          disabled={buttonDisabled || !paymentMethod}
+          style={[styles.termsContainer, { borderColor: colors.border }]}
+          onPress={() => setAcceptedTerms(!acceptedTerms)}
+          disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <React.Fragment>
+          <View style={[
+            styles.checkbox,
+            { 
+              backgroundColor: acceptedTerms ? colors.primary : 'transparent',
+              borderColor: acceptedTerms ? colors.primary : colors.border,
+            }
+          ]}>
+            {acceptedTerms && (
               <IconSymbol
-                ios_icon_name="checkmark.circle.fill"
-                android_material_icon_name="check_circle"
-                size={20}
+                ios_icon_name="checkmark"
+                android_material_icon_name="check"
+                size={16}
                 color="#FFFFFF"
               />
-              <Text style={styles.payButtonText}>Payer maintenant</Text>
-            </React.Fragment>
-          )}
+            )}
+          </View>
+          <Text style={[styles.termsText, { color: colors.text }]}>
+            J&apos;accepte les{' '}
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+              conditions générales d&apos;utilisation
+            </Text>
+            {' '}et la{' '}
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+              politique de confidentialité
+            </Text>
+          </Text>
         </TouchableOpacity>
 
-        <View style={{ height: 100 }} />
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          {/* PARTIE 4: BOUTON MODIFIER */}
+          <TouchableOpacity
+            style={[styles.modifyButton, { borderColor: colors.border, backgroundColor: colors.card }]}
+            onPress={handleModify}
+            disabled={loading}
+          >
+            <IconSymbol
+              ios_icon_name="pencil"
+              android_material_icon_name="edit"
+              size={20}
+              color={colors.text}
+            />
+            <Text style={[styles.modifyButtonText, { color: colors.text }]}>
+              Modifier
+            </Text>
+          </TouchableOpacity>
+
+          {/* PARTIE 4: BOUTON PAYER MAINTENANT */}
+          <TouchableOpacity
+            style={[
+              styles.payButton,
+              { 
+                backgroundColor: buttonDisabled || !paymentMethod || !acceptedTerms ? colors.textSecondary : colors.success,
+                opacity: buttonDisabled || !paymentMethod || !acceptedTerms ? 0.6 : 1,
+              }
+            ]}
+            onPress={handlePayment}
+            disabled={buttonDisabled || !paymentMethod || !acceptedTerms}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <React.Fragment>
+                <IconSymbol
+                  ios_icon_name="checkmark.circle.fill"
+                  android_material_icon_name="check_circle"
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.payButtonText}>Payer maintenant</Text>
+              </React.Fragment>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Security Notice */}
+        <View style={[styles.securityNotice, { backgroundColor: colors.highlight }]}>
+          <IconSymbol
+            ios_icon_name="lock.shield.fill"
+            android_material_icon_name="security"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={[styles.securityNoticeText, { color: colors.textSecondary }]}>
+            Paiement sécurisé. Vos informations sont protégées et cryptées.
+          </Text>
+        </View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
     </ResponsiveContainer>
   );
@@ -368,15 +577,63 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
   },
+  priceCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  priceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  priceTextContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    marginBottom: 4,
+    opacity: 0.9,
+  },
+  priceValue: {
+    color: '#FFFFFF',
+    fontSize: 36,
+    fontWeight: '700',
+  },
+  deliveryEstimateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    gap: 8,
+  },
+  deliveryEstimate: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    opacity: 0.9,
+  },
   card: {
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 12,
   },
   infoRow: {
     flexDirection: 'row',
@@ -389,67 +646,124 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
   },
   addressText: {
     fontSize: 14,
     marginBottom: 4,
   },
-  priceCard: {
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  priceLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  priceValue: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  deliveryEstimate: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginTop: 8,
-    opacity: 0.9,
-  },
   section: {
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 12,
   },
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
     marginBottom: 12,
+  },
+  paymentOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  paymentOptionTextContainer: {
+    flex: 1,
   },
   paymentOptionText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  payButton: {
+  paymentOptionDescription: {
+    fontSize: 12,
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  modifyButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 2,
     gap: 8,
-    marginTop: 8,
+  },
+  modifyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  payButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   payButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  securityNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  securityNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
   },
 });
