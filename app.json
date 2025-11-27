@@ -1,8 +1,8 @@
 
 {
   "expo": {
-    "name": "Universal Shipping Services",
-    "slug": "universal-shipping-services",
+    "name": "UNIVERSAL SHIPPING SERVICES",
+    "slug": "UNIVERSAL SHIPPING SERVICES",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/final_quest_240x240.png",
@@ -70,6 +70,12 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID"
         }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+        }
       ]
     ],
     "scheme": "uss",
@@ -90,5 +96,6 @@
         "projectId": "6c1dee3e-c361-4789-a8f8-e00d4d7fff6b"
       }
     }
-  }
+  },
+  "scheme": "UNIVERSAL SHIPPING SERVICES"
 }
