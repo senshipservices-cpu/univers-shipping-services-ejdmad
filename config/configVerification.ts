@@ -12,10 +12,12 @@ export interface VerificationResult {
   status: 'success' | 'warning' | 'error';
   message: string;
   details?: any;
+  isCritical?: boolean; // NEW: Flag to indicate if this service is critical
 }
 
 /**
  * Verify Supabase Configuration
+ * CRITICAL SERVICE - Required for app to function
  */
 export const verifySupabase = async (): Promise<VerificationResult> => {
   try {
@@ -25,7 +27,8 @@ export const verifySupabase = async (): Promise<VerificationResult> => {
       return {
         service: 'Supabase',
         status: 'error',
-        message: 'Supabase credentials not configured',
+        message: 'Database offline - Supabase credentials not configured',
+        isCritical: true,
       };
     }
     
@@ -36,7 +39,8 @@ export const verifySupabase = async (): Promise<VerificationResult> => {
       return {
         service: 'Supabase',
         status: 'error',
-        message: `Supabase connection failed: ${error.message}`,
+        message: `Database offline - Connection failed: ${error.message}`,
+        isCritical: true,
       };
     }
     
@@ -44,24 +48,27 @@ export const verifySupabase = async (): Promise<VerificationResult> => {
     return {
       service: 'Supabase',
       status: 'success',
-      message: 'Supabase is properly configured and accessible',
+      message: 'Database operational',
       details: {
         url: appConfig.env.SUPABASE_URL,
         hasSession: !!data.session,
       },
+      isCritical: true,
     };
   } catch (error) {
     logger.error('Supabase verification failed:', error);
     return {
       service: 'Supabase',
       status: 'error',
-      message: `Supabase verification failed: ${error}`,
+      message: `Database offline - Verification failed: ${error}`,
+      isCritical: true,
     };
   }
 };
 
 /**
  * Verify PayPal Configuration
+ * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyPayPal = async (): Promise<VerificationResult> => {
   try {
@@ -73,8 +80,9 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
     if (!clientId) {
       return {
         service: 'PayPal',
-        status: appConfig.payment.provider === 'paypal' ? 'error' : 'warning',
-        message: 'PayPal client ID not configured',
+        status: 'warning',
+        message: 'Online payment is optional and disabled.',
+        isCritical: false,
       };
     }
     
@@ -82,8 +90,9 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
     if (environment !== 'sandbox' && environment !== 'live') {
       return {
         service: 'PayPal',
-        status: 'error',
-        message: `Invalid PayPal environment: ${environment}. Must be "sandbox" or "live"`,
+        status: 'warning',
+        message: `PayPal configuration issue: Invalid environment "${environment}". Online payment may not work.`,
+        isCritical: false,
       };
     }
     
@@ -92,11 +101,12 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
       return {
         service: 'PayPal',
         status: 'warning',
-        message: 'Using PayPal sandbox in production environment',
+        message: 'PayPal is configured in sandbox mode (test payments only).',
         details: {
           environment,
           recommendation: 'Change PAYPAL_ENV to "live" for production',
         },
+        isCritical: false,
       };
     }
     
@@ -104,11 +114,12 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
       return {
         service: 'PayPal',
         status: 'warning',
-        message: 'Using PayPal live in development environment',
+        message: 'PayPal is configured in live mode (real payments).',
         details: {
           environment,
           recommendation: 'Consider using "sandbox" for development',
         },
+        isCritical: false,
       };
     }
     
@@ -116,25 +127,28 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
     return {
       service: 'PayPal',
       status: 'success',
-      message: `PayPal is properly configured (${environment} mode)`,
+      message: `Online payment available via PayPal (${environment} mode)`,
       details: {
         environment,
         clientIdPrefix: clientId.substring(0, 12) + '...',
         apiUrl: appConfig.payment.paypal.apiUrl,
       },
+      isCritical: false,
     };
   } catch (error) {
     logger.error('PayPal verification failed:', error);
     return {
       service: 'PayPal',
-      status: 'error',
-      message: `PayPal verification failed: ${error}`,
+      status: 'warning',
+      message: 'Online payment is optional and currently unavailable.',
+      isCritical: false,
     };
   }
 };
 
 /**
  * Verify Stripe Configuration
+ * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyStripe = async (): Promise<VerificationResult> => {
   try {
@@ -145,8 +159,9 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
     if (!publicKey) {
       return {
         service: 'Stripe',
-        status: appConfig.payment.provider === 'stripe' ? 'error' : 'warning',
-        message: 'Stripe public key not configured',
+        status: 'warning',
+        message: 'Stripe payment is optional and not configured.',
+        isCritical: false,
       };
     }
     
@@ -157,8 +172,9 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
     if (!isTestKey && !isLiveKey) {
       return {
         service: 'Stripe',
-        status: 'error',
-        message: 'Invalid Stripe public key format',
+        status: 'warning',
+        message: 'Stripe configuration issue: Invalid key format.',
+        isCritical: false,
       };
     }
     
@@ -167,7 +183,8 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
       return {
         service: 'Stripe',
         status: 'warning',
-        message: 'Using Stripe test key in production environment',
+        message: 'Stripe is configured in test mode.',
+        isCritical: false,
       };
     }
     
@@ -175,7 +192,8 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
       return {
         service: 'Stripe',
         status: 'warning',
-        message: 'Using Stripe live key in development environment',
+        message: 'Stripe is configured in live mode.',
+        isCritical: false,
       };
     }
     
@@ -183,24 +201,27 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
     return {
       service: 'Stripe',
       status: 'success',
-      message: `Stripe is properly configured (${isTestKey ? 'test' : 'live'} mode)`,
+      message: `Stripe payment available (${isTestKey ? 'test' : 'live'} mode)`,
       details: {
         mode: isTestKey ? 'test' : 'live',
         keyPrefix: publicKey.substring(0, 12) + '...',
       },
+      isCritical: false,
     };
   } catch (error) {
     logger.error('Stripe verification failed:', error);
     return {
       service: 'Stripe',
-      status: 'error',
-      message: `Stripe verification failed: ${error}`,
+      status: 'warning',
+      message: 'Stripe payment is optional and currently unavailable.',
+      isCritical: false,
     };
   }
 };
 
 /**
  * Verify Google Maps Configuration
+ * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
   try {
@@ -212,7 +233,8 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
       return {
         service: 'Google Maps',
         status: 'warning',
-        message: 'Google Maps API key not configured - map features will be limited',
+        message: 'Map display features may be limited.',
+        isCritical: false,
       };
     }
     
@@ -220,8 +242,9 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
     if (apiKey.length < 20) {
       return {
         service: 'Google Maps',
-        status: 'error',
-        message: 'Google Maps API key appears to be invalid (too short)',
+        status: 'warning',
+        message: 'Map display features may be limited (invalid API key).',
+        isCritical: false,
       };
     }
     
@@ -229,23 +252,26 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
     return {
       service: 'Google Maps',
       status: 'success',
-      message: 'Google Maps API key is configured',
+      message: 'Map display features available',
       details: {
         keyPrefix: apiKey.substring(0, 10) + '...',
       },
+      isCritical: false,
     };
   } catch (error) {
     logger.error('Google Maps verification failed:', error);
     return {
       service: 'Google Maps',
-      status: 'error',
-      message: `Google Maps verification failed: ${error}`,
+      status: 'warning',
+      message: 'Map display features may be limited.',
+      isCritical: false,
     };
   }
 };
 
 /**
  * Verify SMTP Configuration
+ * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifySMTP = async (): Promise<VerificationResult> => {
   try {
@@ -256,13 +282,9 @@ export const verifySMTP = async (): Promise<VerificationResult> => {
     if (!SMTP_HOST || !SMTP_USERNAME || !SMTP_PASSWORD) {
       return {
         service: 'SMTP',
-        status: appConfig.isProduction ? 'error' : 'warning',
-        message: 'SMTP configuration incomplete - email features will not work',
-        details: {
-          hasHost: !!SMTP_HOST,
-          hasUsername: !!SMTP_USERNAME,
-          hasPassword: !!SMTP_PASSWORD,
-        },
+        status: 'warning',
+        message: 'Email features are optional and not configured.',
+        isCritical: false,
       };
     }
     
@@ -271,8 +293,9 @@ export const verifySMTP = async (): Promise<VerificationResult> => {
     if (isNaN(port) || port < 1 || port > 65535) {
       return {
         service: 'SMTP',
-        status: 'error',
-        message: 'Invalid SMTP port number',
+        status: 'warning',
+        message: 'Email features are optional and not properly configured (invalid port).',
+        isCritical: false,
       };
     }
     
@@ -280,25 +303,28 @@ export const verifySMTP = async (): Promise<VerificationResult> => {
     return {
       service: 'SMTP',
       status: 'success',
-      message: 'SMTP is properly configured',
+      message: 'Email notifications available',
       details: {
         host: SMTP_HOST,
         port: SMTP_PORT,
         username: SMTP_USERNAME,
       },
+      isCritical: false,
     };
   } catch (error) {
     logger.error('SMTP verification failed:', error);
     return {
       service: 'SMTP',
-      status: 'error',
-      message: `SMTP verification failed: ${error}`,
+      status: 'warning',
+      message: 'Email features are optional and currently unavailable.',
+      isCritical: false,
     };
   }
 };
 
 /**
  * Verify Payment Provider Configuration
+ * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyPaymentProvider = async (): Promise<VerificationResult> => {
   const provider = appConfig.payment.provider;
@@ -312,8 +338,9 @@ export const verifyPaymentProvider = async (): Promise<VerificationResult> => {
   } else {
     return {
       service: 'Payment Provider',
-      status: 'error',
-      message: `Unknown payment provider: ${provider}`,
+      status: 'warning',
+      message: `Payment provider "${provider}" is not recognized. Online payment is optional.`,
+      isCritical: false,
     };
   }
 };
@@ -342,17 +369,18 @@ export const verifyAllServices = async (): Promise<VerificationResult[]> => {
   logger.info('Configuration verification complete:');
   logger.info(`✓ ${successes.length} services configured correctly`);
   if (warnings.length > 0) {
-    logger.warn(`⚠ ${warnings.length} warnings`);
+    logger.warn(`⚠ ${warnings.length} warnings (optional services)`);
   }
   if (errors.length > 0) {
-    logger.error(`✗ ${errors.length} errors`);
+    logger.error(`✗ ${errors.length} critical errors`);
   }
   
   // Log details in dev mode
   if (appConfig.isDevelopment) {
     results.forEach(result => {
       const icon = result.status === 'success' ? '✓' : result.status === 'warning' ? '⚠' : '✗';
-      logger.debug(`${icon} ${result.service}: ${result.message}`);
+      const criticalLabel = result.isCritical ? ' [CRITICAL]' : ' [OPTIONAL]';
+      logger.debug(`${icon} ${result.service}${criticalLabel}: ${result.message}`);
       if (result.details) {
         logger.debug('  Details:', result.details);
       }
@@ -364,6 +392,7 @@ export const verifyAllServices = async (): Promise<VerificationResult[]> => {
 
 /**
  * Get Configuration Status Summary
+ * FIXED: Only Supabase errors cause CRITICAL status
  */
 export const getConfigStatus = async (): Promise<{
   overall: 'healthy' | 'degraded' | 'critical';
@@ -371,11 +400,12 @@ export const getConfigStatus = async (): Promise<{
 }> => {
   const results = await verifyAllServices();
   
-  const hasErrors = results.some(r => r.status === 'error');
+  // Only critical services (Supabase) can cause CRITICAL status
+  const hasCriticalErrors = results.some(r => r.status === 'error' && r.isCritical);
   const hasWarnings = results.some(r => r.status === 'warning');
   
   let overall: 'healthy' | 'degraded' | 'critical';
-  if (hasErrors) {
+  if (hasCriticalErrors) {
     overall = 'critical';
   } else if (hasWarnings) {
     overall = 'degraded';

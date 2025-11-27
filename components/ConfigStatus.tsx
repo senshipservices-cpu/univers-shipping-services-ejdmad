@@ -37,7 +37,12 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
     }
   };
 
-  const getStatusColor = (status: 'success' | 'warning' | 'error'): string => {
+  const getStatusColor = (status: 'success' | 'warning' | 'error', isCritical?: boolean): string => {
+    // For non-critical services, never show red
+    if (!isCritical && status === 'error') {
+      return '#f59e0b'; // Yellow/orange for optional service issues
+    }
+    
     switch (status) {
       case 'success':
         return colors.success;
@@ -48,7 +53,12 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
     }
   };
 
-  const getStatusIcon = (status: 'success' | 'warning' | 'error'): { ios: string; android: string } => {
+  const getStatusIcon = (status: 'success' | 'warning' | 'error', isCritical?: boolean): { ios: string; android: string } => {
+    // For non-critical services, use warning icon instead of error
+    if (!isCritical && status === 'error') {
+      return { ios: 'exclamationmark.triangle.fill', android: 'warning' };
+    }
+    
     switch (status) {
       case 'success':
         return { ios: 'checkmark.circle.fill', android: 'check_circle' };
@@ -71,6 +81,34 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
     }
   };
 
+  const getOverallStatusText = (): string => {
+    if (!status) return 'Checking...';
+    switch (status.overall) {
+      case 'healthy':
+        return 'Overall Status: Operational';
+      case 'degraded':
+        return 'Overall Status: Operational (with warnings)';
+      case 'critical':
+        return 'Overall Status: Critical — Database offline';
+    }
+  };
+
+  const getServiceBadgeText = (result: VerificationResult): string => {
+    if (result.isCritical) {
+      return result.status === 'success' ? 'OK' : 'CRITICAL';
+    } else {
+      return result.status === 'success' ? 'OK' : 'Optional';
+    }
+  };
+
+  const getServiceBadgeColor = (result: VerificationResult): string => {
+    if (result.isCritical) {
+      return result.status === 'success' ? colors.success : colors.error;
+    } else {
+      return result.status === 'success' ? colors.success : '#9ca3af'; // Gray for optional
+    }
+  };
+
   if (!appConfig.isDevelopment) {
     return null; // Only show in development mode
   }
@@ -86,7 +124,7 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
             color={theme.colors.text}
           />
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            Configuration Status
+            USS — Overall Status
           </Text>
         </View>
         {onClose && (
@@ -180,29 +218,38 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
         </View>
       ) : status ? (
         <>
-          <View style={[styles.overallStatus, { backgroundColor: getOverallStatusColor() + '15' }]}>
+          <View style={[styles.overallStatus, { backgroundColor: getOverallStatusColor() + '15', borderColor: getOverallStatusColor() }]}>
             <Text style={[styles.overallStatusText, { color: getOverallStatusColor() }]}>
-              Overall Status: {status.overall.toUpperCase()}
+              {getOverallStatusText()}
             </Text>
           </View>
 
           <View style={styles.resultsList}>
             {status.results.map((result, index) => {
-              const statusColor = getStatusColor(result.status);
-              const statusIcon = getStatusIcon(result.status);
+              const statusColor = getStatusColor(result.status, result.isCritical);
+              const statusIcon = getStatusIcon(result.status, result.isCritical);
+              const badgeText = getServiceBadgeText(result);
+              const badgeColor = getServiceBadgeColor(result);
 
               return (
                 <View key={index} style={[styles.resultItem, { borderLeftColor: statusColor }]}>
                   <View style={styles.resultHeader}>
-                    <IconSymbol
-                      ios_icon_name={statusIcon.ios}
-                      android_material_icon_name={statusIcon.android}
-                      size={20}
-                      color={statusColor}
-                    />
-                    <Text style={[styles.resultService, { color: theme.colors.text }]}>
-                      {result.service}
-                    </Text>
+                    <View style={styles.resultHeaderLeft}>
+                      <IconSymbol
+                        ios_icon_name={statusIcon.ios}
+                        android_material_icon_name={statusIcon.android}
+                        size={20}
+                        color={statusColor}
+                      />
+                      <Text style={[styles.resultService, { color: theme.colors.text }]}>
+                        {result.service}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: badgeColor + '20', borderColor: badgeColor }]}>
+                      <Text style={[styles.statusBadgeText, { color: badgeColor }]}>
+                        {badgeText}
+                      </Text>
+                    </View>
                   </View>
                   <Text style={[styles.resultMessage, { color: colors.textSecondary }]}>
                     {result.message}
@@ -349,6 +396,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
+    borderWidth: 2,
   },
   overallStatusText: {
     fontSize: 14,
@@ -368,12 +416,29 @@ const styles = StyleSheet.create({
   resultHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  resultHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
   },
   resultService: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   resultMessage: {
     fontSize: 13,
