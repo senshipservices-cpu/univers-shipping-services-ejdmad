@@ -2,6 +2,7 @@
 /**
  * Configuration Verification Utility
  * Automatically verifies that all required services are properly configured
+ * Now uses the health-check Edge Function for server-side validation
  */
 
 import appConfig, { logger } from './appConfig';
@@ -12,11 +13,57 @@ export interface VerificationResult {
   status: 'success' | 'warning' | 'error';
   message: string;
   details?: any;
-  isCritical?: boolean; // NEW: Flag to indicate if this service is critical
+  isCritical?: boolean; // Flag to indicate if this service is critical
 }
 
 /**
- * Verify Supabase Configuration
+ * Call the health-check Edge Function
+ * This performs server-side validation of API keys and credentials
+ */
+export const callHealthCheck = async (): Promise<{
+  overall: 'healthy' | 'degraded' | 'critical';
+  results: VerificationResult[];
+}> => {
+  try {
+    logger.debug('Calling health-check Edge Function...');
+    
+    const { data, error } = await supabase.functions.invoke('health-check', {
+      method: 'GET',
+    });
+
+    if (error) {
+      logger.error('Health check error:', error);
+      throw error;
+    }
+
+    if (!data || !data.results) {
+      throw new Error('Invalid health check response');
+    }
+
+    // Convert the results to match our VerificationResult interface
+    const results: VerificationResult[] = data.results.map((result: any) => ({
+      service: result.service,
+      status: result.ok ? 'success' : (result.isCritical ? 'error' : 'warning'),
+      message: result.message,
+      details: result.details,
+      isCritical: result.isCritical,
+    }));
+
+    logger.info('Health check complete:', data.overall);
+    return {
+      overall: data.overall,
+      results,
+    };
+  } catch (error) {
+    logger.error('Failed to call health check:', error);
+    
+    // Fallback to local verification if health check fails
+    return await verifyAllServices();
+  }
+};
+
+/**
+ * Verify Supabase Configuration (Local fallback)
  * CRITICAL SERVICE - Required for app to function
  */
 export const verifySupabase = async (): Promise<VerificationResult> => {
@@ -67,7 +114,7 @@ export const verifySupabase = async (): Promise<VerificationResult> => {
 };
 
 /**
- * Verify PayPal Configuration
+ * Verify PayPal Configuration (Local fallback)
  * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyPayPal = async (): Promise<VerificationResult> => {
@@ -147,7 +194,7 @@ export const verifyPayPal = async (): Promise<VerificationResult> => {
 };
 
 /**
- * Verify Stripe Configuration
+ * Verify Stripe Configuration (Local fallback)
  * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyStripe = async (): Promise<VerificationResult> => {
@@ -220,7 +267,7 @@ export const verifyStripe = async (): Promise<VerificationResult> => {
 };
 
 /**
- * Verify Google Maps Configuration
+ * Verify Google Maps Configuration (Local fallback)
  * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
@@ -233,7 +280,7 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
       return {
         service: 'Google Maps',
         status: 'warning',
-        message: 'Map display features may be limited.',
+        message: 'Map display may be limited.',
         isCritical: false,
       };
     }
@@ -243,7 +290,7 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
       return {
         service: 'Google Maps',
         status: 'warning',
-        message: 'Map display features may be limited (invalid API key).',
+        message: 'Map display may be limited (invalid API key).',
         isCritical: false,
       };
     }
@@ -252,7 +299,7 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
     return {
       service: 'Google Maps',
       status: 'success',
-      message: 'Map display features available',
+      message: 'Map features are enabled',
       details: {
         keyPrefix: apiKey.substring(0, 10) + '...',
       },
@@ -263,14 +310,14 @@ export const verifyGoogleMaps = async (): Promise<VerificationResult> => {
     return {
       service: 'Google Maps',
       status: 'warning',
-      message: 'Map display features may be limited.',
+      message: 'Map display may be limited.',
       isCritical: false,
     };
   }
 };
 
 /**
- * Verify SMTP Configuration
+ * Verify SMTP Configuration (Local fallback)
  * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifySMTP = async (): Promise<VerificationResult> => {
@@ -323,7 +370,7 @@ export const verifySMTP = async (): Promise<VerificationResult> => {
 };
 
 /**
- * Verify Payment Provider Configuration
+ * Verify Payment Provider Configuration (Local fallback)
  * OPTIONAL SERVICE - Not critical for USS app
  */
 export const verifyPaymentProvider = async (): Promise<VerificationResult> => {
@@ -346,10 +393,13 @@ export const verifyPaymentProvider = async (): Promise<VerificationResult> => {
 };
 
 /**
- * Verify All Services
+ * Verify All Services (Local fallback)
  */
-export const verifyAllServices = async (): Promise<VerificationResult[]> => {
-  logger.info('Starting configuration verification...');
+export const verifyAllServices = async (): Promise<{
+  overall: 'healthy' | 'degraded' | 'critical';
+  results: VerificationResult[];
+}> => {
+  logger.info('Starting local configuration verification...');
   logger.info(`Environment: ${appConfig.appEnv}`);
   logger.info(`Mode: ${appConfig.isProduction ? 'Production' : 'Development'}`);
   logger.info(`Payment Provider: ${appConfig.payment.provider}`);
@@ -387,19 +437,6 @@ export const verifyAllServices = async (): Promise<VerificationResult[]> => {
     });
   }
   
-  return results;
-};
-
-/**
- * Get Configuration Status Summary
- * FIXED: Only Supabase errors cause CRITICAL status
- */
-export const getConfigStatus = async (): Promise<{
-  overall: 'healthy' | 'degraded' | 'critical';
-  results: VerificationResult[];
-}> => {
-  const results = await verifyAllServices();
-  
   // Only critical services (Supabase) can cause CRITICAL status
   const hasCriticalErrors = results.some(r => r.status === 'error' && r.isCritical);
   const hasWarnings = results.some(r => r.status === 'warning');
@@ -414,4 +451,16 @@ export const getConfigStatus = async (): Promise<{
   }
   
   return { overall, results };
+};
+
+/**
+ * Get Configuration Status Summary
+ * Uses health-check Edge Function for server-side validation
+ */
+export const getConfigStatus = async (): Promise<{
+  overall: 'healthy' | 'degraded' | 'critical';
+  results: VerificationResult[];
+}> => {
+  // Try to use the health-check Edge Function first
+  return await callHealthCheck();
 };

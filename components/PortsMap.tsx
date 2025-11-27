@@ -7,6 +7,7 @@ import { IconSymbol } from './IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useTheme } from '@react-navigation/native';
 import { useLanguage } from '@/contexts/LanguageContext';
+import appConfig from '@/config/appConfig';
 
 interface Port {
   id: string;
@@ -35,12 +36,16 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
   const [nearbyPorts, setNearbyPorts] = useState<(Port & { distance: number })[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
 
+  // Check if Google Maps API key is configured
+  const hasGoogleMapsKey = !!appConfig.env.GOOGLE_MAPS_API_KEY;
+
   useEffect(() => {
     console.log('PortsMap received ports:', ports.length);
+    console.log('Google Maps API Key configured:', hasGoogleMapsKey);
     if (ports.length > 0) {
       console.log('First port:', ports[0]);
     }
-  }, [ports]);
+  }, [ports, hasGoogleMapsKey]);
 
   // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = (
@@ -154,6 +159,24 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         />
         <Text style={[styles.emptyText, { color: theme.colors.text }]}>
           {language === 'en' ? 'No ports available to display' : 'Aucun port disponible à afficher'}
+        </Text>
+      </View>
+    );
+  }
+
+  if (!hasGoogleMapsKey) {
+    return (
+      <View style={[styles.container, styles.emptyContainer, { backgroundColor: colors.highlight }]}>
+        <IconSymbol
+          ios_icon_name="exclamationmark.triangle"
+          android_material_icon_name="warning"
+          size={48}
+          color={colors.textSecondary}
+        />
+        <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+          {language === 'en' 
+            ? 'Map display requires Google Maps API key configuration' 
+            : 'L\'affichage de la carte nécessite la configuration de la clé API Google Maps'}
         </Text>
       </View>
     );
@@ -294,10 +317,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
+    padding: 20,
   },
   emptyText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   map: {
     flex: 1,
