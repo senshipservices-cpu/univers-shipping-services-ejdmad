@@ -283,32 +283,139 @@ export default function FreightQuoteScreen() {
         details: `Quote created for ${formData.cargoType}`,
       });
 
-      // Send emails via Edge Function (optional - don't fail if emails fail)
+      // Send emails via send-email Edge Function (optional - don't fail if emails fail)
       try {
-        const emailPayload = {
-          quoteId: 'pending', // We don't have the actual ID
-          clientName: quoteData.client_name,
-          clientEmail: quoteData.client_email,
-          serviceName: serviceName || undefined,
-          originPort: `${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}`,
-          destinationPort: `${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}`,
-          cargoType: formData.cargoType,
-          cargoVolume: formData.cargoVolume || undefined,
-          details: formData.details || undefined,
-        };
+        const clientEmailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #0066cc 0%, #004999 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">Univers Shipping Services</h1>
+              <p style="color: #e0e0e0; margin: 10px 0 0 0;">3S Global</p>
+            </div>
+            
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #0066cc; margin-top: 0;">Votre demande de devis USS</h2>
+              
+              <p style="color: #333; line-height: 1.6;">
+                Bonjour <strong>${quoteData.client_name}</strong>,
+              </p>
+              
+              <p style="color: #333; line-height: 1.6;">
+                Nous avons bien reçu votre demande de devis. Notre équipe d'experts va l'analyser et vous envoyer une proposition détaillée dans les plus brefs délais.
+              </p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0066cc;">
+                <h3 style="color: #0066cc; margin-top: 0;">Récapitulatif de votre demande</h3>
+                ${serviceName ? `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>` : ''}
+                <p style="margin: 8px 0;"><strong>Port d'origine:</strong> ${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}</p>
+                <p style="margin: 8px 0;"><strong>Port de destination:</strong> ${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}</p>
+                <p style="margin: 8px 0;"><strong>Type de cargo:</strong> ${formData.cargoType}</p>
+                ${formData.cargoVolume ? `<p style="margin: 8px 0;"><strong>Volume:</strong> ${formData.cargoVolume}</p>` : ''}
+                ${formData.details ? `<p style="margin: 8px 0;"><strong>Remarques:</strong> ${formData.details}</p>` : ''}
+              </div>
+              
+              <p style="color: #333; line-height: 1.6;">
+                Vous recevrez une réponse par email sous <strong>24 à 48 heures ouvrables</strong>.
+              </p>
+              
+              <div style="background: #e8f4ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #0066cc; font-weight: bold;">💡 Besoin d'aide ?</p>
+                <p style="margin: 5px 0 0 0; color: #333;">
+                  Notre équipe est disponible 24/7 pour répondre à vos questions.
+                </p>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+              
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                © ${new Date().getFullYear()} Univers Shipping Services (3S Global)<br>
+                Services maritimes, portuaires et logistiques
+              </p>
+            </div>
+          </div>
+        `;
 
-        console.log('Calling send-quote-emails Edge Function with payload:', emailPayload);
+        const teamEmailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #ff6b35; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🚨 Nouvelle demande de devis</h1>
+              <p style="color: #ffe0d6; margin: 10px 0 0 0;">Action requise</p>
+            </div>
+            
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #ff6b35; margin-top: 0;">Détails de la demande</h2>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff6b35;">
+                <h3 style="color: #ff6b35; margin-top: 0;">Informations client</h3>
+                <p style="margin: 8px 0;"><strong>Nom:</strong> ${quoteData.client_name}</p>
+                <p style="margin: 8px 0;"><strong>Email:</strong> ${quoteData.client_email}</p>
+                ${isLoggedIn ? `<p style="margin: 8px 0;"><strong>Client ID:</strong> ${client.id}</p>` : '<p style="margin: 8px 0; color: #ff6b35;"><strong>⚠️ Client non authentifié</strong></p>'}
+              </div>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0066cc;">
+                <h3 style="color: #0066cc; margin-top: 0;">Détails du fret</h3>
+                ${serviceName ? `<p style="margin: 8px 0;"><strong>Service:</strong> ${serviceName}</p>` : ''}
+                <p style="margin: 8px 0;"><strong>Port d'origine:</strong> ${formData.originPort.name}, ${formData.originPort.city}, ${formData.originPort.country}</p>
+                <p style="margin: 8px 0;"><strong>Port de destination:</strong> ${formData.destinationPort.name}, ${formData.destinationPort.city}, ${formData.destinationPort.country}</p>
+                <p style="margin: 8px 0;"><strong>Type de cargo:</strong> ${formData.cargoType}</p>
+                ${formData.cargoVolume ? `<p style="margin: 8px 0;"><strong>Volume:</strong> ${formData.cargoVolume}</p>` : ''}
+                ${formData.details ? `<p style="margin: 8px 0;"><strong>Remarques:</strong> ${formData.details}</p>` : ''}
+              </div>
+              
+              <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #ff6b35; font-weight: bold;">⏰ Action requise</p>
+                <p style="margin: 5px 0 0 0; color: #333;">
+                  Veuillez traiter cette demande dans les 24 heures et envoyer un devis au client.
+                </p>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+              
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                Email automatique - USS System<br>
+                ${new Date().toISOString()}
+              </p>
+            </div>
+          </div>
+        `;
 
-        const { data: emailData, error: emailError } = await supabase.functions.invoke(
-          'send-quote-emails',
-          { body: emailPayload }
+        console.log('Sending client confirmation email...');
+        
+        // Send email to client
+        const { data: clientEmailData, error: clientEmailError } = await supabase.functions.invoke(
+          'send-email',
+          {
+            body: {
+              to: quoteData.client_email,
+              subject: 'Votre demande de devis USS',
+              html: clientEmailHtml,
+            }
+          }
         );
 
-        if (emailError) {
-          console.error('Error sending emails:', emailError);
-          // Don't fail the quote creation if emails fail
+        if (clientEmailError) {
+          console.error('Error sending client email:', clientEmailError);
         } else {
-          console.log('Emails queued successfully:', emailData);
+          console.log('Client email sent successfully:', clientEmailData);
+        }
+
+        console.log('Sending team notification email...');
+
+        // Send email to USS team
+        const { data: teamEmailData, error: teamEmailError } = await supabase.functions.invoke(
+          'send-email',
+          {
+            body: {
+              to: 'support@universal-shippingservices.com',
+              subject: 'Nouvelle demande de devis',
+              html: teamEmailHtml,
+            }
+          }
+        );
+
+        if (teamEmailError) {
+          console.error('Error sending team email:', teamEmailError);
+        } else {
+          console.log('Team email sent successfully:', teamEmailData);
         }
       } catch (emailException) {
         console.error('Exception sending emails:', emailException);

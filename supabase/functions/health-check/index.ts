@@ -309,7 +309,7 @@ async function checkPayPal(): Promise<HealthCheckResult> {
 }
 
 /**
- * Check SMTP configuration by validating credentials
+ * Check SMTP configuration by sending a test email
  */
 async function checkSMTP(): Promise<HealthCheckResult> {
   try {
@@ -323,7 +323,7 @@ async function checkSMTP(): Promise<HealthCheckResult> {
       return {
         service: "SMTP",
         ok: false,
-        message: "Email features are optional and not configured.",
+        message: "SMTP not configured or unreachable",
         details: { 
           error: "SMTP credentials not configured",
           missing: !smtpHost ? "SMTP_HOST" : !smtpUsername ? "SMTP_USERNAME" : "SMTP_PASSWORD"
@@ -332,10 +332,50 @@ async function checkSMTP(): Promise<HealthCheckResult> {
       };
     }
 
-    console.log(`SMTP configuration validated: ${smtpHost}:${smtpPort}`);
+    console.log(`Testing SMTP connection: ${smtpHost}:${smtpPort}`);
 
-    // Simple validation - check if credentials are present
-    // In production, you would test actual SMTP connection
+    // Import nodemailer for SMTP testing
+    const nodemailer = await import("npm:nodemailer@6.9.8");
+    
+    const transporter = nodemailer.default.createTransport({
+      host: smtpHost,
+      port: parseInt(smtpPort),
+      secure: smtpPort === "465", // true for 465, false for other ports
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
+      },
+      tls: {
+        // Do not fail on invalid certs (for development)
+        rejectUnauthorized: false,
+      },
+    });
+
+    // Verify SMTP connection
+    await transporter.verify();
+    console.log("SMTP connection verified successfully");
+
+    // Send a test email to the configured FROM address
+    const testEmailResult = await transporter.sendMail({
+      from: smtpFromEmail,
+      to: smtpFromEmail,
+      subject: "USS System Health Check - SMTP Test",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0066cc;">USS System Health Check</h2>
+          <p>This is an automated test email to verify SMTP configuration.</p>
+          <p><strong>Status:</strong> SMTP is working correctly ✓</p>
+          <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+          <hr style="border: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #666; font-size: 12px;">
+            This email was sent automatically by the USS health check system.
+          </p>
+        </div>
+      `,
+    });
+
+    console.log("Test email sent successfully:", testEmailResult.messageId);
+
     return {
       service: "SMTP",
       ok: true,
@@ -344,7 +384,8 @@ async function checkSMTP(): Promise<HealthCheckResult> {
         host: smtpHost,
         port: smtpPort,
         from: smtpFromEmail,
-        configured: true
+        testEmailSent: true,
+        messageId: testEmailResult.messageId,
       },
       isCritical: false,
     };
@@ -353,8 +394,11 @@ async function checkSMTP(): Promise<HealthCheckResult> {
     return {
       service: "SMTP",
       ok: false,
-      message: "Email features are optional and not configured.",
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      message: "SMTP not configured or unreachable",
+      details: { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown'
+      },
       isCritical: false,
     };
   }
