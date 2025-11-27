@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useRouter, Redirect } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,45 +9,35 @@ import { colors } from '@/styles/commonStyles';
 import appConfig from '@/config/appConfig';
 import { supabase } from '@/app/integrations/supabase/client';
 
+const { width } = Dimensions.get('window');
+
 interface DashboardStats {
-  quotesReceived: number;
-  quotesConverted: number;
-  newClients: number;
-  validatedAgents: number;
-  activeSubscriptions: {
-    basic: number;
-    premium_tracking: number;
-    enterprise_logistics: number;
-    agent_listing: number;
-    digital_portal: number;
-  };
-}
-
-interface RecentQuote {
-  id: string;
-  client_email: string | null;
-  cargo_type: string | null;
-  status: string;
-  created_at: string;
-  origin_port: { name: string } | null;
-  destination_port: { name: string } | null;
-}
-
-interface RecentShipment {
-  id: string;
-  tracking_number: string;
-  current_status: string;
-  created_at: string;
-  origin_port: { name: string } | null;
-  destination_port: { name: string } | null;
-}
-
-interface RecentAgent {
-  id: string;
-  company_name: string;
-  status: string;
-  created_at: string;
-  port: { name: string; country: string } | null;
+  total_quotes: number;
+  quotes_last_7_days: number;
+  quotes_last_30_days: number;
+  total_users: number;
+  admin_users: number;
+  regular_users: number;
+  top_ports: Array<{
+    id: string;
+    name: string;
+    city: string;
+    country: string;
+    total_quotes: number;
+    departure_count: number;
+    arrival_count: number;
+  }>;
+  top_agents: Array<{
+    id: string;
+    company_name: string;
+    port_name: string;
+    port_country: string;
+    quotes_count: number;
+  }>;
+  quotes_by_day: Array<{
+    day: string;
+    count: number;
+  }>;
 }
 
 export default function AdminDashboardScreen() {
@@ -56,177 +46,32 @@ export default function AdminDashboardScreen() {
   const { user, loading: authLoading, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<DashboardStats>({
-    quotesReceived: 0,
-    quotesConverted: 0,
-    newClients: 0,
-    validatedAgents: 0,
-    activeSubscriptions: {
-      basic: 0,
-      premium_tracking: 0,
-      enterprise_logistics: 0,
-      agent_listing: 0,
-      digital_portal: 0,
-    },
-  });
-  const [recentQuotes, setRecentQuotes] = useState<RecentQuote[]>([]);
-  const [recentShipments, setRecentShipments] = useState<RecentShipment[]>([]);
-  const [recentAgents, setRecentAgents] = useState<RecentAgent[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   // Check if user is admin
   const isAdmin = appConfig.isAdmin(user?.email);
 
-  // Load dashboard data - MUST be defined before any conditional returns
+  // Load dashboard data using RPC function
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Calculate date 30 days ago
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+      console.log('[ADMIN DASHBOARD] Loading dashboard stats...');
+      
+      // Call the RPC function to get all stats
+      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
 
-      // Load quotes received in last 30 days
-      const { count: quotesCount, error: quotesError } = await supabase
-        .from('freight_quotes')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgoISO);
-
-      if (quotesError) {
-        console.error('Error loading quotes count:', quotesError);
+      if (error) {
+        console.error('[ADMIN DASHBOARD] Error loading stats:', error);
+        Alert.alert('Erreur', 'Impossible de charger les statistiques du dashboard.');
+        return;
       }
 
-      // Load quotes converted to shipments in last 30 days
-      const { count: convertedCount, error: convertedError } = await supabase
-        .from('freight_quotes')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgoISO)
-        .not('ordered_as_shipment', 'is', null);
-
-      if (convertedError) {
-        console.error('Error loading converted quotes:', convertedError);
-      }
-
-      // Load new clients in last 30 days
-      const { count: clientsCount, error: clientsError } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgoISO);
-
-      if (clientsError) {
-        console.error('Error loading clients count:', clientsError);
-      }
-
-      // Load validated agents in last 30 days
-      const { count: agentsCount, error: agentsError } = await supabase
-        .from('global_agents')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'validated')
-        .gte('created_at', thirtyDaysAgoISO);
-
-      if (agentsError) {
-        console.error('Error loading agents count:', agentsError);
-      }
-
-      // Load active subscriptions by plan
-      const { data: subscriptionsData, error: subscriptionsError } = await supabase
-        .from('subscriptions')
-        .select('plan_type')
-        .eq('is_active', true);
-
-      if (subscriptionsError) {
-        console.error('Error loading subscriptions:', subscriptionsError);
-      }
-
-      // Count subscriptions by plan type
-      const subscriptionCounts = {
-        basic: 0,
-        premium_tracking: 0,
-        enterprise_logistics: 0,
-        agent_listing: 0,
-        digital_portal: 0,
-      };
-
-      if (subscriptionsData) {
-        subscriptionsData.forEach((sub) => {
-          if (sub.plan_type && Object.hasOwn(subscriptionCounts, sub.plan_type)) {
-            subscriptionCounts[sub.plan_type as keyof typeof subscriptionCounts]++;
-          }
-        });
-      }
-
-      // Update stats
-      setStats({
-        quotesReceived: quotesCount || 0,
-        quotesConverted: convertedCount || 0,
-        newClients: clientsCount || 0,
-        validatedAgents: agentsCount || 0,
-        activeSubscriptions: subscriptionCounts,
-      });
-
-      // Load recent quotes
-      const { data: quotesData, error: recentQuotesError } = await supabase
-        .from('freight_quotes')
-        .select(`
-          id,
-          client_email,
-          cargo_type,
-          status,
-          created_at,
-          origin_port:ports!freight_quotes_origin_port_fkey(name),
-          destination_port:ports!freight_quotes_destination_port_fkey(name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (recentQuotesError) {
-        console.error('Error loading recent quotes:', recentQuotesError);
-      } else {
-        setRecentQuotes(quotesData || []);
-      }
-
-      // Load recent shipments
-      const { data: shipmentsData, error: recentShipmentsError } = await supabase
-        .from('shipments')
-        .select(`
-          id,
-          tracking_number,
-          current_status,
-          created_at,
-          origin_port:ports!shipments_origin_port_fkey(name),
-          destination_port:ports!shipments_destination_port_fkey(name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (recentShipmentsError) {
-        console.error('Error loading recent shipments:', recentShipmentsError);
-      } else {
-        setRecentShipments(shipmentsData || []);
-      }
-
-      // Load recent validated agents
-      const { data: agentsData, error: recentAgentsError } = await supabase
-        .from('global_agents')
-        .select(`
-          id,
-          company_name,
-          status,
-          created_at,
-          port:ports(name, country)
-        `)
-        .eq('status', 'validated')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (recentAgentsError) {
-        console.error('Error loading recent agents:', recentAgentsError);
-      } else {
-        setRecentAgents(agentsData || []);
-      }
+      console.log('[ADMIN DASHBOARD] Stats loaded:', data);
+      setStats(data);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du tableau de bord.');
+      console.error('[ADMIN DASHBOARD] Exception loading dashboard data:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors du chargement des données.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -296,66 +141,22 @@ export default function AdminDashboardScreen() {
     return <Redirect href="/(tabs)/login" />;
   }
 
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('fr-FR').format(num);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      month: 'short',
     });
   };
 
-  const formatStatus = (status: string) => {
-    const statusMap: { [key: string]: string } = {
-      received: 'Reçu',
-      in_progress: 'En cours',
-      sent_to_client: 'Envoyé',
-      accepted: 'Accepté',
-      refused: 'Refusé',
-      draft: 'Brouillon',
-      quote_pending: 'Devis en attente',
-      confirmed: 'Confirmé',
-      in_transit: 'En transit',
-      at_port: 'Au port',
-      delivered: 'Livré',
-      on_hold: 'En attente',
-      cancelled: 'Annulé',
-      pending: 'En attente',
-      validated: 'Validé',
-      rejected: 'Rejeté',
-    };
-    return statusMap[status] || status;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'delivered':
-      case 'accepted':
-      case 'validated':
-        return '#10b981';
-      case 'in_transit':
-      case 'confirmed':
-      case 'in_progress':
-        return colors.primary;
-      case 'at_port':
-      case 'sent_to_client':
-        return '#f59e0b';
-      case 'on_hold':
-      case 'cancelled':
-      case 'refused':
-      case 'rejected':
-        return '#ef4444';
-      case 'draft':
-      case 'quote_pending':
-      case 'received':
-      case 'pending':
-        return colors.textSecondary;
-      default:
-        return colors.textSecondary;
-    }
-  };
+  // Calculate max value for chart scaling
+  const maxQuotesPerDay = stats?.quotes_by_day?.length 
+    ? Math.max(...stats.quotes_by_day.map(d => d.count))
+    : 1;
 
   // Loading state
   if (authLoading || loading) {
@@ -371,10 +172,65 @@ export default function AdminDashboardScreen() {
     );
   }
 
-  const totalSubscriptions = Object.values(stats.activeSubscriptions).reduce((a, b) => a + b, 0);
+  // No data state
+  if (!stats) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle"
+            android_material_icon_name="warning"
+            size={48}
+            color={colors.warning}
+          />
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+            Aucune donnée disponible
+          </Text>
+          <TouchableOpacity
+            style={[styles.refreshButton, { backgroundColor: colors.primary }]}
+            onPress={onRefresh}
+          >
+            <IconSymbol
+              ios_icon_name="arrow.clockwise"
+              android_material_icon_name="refresh"
+              size={20}
+              color="#FFFFFF"
+            />
+            <Text style={styles.refreshButtonText}>Actualiser</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <IconSymbol
+            ios_icon_name="chart.bar.fill"
+            android_material_icon_name="analytics"
+            size={28}
+            color={colors.primary}
+          />
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Dashboard Admin
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.refreshIconButton, { backgroundColor: colors.primary + '20' }]}
+          onPress={onRefresh}
+        >
+          <IconSymbol
+            ios_icon_name="arrow.clockwise"
+            android_material_icon_name="refresh"
+            size={24}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -383,15 +239,16 @@ export default function AdminDashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Stats Section */}
+        {/* KPI Cards Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Statistiques (30 derniers jours)
+            Indicateurs Clés
           </Text>
 
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
+          <View style={styles.kpiGrid}>
+            {/* Total Quotes */}
+            <View style={[styles.kpiCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.primary + '20' }]}>
                 <IconSymbol
                   ios_icon_name="doc.text.fill"
                   android_material_icon_name="description"
@@ -399,256 +256,269 @@ export default function AdminDashboardScreen() {
                   color={colors.primary}
                 />
               </View>
-              <View style={styles.statContent}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {stats.quotesReceived}
+              <View style={styles.kpiContent}>
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
+                  {formatNumber(stats.total_quotes)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Devis reçus
+                <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+                  Total Devis
                 </Text>
               </View>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#10b981' + '20' }]}>
+            {/* Quotes Last 7 Days */}
+            <View style={[styles.kpiCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={[styles.kpiIconContainer, { backgroundColor: '#10b981' + '20' }]}>
                 <IconSymbol
-                  ios_icon_name="checkmark.circle.fill"
-                  android_material_icon_name="check_circle"
+                  ios_icon_name="calendar"
+                  android_material_icon_name="event"
                   size={28}
                   color="#10b981"
                 />
               </View>
-              <View style={styles.statContent}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {stats.quotesConverted}
+              <View style={styles.kpiContent}>
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
+                  {formatNumber(stats.quotes_last_7_days)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Devis convertis
+                <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+                  7 derniers jours
                 </Text>
               </View>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: colors.secondary + '20' }]}>
+            {/* Quotes Last 30 Days */}
+            <View style={[styles.kpiCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.secondary + '20' }]}>
                 <IconSymbol
-                  ios_icon_name="person.2.fill"
-                  android_material_icon_name="people"
+                  ios_icon_name="calendar.badge.clock"
+                  android_material_icon_name="date_range"
                   size={28}
                   color={colors.secondary}
                 />
               </View>
-              <View style={styles.statContent}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {stats.newClients}
+              <View style={styles.kpiContent}>
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
+                  {formatNumber(stats.quotes_last_30_days)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Nouveaux clients
+                <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+                  30 derniers jours
                 </Text>
               </View>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#f59e0b' + '20' }]}>
+            {/* Total Users */}
+            <View style={[styles.kpiCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={[styles.kpiIconContainer, { backgroundColor: '#f59e0b' + '20' }]}>
                 <IconSymbol
-                  ios_icon_name="person.3.fill"
-                  android_material_icon_name="groups"
+                  ios_icon_name="person.2.fill"
+                  android_material_icon_name="people"
                   size={28}
                   color="#f59e0b"
                 />
               </View>
-              <View style={styles.statContent}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {stats.validatedAgents}
+              <View style={styles.kpiContent}>
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
+                  {formatNumber(stats.total_users)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Agents validés
+                <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+                  Utilisateurs
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Active Subscriptions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Abonnements actifs
-            </Text>
-            <View style={[styles.totalBadge, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.totalBadgeText, { color: colors.primary }]}>
-                Total: {totalSubscriptions}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.subscriptionsCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
-            <View style={styles.subscriptionRow}>
-              <View style={styles.subscriptionLeft}>
-                <View style={[styles.subscriptionDot, { backgroundColor: '#06b6d4' }]} />
-                <Text style={[styles.subscriptionLabel, { color: theme.colors.text }]}>
-                  Basic
-                </Text>
-              </View>
-              <Text style={[styles.subscriptionValue, { color: theme.colors.text }]}>
-                {stats.activeSubscriptions.basic}
-              </Text>
-            </View>
-
-            <View style={styles.subscriptionRow}>
-              <View style={styles.subscriptionLeft}>
-                <View style={[styles.subscriptionDot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.subscriptionLabel, { color: theme.colors.text }]}>
-                  Premium Tracking
-                </Text>
-              </View>
-              <Text style={[styles.subscriptionValue, { color: theme.colors.text }]}>
-                {stats.activeSubscriptions.premium_tracking}
-              </Text>
-            </View>
-
-            <View style={styles.subscriptionRow}>
-              <View style={styles.subscriptionLeft}>
-                <View style={[styles.subscriptionDot, { backgroundColor: '#8b5cf6' }]} />
-                <Text style={[styles.subscriptionLabel, { color: theme.colors.text }]}>
-                  Enterprise Logistics
-                </Text>
-              </View>
-              <Text style={[styles.subscriptionValue, { color: theme.colors.text }]}>
-                {stats.activeSubscriptions.enterprise_logistics}
-              </Text>
-            </View>
-
-            <View style={styles.subscriptionRow}>
-              <View style={styles.subscriptionLeft}>
-                <View style={[styles.subscriptionDot, { backgroundColor: '#f59e0b' }]} />
-                <Text style={[styles.subscriptionLabel, { color: theme.colors.text }]}>
-                  Agent Listing
-                </Text>
-              </View>
-              <Text style={[styles.subscriptionValue, { color: theme.colors.text }]}>
-                {stats.activeSubscriptions.agent_listing}
-              </Text>
-            </View>
-
-            <View style={styles.subscriptionRow}>
-              <View style={styles.subscriptionLeft}>
-                <View style={[styles.subscriptionDot, { backgroundColor: '#10b981' }]} />
-                <Text style={[styles.subscriptionLabel, { color: theme.colors.text }]}>
-                  Digital Portal
-                </Text>
-              </View>
-              <Text style={[styles.subscriptionValue, { color: theme.colors.text }]}>
-                {stats.activeSubscriptions.digital_portal}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Recent Events */}
+        {/* User Distribution */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Derniers événements
+            Répartition par Rôle
           </Text>
 
-          {/* Recent Quotes */}
-          {recentQuotes.length > 0 && (
-            <View style={styles.eventsSection}>
-              <Text style={[styles.eventsSectionTitle, { color: theme.colors.text }]}>
-                Derniers devis
+          <View style={[styles.distributionCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+            <View style={styles.distributionRow}>
+              <View style={styles.distributionLeft}>
+                <View style={[styles.distributionDot, { backgroundColor: colors.primary }]} />
+                <Text style={[styles.distributionLabel, { color: theme.colors.text }]}>
+                  Administrateurs
+                </Text>
+              </View>
+              <Text style={[styles.distributionValue, { color: theme.colors.text }]}>
+                {formatNumber(stats.admin_users)}
               </Text>
-              {recentQuotes.map((quote, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.eventCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-                  onPress={() => router.push(`/(tabs)/admin-quote-details?id=${quote.id}`)}
-                >
-                  <View style={styles.eventHeader}>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(quote.status) + '20' }]}>
-                      <Text style={[styles.statusText, { color: getStatusColor(quote.status) }]}>
-                        {formatStatus(quote.status)}
+            </View>
+
+            <View style={styles.distributionRow}>
+              <View style={styles.distributionLeft}>
+                <View style={[styles.distributionDot, { backgroundColor: colors.secondary }]} />
+                <Text style={[styles.distributionLabel, { color: theme.colors.text }]}>
+                  Utilisateurs
+                </Text>
+              </View>
+              <Text style={[styles.distributionValue, { color: theme.colors.text }]}>
+                {formatNumber(stats.regular_users)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quotes Chart (Last 7 Days) */}
+        {stats.quotes_by_day && stats.quotes_by_day.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Devis par Jour (7 derniers jours)
+            </Text>
+
+            <View style={[styles.chartCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <View style={styles.chartContainer}>
+                {stats.quotes_by_day.map((dayData, index) => {
+                  const barHeight = maxQuotesPerDay > 0 
+                    ? (dayData.count / maxQuotesPerDay) * 120 
+                    : 0;
+                  
+                  return (
+                    <View key={index} style={styles.chartBar}>
+                      <Text style={[styles.chartValue, { color: theme.colors.text }]}>
+                        {dayData.count}
+                      </Text>
+                      <View
+                        style={[
+                          styles.bar,
+                          {
+                            height: Math.max(barHeight, 4),
+                            backgroundColor: colors.primary,
+                          },
+                        ]}
+                      />
+                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
+                        {formatDate(dayData.day)}
                       </Text>
                     </View>
-                    <Text style={[styles.eventDate, { color: colors.textSecondary }]}>
-                      {formatDate(quote.created_at)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.eventTitle, { color: theme.colors.text }]}>
-                    {quote.origin_port?.name || 'N/A'} → {quote.destination_port?.name || 'N/A'}
-                  </Text>
-                  <Text style={[styles.eventSubtitle, { color: colors.textSecondary }]}>
-                    {quote.client_email || 'Email non fourni'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  );
+                })}
+              </View>
             </View>
-          )}
+          </View>
+        )}
 
-          {/* Recent Shipments */}
-          {recentShipments.length > 0 && (
-            <View style={styles.eventsSection}>
-              <Text style={[styles.eventsSectionTitle, { color: theme.colors.text }]}>
-                Derniers shipments
-              </Text>
-              {recentShipments.map((shipment, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.eventCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
-                  onPress={() => router.push(`/(tabs)/admin-shipment-details?id=${shipment.id}`)}
-                >
-                  <View style={styles.eventHeader}>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shipment.current_status) + '20' }]}>
-                      <Text style={[styles.statusText, { color: getStatusColor(shipment.current_status) }]}>
-                        {formatStatus(shipment.current_status)}
+        {/* Top 5 Ports */}
+        {stats.top_ports && stats.top_ports.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Top 5 Ports les Plus Demandés
+            </Text>
+
+            <View style={[styles.listCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              {stats.top_ports.map((port, index) => (
+                <View key={port.id} style={styles.listItem}>
+                  <View style={styles.listItemLeft}>
+                    <View style={[styles.rankBadge, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.rankText, { color: colors.primary }]}>
+                        {index + 1}
                       </Text>
                     </View>
-                    <Text style={[styles.eventDate, { color: colors.textSecondary }]}>
-                      {formatDate(shipment.created_at)}
+                    <View style={styles.listItemInfo}>
+                      <Text style={[styles.listItemTitle, { color: theme.colors.text }]}>
+                        {port.name}
+                      </Text>
+                      <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
+                        {port.city}, {port.country}
+                      </Text>
+                      <View style={styles.portStats}>
+                        <Text style={[styles.portStatText, { color: colors.textSecondary }]}>
+                          Départ: {port.departure_count} • Arrivée: {port.arrival_count}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[styles.countBadge, { backgroundColor: '#10b981' + '20' }]}>
+                    <Text style={[styles.countText, { color: '#10b981' }]}>
+                      {port.total_quotes}
                     </Text>
                   </View>
-                  <Text style={[styles.eventTitle, { color: theme.colors.text }]}>
-                    {shipment.tracking_number}
-                  </Text>
-                  <Text style={[styles.eventSubtitle, { color: colors.textSecondary }]}>
-                    {shipment.origin_port?.name || 'N/A'} → {shipment.destination_port?.name || 'N/A'}
-                  </Text>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
-          )}
+          </View>
+        )}
 
-          {/* Recent Validated Agents */}
-          {recentAgents.length > 0 && (
-            <View style={styles.eventsSection}>
-              <Text style={[styles.eventsSectionTitle, { color: theme.colors.text }]}>
-                Derniers agents validés
-              </Text>
-              {recentAgents.map((agent, index) => (
+        {/* Top 5 Agents */}
+        {stats.top_agents && stats.top_agents.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Top 5 Agents les Plus Sollicités
+            </Text>
+
+            <View style={[styles.listCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              {stats.top_agents.map((agent, index) => (
                 <TouchableOpacity
-                  key={index}
-                  style={[styles.eventCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}
+                  key={agent.id}
+                  style={styles.listItem}
                   onPress={() => router.push(`/(tabs)/admin-agent-details?id=${agent.id}`)}
                 >
-                  <View style={styles.eventHeader}>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(agent.status) + '20' }]}>
-                      <Text style={[styles.statusText, { color: getStatusColor(agent.status) }]}>
-                        {formatStatus(agent.status)}
+                  <View style={styles.listItemLeft}>
+                    <View style={[styles.rankBadge, { backgroundColor: colors.secondary + '20' }]}>
+                      <Text style={[styles.rankText, { color: colors.secondary }]}>
+                        {index + 1}
                       </Text>
                     </View>
-                    <Text style={[styles.eventDate, { color: colors.textSecondary }]}>
-                      {formatDate(agent.created_at)}
+                    <View style={styles.listItemInfo}>
+                      <Text style={[styles.listItemTitle, { color: theme.colors.text }]}>
+                        {agent.company_name}
+                      </Text>
+                      <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
+                        {agent.port_name}, {agent.port_country}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.countBadge, { backgroundColor: colors.accent + '20' }]}>
+                    <Text style={[styles.countText, { color: colors.accent }]}>
+                      {agent.quotes_count}
                     </Text>
                   </View>
-                  <Text style={[styles.eventTitle, { color: theme.colors.text }]}>
-                    {agent.company_name}
-                  </Text>
-                  <Text style={[styles.eventSubtitle, { color: colors.textSecondary }]}>
-                    {agent.port?.name || 'N/A'}, {agent.port?.country || 'N/A'}
-                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          )}
-        </View>
+          </View>
+        )}
+
+        {/* Empty states */}
+        {(!stats.top_ports || stats.top_ports.length === 0) && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Top 5 Ports les Plus Demandés
+            </Text>
+            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <IconSymbol
+                ios_icon_name="location"
+                android_material_icon_name="location_on"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Aucune donnée disponible
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {(!stats.top_agents || stats.top_agents.length === 0) && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Top 5 Agents les Plus Sollicités
+            </Text>
+            <View style={[styles.emptyCard, { backgroundColor: theme.colors.card, borderColor: colors.border }]}>
+              <IconSymbol
+                ios_icon_name="person.3"
+                android_material_icon_name="groups"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Aucun agent validé
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -663,9 +533,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
+    paddingHorizontal: 20,
   },
   loadingText: {
     fontSize: 16,
+    textAlign: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  refreshIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -678,117 +589,168 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 16,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
   },
-  totalBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  totalBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statsGrid: {
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
-  statCard: {
+  kpiCard: {
+    width: (width - 52) / 2,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
-  statIconContainer: {
+  kpiIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statContent: {
+  kpiContent: {
     flex: 1,
+    gap: 4,
   },
-  statValue: {
-    fontSize: 32,
+  kpiValue: {
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 14,
+  kpiLabel: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  subscriptionsCard: {
+  distributionCard: {
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 16,
   },
-  subscriptionRow: {
+  distributionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  subscriptionLeft: {
+  distributionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  subscriptionDot: {
+  distributionDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
   },
-  subscriptionLabel: {
+  distributionLabel: {
     fontSize: 16,
+    fontWeight: '500',
   },
-  subscriptionValue: {
+  distributionValue: {
     fontSize: 20,
     fontWeight: '700',
   },
-  eventsSection: {
-    gap: 12,
-    marginTop: 16,
-  },
-  eventsSectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  eventCard: {
-    padding: 16,
-    borderRadius: 12,
+  chartCard: {
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 180,
+  },
+  chartBar: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 8,
   },
-  eventHeader: {
+  chartValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bar: {
+    width: '80%',
+    borderRadius: 4,
+    minHeight: 4,
+  },
+  chartLabel: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  listCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 8,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  listItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  eventDate: {
-    fontSize: 12,
+  rankText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  eventTitle: {
+  listItemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  listItemTitle: {
     fontSize: 16,
     fontWeight: '600',
   },
-  eventSubtitle: {
+  listItemSubtitle: {
     fontSize: 14,
+  },
+  portStats: {
+    marginTop: 2,
+  },
+  portStatText: {
+    fontSize: 12,
+  },
+  countBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptyCard: {
+    padding: 40,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center',
   },
 });
