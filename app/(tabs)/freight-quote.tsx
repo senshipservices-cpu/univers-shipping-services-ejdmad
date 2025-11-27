@@ -154,6 +154,9 @@ export default function FreightQuoteScreen() {
     // Set submitting state immediately
     setIsSubmitting(true);
 
+    // Variable to track if submission was successful
+    let submissionSuccessful = false;
+
     try {
       // Determine if user is logged in
       const isLoggedIn = !!(user && client);
@@ -276,7 +279,10 @@ export default function FreightQuoteScreen() {
         throw insertError;
       }
 
-      console.log('Quote submitted successfully to Supabase');
+      console.log('✅ Quote submitted successfully to Supabase');
+
+      // Mark submission as successful
+      submissionSuccessful = true;
 
       // Log quote_created event
       await logEvent({
@@ -432,7 +438,28 @@ export default function FreightQuoteScreen() {
         // L'utilisateur verra quand même le message de succès
       }
 
-      // 4️⃣ AFFICHAGE DU MESSAGE DE SUCCÈS + RESET DU FORMULAIRE
+    } catch (error: any) {
+      console.error('Erreur envoi devis:', error);
+      
+      // Show error alert - do NOT reset form so user doesn't lose their data
+      Alert.alert(
+        "Erreur",
+        "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer."
+      );
+    } finally {
+      // 🔴 TRÈS IMPORTANT : toujours remettre isSubmitting à false
+      setIsSubmitting(false);
+      console.log('isSubmitting reset to false');
+    }
+
+    // 4️⃣ AFFICHAGE DU MESSAGE DE SUCCÈS + RESET DU FORMULAIRE
+    // ✅ Cette partie s'exécute APRÈS le try/catch/finally
+    
+    if (submissionSuccessful) {
+      console.log('✅ Submission successful, showing success message');
+      
+      // Determine if user is logged in
+      const isLoggedIn = !!(user && client);
       
       // Success handling based on authentication status
       if (isLoggedIn) {
@@ -466,18 +493,6 @@ export default function FreightQuoteScreen() {
           ]
         );
       }
-    } catch (error: any) {
-      console.error('Erreur envoi devis:', error);
-      
-      // Show error alert - do NOT reset form so user doesn't lose their data
-      Alert.alert(
-        "Erreur",
-        "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer."
-      );
-    } finally {
-      // 🔴 TRÈS IMPORTANT : toujours remettre isSubmitting à false
-      setIsSubmitting(false);
-      console.log('isSubmitting reset to false');
     }
   }, [formData, isSubmitting, user, client, serviceId, serviceName, router, t, resetForm]);
 
