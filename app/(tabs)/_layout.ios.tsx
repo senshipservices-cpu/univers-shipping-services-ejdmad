@@ -4,7 +4,7 @@ import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   return (
     <NativeTabs>
@@ -20,10 +20,13 @@ export default function TabLayout() {
         <Icon sf="anchor.fill" />
         <Label>Ports</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="pricing" name="pricing">
-        <Icon sf="dollarsign.circle.fill" />
-        <Label>Pricing</Label>
-      </NativeTabs.Trigger>
+      {/* Only show pricing/status tab for admins */}
+      {isAdmin && (
+        <NativeTabs.Trigger key="pricing" name="pricing">
+          <Icon sf="dollarsign.circle.fill" />
+          <Label>Pricing</Label>
+        </NativeTabs.Trigger>
+      )}
       <NativeTabs.Trigger key="become-agent" name="become-agent">
         <Icon sf="person.badge.plus.fill" />
         <Label>Devenir agent</Label>

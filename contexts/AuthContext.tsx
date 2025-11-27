@@ -25,6 +25,7 @@ interface AuthContextType {
   client: Client | null;
   loading: boolean;
   currentUserIsAdmin: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
@@ -68,8 +69,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const isFetchingClient = useRef(false);
   const lastFetchedUserId = useRef<string | null>(null);
 
-  // Compute admin status based on user email
-  const currentUserIsAdmin = appConfig.isAdmin(user?.email);
+  // Compute admin status based on:
+  // 1. Database role field (primary)
+  // 2. Email-based admin list (fallback)
+  const isAdmin = (client?.role === 'admin') || appConfig.isAdmin(user?.email);
+  const currentUserIsAdmin = isAdmin; // Alias for backward compatibility
 
   // Fetch client record for the current user
   const fetchClient = useCallback(async (userId: string) => {
@@ -97,6 +101,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       }
 
       console.log('[AUTH] Client record fetched:', data);
+      console.log('[AUTH] User role:', data.role);
       setClient(data);
       
       // Load user's preferred language if available, default to 'en' if not specified
@@ -369,6 +374,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     client,
     loading,
     currentUserIsAdmin,
+    isAdmin,
     signIn,
     signUp,
     signInWithGoogle,

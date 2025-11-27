@@ -5,9 +5,9 @@ import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
-  // Define tabs based on authentication status
+  // Define tabs based on authentication status and admin role
   const tabs: TabBarItem[] = [
     {
       name: '(home)',
@@ -27,12 +27,13 @@ export default function TabLayout() {
       icon: 'anchor',
       label: 'Ports',
     },
-    {
+    // Only show pricing/status tab for admins
+    ...(isAdmin ? [{
       name: 'pricing',
       route: '/(tabs)/pricing',
       icon: 'payments',
       label: 'Pricing',
-    },
+    }] : []),
     {
       name: 'become-agent',
       route: '/(tabs)/become-agent',
@@ -90,6 +91,7 @@ export default function TabLayout() {
         <Stack.Screen key="profile" name="profile" />
         <Stack.Screen key="test-signup" name="test-signup" />
         <Stack.Screen key="error-screen" name="error-screen" />
+        <Stack.Screen key="admin-config" name="admin-config" />
       </Stack>
       <FloatingTabBar tabs={tabs} />
     </>

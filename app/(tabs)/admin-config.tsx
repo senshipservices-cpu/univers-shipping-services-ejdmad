@@ -12,15 +12,13 @@ import { getConfigStatus, VerificationResult } from '@/config/configVerification
 export default function AdminConfigScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [status, setStatus] = useState<{
     overall: 'healthy' | 'degraded' | 'critical';
     results: VerificationResult[];
   } | null>(null);
-
-  const isAdmin = appConfig.isAdmin(user?.email);
 
   const loadConfigStatus = useCallback(async () => {
     try {
@@ -46,12 +44,15 @@ export default function AdminConfigScreen() {
     loadConfigStatus();
   }, [loadConfigStatus]);
 
+  // Redirect non-authenticated users to login
   if (!authLoading && !user) {
     return <Redirect href="/(tabs)/login" />;
   }
 
+  // Redirect non-admin users to pricing screen
   if (!authLoading && user && !isAdmin) {
-    return <Redirect href="/(tabs)/login" />;
+    console.log('[ADMIN-CONFIG] Non-admin user attempting to access admin screen, redirecting to pricing');
+    return <Redirect href="/(tabs)/pricing" />;
   }
 
   if (authLoading || loading) {

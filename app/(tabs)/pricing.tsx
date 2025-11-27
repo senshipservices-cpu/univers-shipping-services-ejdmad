@@ -41,7 +41,7 @@ export default function PricingScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t, language } = useLanguage();
-  const { user, session, client } = useAuth();
+  const { user, session, client, isAdmin } = useAuth();
   const params = useLocalSearchParams();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,7 +316,14 @@ export default function PricingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <PageHeader title={t.pricing.title} />
+      <PageHeader 
+        title={t.pricing.title}
+        rightButton={isAdmin ? {
+          icon: { ios: 'gear', android: 'settings' },
+          onPress: () => router.push('/(tabs)/admin-config'),
+          label: 'Config'
+        } : undefined}
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -325,6 +332,40 @@ export default function PricingScreen() {
       >
         {/* Configuration Status (Dev Only) */}
         {appConfig.isDev && <ConfigStatus />}
+
+        {/* Admin Quick Access Banner */}
+        {isAdmin && (
+          <ResponsiveContainer>
+            <TouchableOpacity
+              style={[styles.adminBanner, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
+              onPress={() => router.push('/(tabs)/admin-config')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol
+                ios_icon_name="gear.circle.fill"
+                android_material_icon_name="admin_panel_settings"
+                size={32}
+                color={colors.primary}
+              />
+              <View style={styles.adminBannerContent}>
+                <Text style={[styles.adminBannerTitle, { color: theme.colors.text }]}>
+                  {language === 'en' ? 'System Status' : 'Statut système'}
+                </Text>
+                <Text style={[styles.adminBannerText, { color: colors.textSecondary }]}>
+                  {language === 'en' 
+                    ? 'View system configuration and service status'
+                    : 'Voir la configuration système et l\'état des services'}
+                </Text>
+              </View>
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron_right"
+                size={24}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          </ResponsiveContainer>
+        )}
 
         {highlightedPlan === 'digital_portal' && (
           <ResponsiveContainer>
@@ -612,6 +653,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 120,
+  },
+  adminBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
+    borderWidth: 2,
+  },
+  adminBannerContent: {
+    flex: 1,
+    gap: 4,
+  },
+  adminBannerTitle: {
+    fontSize: getFontSize('lg'),
+    fontWeight: '700',
+  },
+  adminBannerText: {
+    fontSize: getFontSize('sm'),
+    lineHeight: 18,
   },
   accessBanner: {
     flexDirection: 'row',

@@ -13,13 +13,19 @@ interface PageHeaderProps {
   showBackButton?: boolean;
   showHelpButton?: boolean;
   showLogo?: boolean;
+  rightButton?: {
+    icon: { ios: string; android: string };
+    onPress: () => void;
+    label?: string;
+  };
 }
 
 export function PageHeader({ 
   title, 
   showBackButton = true, 
   showHelpButton = true,
-  showLogo = true 
+  showLogo = true,
+  rightButton
 }: PageHeaderProps) {
   const router = useRouter();
   const theme = useTheme();
@@ -68,9 +74,22 @@ export function PageHeader({
           ) : null}
         </View>
         
-        {/* Right: Help Button */}
+        {/* Right: Custom Button or Help Button */}
         <View style={styles.rightSection}>
-          {showHelpButton ? (
+          {rightButton ? (
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={rightButton.onPress}
+              activeOpacity={0.7}
+            >
+              <IconSymbol
+                ios_icon_name={rightButton.icon.ios}
+                android_material_icon_name={rightButton.icon.android}
+                size={28}
+                color={colors.secondary}
+              />
+            </TouchableOpacity>
+          ) : showHelpButton ? (
             <TouchableOpacity
               style={styles.helpButton}
               onPress={() => router.push({
