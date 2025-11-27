@@ -316,6 +316,17 @@ export default function AdminAgentsPortsScreen() {
             Agents & Ports
           </Text>
         </View>
+        <TouchableOpacity
+          style={[styles.mapButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.push('/(tabs)/admin-agents-ports-map')}
+        >
+          <IconSymbol
+            ios_icon_name="map.fill"
+            android_material_icon_name="map"
+            size={20}
+            color="#ffffff"
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -767,6 +778,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
+  },
+  mapButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabsSection: {
     paddingVertical: 16,

@@ -244,9 +244,18 @@ export default function PortCoverageScreen() {
 
         {/* Interactive Map Section */}
         <View style={styles.mapSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {language === 'en' ? 'Global Port Network' : 'Réseau Portuaire Mondial'}
-          </Text>
+          <View style={styles.mapSectionHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                {language === 'en' ? 'Global Port Network' : 'Réseau Portuaire Mondial'}
+              </Text>
+              <Text style={[styles.mapSectionSubtitle, { color: colors.textSecondary }]}>
+                {language === 'en' 
+                  ? `${portsWithCoordinates.length} ports with location data` 
+                  : `${portsWithCoordinates.length} ports avec données de localisation`}
+              </Text>
+            </View>
+          </View>
           
           {loading ? (
             <View style={[styles.mapPlaceholder, { backgroundColor: colors.highlight }]}>
@@ -270,6 +279,31 @@ export default function PortCoverageScreen() {
                   <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
                   <Text style={[styles.legendText, { color: colors.textSecondary }]}>
                     {language === 'en' ? 'Hub Port' : 'Port Hub'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.mapFeatures}>
+                <View style={styles.mapFeatureItem}>
+                  <IconSymbol
+                    ios_icon_name="hand.point.up.left.fill"
+                    android_material_icon_name="touch_app"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.mapFeatureText, { color: colors.textSecondary }]}>
+                    {language === 'en' ? 'Tap markers for details' : 'Touchez les marqueurs pour les détails'}
+                  </Text>
+                </View>
+                <View style={styles.mapFeatureItem}>
+                  <IconSymbol
+                    ios_icon_name="arrow.up.left.and.arrow.down.right"
+                    android_material_icon_name="zoom_out_map"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.mapFeatureText, { color: colors.textSecondary }]}>
+                    {language === 'en' ? 'Pinch to zoom' : 'Pincez pour zoomer'}
                   </Text>
                 </View>
               </View>
@@ -525,10 +559,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 32,
   },
+  mapSectionHeader: {
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  mapSectionSubtitle: {
+    fontSize: 14,
   },
   mapPlaceholder: {
     height: 400,
@@ -558,6 +598,23 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mapFeatures: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  mapFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mapFeatureText: {
     fontSize: 12,
     fontWeight: '600',
   },

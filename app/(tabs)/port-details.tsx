@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { colors } from "@/styles/commonStyles";
 import { supabase } from "@/app/integrations/supabase/client";
+import { PortsMap } from "@/components/PortsMap";
 
 interface Port {
   id: string;
@@ -19,6 +20,8 @@ interface Port {
   description_en: string | null;
   is_hub: boolean;
   services_available: string[];
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface PortService {
@@ -59,6 +62,7 @@ export default function PortDetailsScreen() {
   const [portServices, setPortServices] = useState<PortService[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   const loadPortDetails = useCallback(async () => {
     try {
@@ -190,6 +194,19 @@ export default function PortDetailsScreen() {
     }
   };
 
+  const handleViewOnMap = () => {
+    setShowMapModal(true);
+  };
+
+  const portForMap = port && port.latitude && port.longitude ? [{
+    id: port.id,
+    name: port.name,
+    lat: Number(port.latitude),
+    lng: Number(port.longitude),
+    is_hub: port.is_hub,
+    country: port.country,
+  }] : [];
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -263,6 +280,47 @@ export default function PortDetailsScreen() {
             </View>
           )}
         </View>
+
+        {/* Map Preview with "View on Map" Button */}
+        {port.latitude && port.longitude && (
+          <View style={styles.mapPreviewSection}>
+            <View style={styles.mapPreviewHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                {language === 'en' ? 'Location' : 'Localisation'}
+              </Text>
+              <TouchableOpacity
+                style={[styles.viewOnMapButton, { backgroundColor: colors.primary }]}
+                onPress={handleViewOnMap}
+              >
+                <IconSymbol
+                  ios_icon_name="map.fill"
+                  android_material_icon_name="map"
+                  size={16}
+                  color="#ffffff"
+                />
+                <Text style={styles.viewOnMapButtonText}>
+                  {language === 'en' ? 'View on Map' : 'Voir sur la carte'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.mapPreviewContainer}>
+              <PortsMap ports={portForMap} onPortPress={() => handleViewOnMap()} />
+            </View>
+
+            <View style={styles.coordinatesInfo}>
+              <IconSymbol
+                ios_icon_name="location.fill"
+                android_material_icon_name="place"
+                size={16}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.coordinatesText, { color: colors.textSecondary }]}>
+                {Number(port.latitude).toFixed(4)}°, {Number(port.longitude).toFixed(4)}°
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Description */}
         {getPortDescription() && (
@@ -454,6 +512,57 @@ export default function PortDetailsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Full-Screen Map Modal */}
+      <Modal
+        visible={showMapModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowMapModal(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.modalHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowMapModal(false)}
+            >
+              <IconSymbol
+                ios_icon_name="xmark.circle.fill"
+                android_material_icon_name="close"
+                size={32}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {port.name}
+            </Text>
+            <View style={{ width: 32 }} />
+          </View>
+          
+          <View style={styles.fullMapContainer}>
+            <PortsMap ports={portForMap} />
+          </View>
+
+          <View style={[styles.modalFooter, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.modalFooterContent}>
+              <IconSymbol
+                ios_icon_name="mappin.circle.fill"
+                android_material_icon_name="location_on"
+                size={24}
+                color={colors.primary}
+              />
+              <View style={styles.modalFooterText}>
+                <Text style={[styles.modalFooterTitle, { color: theme.colors.text }]}>
+                  {port.name}
+                </Text>
+                <Text style={[styles.modalFooterSubtitle, { color: colors.textSecondary }]}>
+                  {port.city ? `${port.city}, ${port.country}` : port.country}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -522,6 +631,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  mapPreviewSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  mapPreviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  viewOnMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 6,
+  },
+  viewOnMapButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  mapPreviewContainer: {
+    height: 300,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  coordinatesInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  coordinatesText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   section: {
     paddingHorizontal: 20,
@@ -715,5 +863,51 @@ const styles = StyleSheet.create({
   finalCtaButtonText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  fullMapContainer: {
+    flex: 1,
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  modalFooterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  modalFooterText: {
+    flex: 1,
+  },
+  modalFooterTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalFooterSubtitle: {
+    fontSize: 14,
   },
 });
