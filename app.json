@@ -1,7 +1,8 @@
+
 {
   "expo": {
     "name": "UNIVERSAL SHIPPING SERVICES",
-    "slug": "UNIVERSAL SHIPPING SERVICES",
+    "slug": "universal-shipping-services",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
@@ -22,6 +23,9 @@
         "NSLocationAlwaysUsageDescription": "This app uses your location to provide accurate shipping and logistics services.",
         "NSCameraUsageDescription": "This app needs access to your camera to upload documents and photos for shipments.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload documents and photos for shipments."
+      },
+      "config": {
+        "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
       }
     },
     "android": {
@@ -40,7 +44,12 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -54,6 +63,12 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "This app uses your location to show nearby ports and shipping routes on the map."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID"
         }
       ]
     ],
@@ -70,11 +85,11 @@
       "paypalClientId": "${EXPO_PUBLIC_PAYPAL_CLIENT_ID}",
       "paymentProvider": "${PAYMENT_PROVIDER}",
       "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}",
+      "googleWebClientId": "${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}",
       "eas": {
         "projectId": "your-eas-project-id"
       }
     },
     "owner": "your-expo-username"
-  },
-  "scheme": "UNIVERSAL SHIPPING SERVICES"
+  }
 }
