@@ -297,8 +297,10 @@ export default function FreightQuoteScreen() {
           details: formData.details || undefined,
         };
 
+        console.log('Calling send-quote-emails Edge Function with payload:', emailPayload);
+
         const { data: emailData, error: emailError } = await supabase.functions.invoke(
-          'send-freight-quote-emails',
+          'send-quote-emails',
           { body: emailPayload }
         );
 
@@ -306,7 +308,7 @@ export default function FreightQuoteScreen() {
           console.error('Error sending emails:', emailError);
           // Don't fail the quote creation if emails fail
         } else {
-          console.log('Emails sent successfully:', emailData);
+          console.log('Emails queued successfully:', emailData);
         }
       } catch (emailException) {
         console.error('Exception sending emails:', emailException);
