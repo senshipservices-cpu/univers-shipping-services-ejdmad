@@ -1,8 +1,7 @@
-
 {
   "expo": {
-    "name": "Universal Shipping Services",
-    "slug": "universal-shipping-services",
+    "name": "UNIVERSAL SHIPPING SERVICES",
+    "slug": "UNIVERSAL SHIPPING SERVICES",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
@@ -76,5 +75,6 @@
       }
     },
     "owner": "your-expo-username"
-  }
+  },
+  "scheme": "UNIVERSAL SHIPPING SERVICES"
 }
