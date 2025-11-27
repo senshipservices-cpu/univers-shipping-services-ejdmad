@@ -151,79 +151,84 @@ export default function FreightQuoteScreen() {
       return;
     }
 
-    // Determine if user is logged in
-    const isLoggedIn = !!(user && client);
-    console.log('Is logged in:', isLoggedIn);
-
-    // Validation - cargo_type is always required
-    if (!formData.cargoType.trim()) {
-      console.log('Validation failed: cargo type missing');
-      Alert.alert(
-        t.common.error || "Erreur",
-        "Le champ 'Type de cargo' est obligatoire."
-      );
-      return;
-    }
-
-    // If user is NOT logged in, client_name and client_email are required
-    if (!isLoggedIn) {
-      if (!formData.clientName.trim()) {
-        console.log('Validation failed: client name missing');
-        Alert.alert(
-          t.common.error || "Erreur",
-          "Veuillez entrer votre nom."
-        );
-        return;
-      }
-
-      if (!formData.clientEmail.trim()) {
-        console.log('Validation failed: client email missing');
-        Alert.alert(
-          t.common.error || "Erreur",
-          "Veuillez entrer votre email."
-        );
-        return;
-      }
-
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.clientEmail)) {
-        console.log('Validation failed: invalid email format');
-        Alert.alert(
-          t.common.error || "Erreur",
-          "Veuillez entrer un email valide."
-        );
-        return;
-      }
-    }
-
-    // Validate ports
-    if (!formData.originPort) {
-      console.log('Validation failed: origin port missing');
-      Alert.alert(
-        t.common.error || "Erreur",
-        "Veuillez sélectionner un port d'origine."
-      );
-      return;
-    }
-
-    if (!formData.destinationPort) {
-      console.log('Validation failed: destination port missing');
-      Alert.alert(
-        t.common.error || "Erreur",
-        "Veuillez sélectionner un port de destination."
-      );
-      return;
-    }
-
-    console.log('All validations passed, starting submission');
-    
-    // Dismiss keyboard for better UX
-    Keyboard.dismiss();
-    
+    // Set submitting state immediately
     setIsSubmitting(true);
 
     try {
+      // Determine if user is logged in
+      const isLoggedIn = !!(user && client);
+      console.log('Is logged in:', isLoggedIn);
+
+      // 1️⃣ VALIDATIONS LOCALES (champs obligatoires)
+      
+      // Validation - cargo_type is always required
+      if (!formData.cargoType.trim()) {
+        console.log('Validation failed: cargo type missing');
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Le champ 'Type de cargo' est obligatoire."
+        );
+        return;
+      }
+
+      // If user is NOT logged in, client_name and client_email are required
+      if (!isLoggedIn) {
+        if (!formData.clientName.trim()) {
+          console.log('Validation failed: client name missing');
+          Alert.alert(
+            t.common.error || "Erreur",
+            "Veuillez entrer votre nom."
+          );
+          return;
+        }
+
+        if (!formData.clientEmail.trim()) {
+          console.log('Validation failed: client email missing');
+          Alert.alert(
+            t.common.error || "Erreur",
+            "Veuillez entrer votre email."
+          );
+          return;
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.clientEmail)) {
+          console.log('Validation failed: invalid email format');
+          Alert.alert(
+            t.common.error || "Erreur",
+            "Veuillez entrer un email valide."
+          );
+          return;
+        }
+      }
+
+      // Validate ports
+      if (!formData.originPort) {
+        console.log('Validation failed: origin port missing');
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Veuillez sélectionner un port d'origine."
+        );
+        return;
+      }
+
+      if (!formData.destinationPort) {
+        console.log('Validation failed: destination port missing');
+        Alert.alert(
+          t.common.error || "Erreur",
+          "Veuillez sélectionner un port de destination."
+        );
+        return;
+      }
+
+      console.log('All validations passed, starting submission');
+      
+      // Dismiss keyboard for better UX
+      Keyboard.dismiss();
+
+      // 2️⃣ INSERTION DANS SUPABASE (table freight_quotes)
+      
       // Prepare volume_details combining cargo_volume and details
       let volumeDetailsText = '';
       
@@ -262,16 +267,16 @@ export default function FreightQuoteScreen() {
       console.log('Submitting freight quote with data:', quoteData);
 
       // Create the freight quote - don't use .select() to avoid RLS SELECT permission issues
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('freight_quotes')
         .insert([quoteData]);
 
-      if (error) {
-        console.error('Error submitting quote:', error);
-        throw error;
+      if (insertError) {
+        console.error('Error submitting quote:', insertError);
+        throw insertError;
       }
 
-      console.log('Quote submitted successfully');
+      console.log('Quote submitted successfully to Supabase');
 
       // Log quote_created event
       await logEvent({
@@ -283,7 +288,9 @@ export default function FreightQuoteScreen() {
         details: `Quote created for ${formData.cargoType}`,
       });
 
-      // Send emails via send-email Edge Function (optional - don't fail if emails fail)
+      // 3️⃣ APPEL ÉVENTUEL À L'EDGE FUNCTION send-email
+      // 🔴 NE JAMAIS LEVER D'ERREUR BLOQUANTE POUR LES EMAILS
+      
       try {
         const clientEmailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -393,7 +400,8 @@ export default function FreightQuoteScreen() {
         );
 
         if (clientEmailError) {
-          console.error('Error sending client email:', clientEmailError);
+          console.warn('Erreur envoi email client:', clientEmailError);
+          // Ne pas throw ici, juste logguer
         } else {
           console.log('Client email sent successfully:', clientEmailData);
         }
@@ -413,15 +421,19 @@ export default function FreightQuoteScreen() {
         );
 
         if (teamEmailError) {
-          console.error('Error sending team email:', teamEmailError);
+          console.warn('Erreur envoi email équipe:', teamEmailError);
+          // Ne pas throw ici, juste logguer
         } else {
           console.log('Team email sent successfully:', teamEmailData);
         }
-      } catch (emailException) {
-        console.error('Exception sending emails:', emailException);
-        // Don't fail the quote creation if emails fail
+      } catch (emailError) {
+        console.warn('Erreur envoi email devis:', emailError);
+        // Ne pas throw ici, juste logguer
+        // L'utilisateur verra quand même le message de succès
       }
 
+      // 4️⃣ AFFICHAGE DU MESSAGE DE SUCCÈS + RESET DU FORMULAIRE
+      
       // Success handling based on authentication status
       if (isLoggedIn) {
         // User is logged in - show success alert and redirect to client dashboard
@@ -433,7 +445,6 @@ export default function FreightQuoteScreen() {
               text: "OK",
               onPress: () => {
                 resetForm();
-                setIsSubmitting(false);
                 router.replace('/(tabs)/client-dashboard');
               },
             },
@@ -449,7 +460,6 @@ export default function FreightQuoteScreen() {
               text: "OK",
               onPress: () => {
                 resetForm();
-                setIsSubmitting(false);
                 setShowSuccessMessage(true);
               },
             },
@@ -457,21 +467,17 @@ export default function FreightQuoteScreen() {
         );
       }
     } catch (error: any) {
-      console.error('Exception submitting quote:', error);
+      console.error('Erreur envoi devis:', error);
       
       // Show error alert - do NOT reset form so user doesn't lose their data
       Alert.alert(
         "Erreur",
-        "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setIsSubmitting(false);
-            },
-          },
-        ]
+        "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer."
       );
+    } finally {
+      // 🔴 TRÈS IMPORTANT : toujours remettre isSubmitting à false
+      setIsSubmitting(false);
+      console.log('isSubmitting reset to false');
     }
   }, [formData, isSubmitting, user, client, serviceId, serviceName, router, t, resetForm]);
 
