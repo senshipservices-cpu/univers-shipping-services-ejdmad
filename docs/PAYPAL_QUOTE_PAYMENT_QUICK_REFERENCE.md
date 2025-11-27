@@ -1,314 +1,312 @@
 
-# PayPal Quote Payment - Quick Reference
+# PayPal Quote Payment - Quick Reference Guide
 
 ## 🚀 Quick Start
 
-### 1. Créer un ordre PayPal pour un devis
+### For Developers
 
-```typescript
-const response = await fetch(
-  `${SUPABASE_URL}/functions/v1/create-paypal-order`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      quote_id: 'uuid-du-devis',
-      success_url: 'https://www.universal-shippingservices.com/paypal/success',
-      cancel_url: 'https://www.universal-shippingservices.com/paypal/cancel',
-    }),
-  }
-);
+1. **Environment Variables** (already configured):
+   ```bash
+   PAYPAL_ENV=sandbox
+   PAYPAL_SANDBOX_CLIENT_ID=xxx
+   PAYPAL_SANDBOX_SECRET=xxx
+   ```
 
-const data = await response.json();
+2. **Edge Functions Deployed**:
+   - ✅ `create-paypal-order`
+   - ✅ `capture-paypal-order`
+   - ✅ `health-check` (updated)
 
-if (data.ok) {
-  // Rediriger l'utilisateur vers l'URL d'approbation PayPal
-  window.location.href = data.approval_url;
-}
+3. **Client Screens Updated**:
+   - ✅ `quote-details.tsx` - Payment button
+   - ✅ `payment-success.tsx` - Capture integration
+   - ✅ `admin-config.tsx` - Status display
+
+## 💳 Payment Flow (User Perspective)
+
+1. **View Quote**: User opens quote details screen
+2. **See Amount**: Quote shows validated amount (set by admin)
+3. **Click Pay**: "Payer ce devis (PayPal ou carte)" button
+4. **PayPal Login**: Redirected to PayPal (can pay with card or account)
+5. **Confirm Payment**: Reviews and confirms on PayPal
+6. **Success**: Redirected back to app with confirmation
+7. **Email**: Receives confirmation email
+
+## 🔧 Admin Workflow
+
+### Setting Up a Quote for Payment
+
+1. **Admin receives quote request** (from client)
+2. **Admin calculates price** (based on cargo, route, etc.)
+3. **Admin updates quote in database**:
+   ```sql
+   UPDATE freight_quotes
+   SET 
+     quote_amount = 1500.00,
+     quote_currency = 'EUR',
+     status = 'priced',
+     payment_status = 'unpaid'
+   WHERE id = 'quote_id';
+   ```
+4. **Client sees payment button** (automatically)
+5. **Client pays** (via PayPal)
+6. **Admin receives email notification** (automatic)
+7. **Admin processes shipment** (quote status = 'paid')
+
+## 📊 Quote Status Flow
+
+```
+received → in_progress → sent_to_client → priced → payment_pending → paid
+                                            ↓
+                                      [Payment Button]
 ```
 
-### 2. Capturer le paiement après retour PayPal
+### Status Meanings:
 
-```typescript
-const response = await fetch(
-  `${SUPABASE_URL}/functions/v1/capture-paypal-order`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    },
-    body: JSON.stringify({
-      quote_id: 'uuid-du-devis',
-    }),
-  }
-);
+- **received**: Quote request received
+- **in_progress**: Admin is working on quote
+- **sent_to_client**: Quote sent to client (no payment yet)
+- **priced**: Quote has amount, ready for payment ✅ **PAYMENT BUTTON SHOWS**
+- **payment_pending**: PayPal order created, awaiting payment ✅ **PAYMENT BUTTON SHOWS**
+- **paid**: Payment confirmed ✅ **CONFIRMATION BANNER SHOWS**
 
-const data = await response.json();
+## 🎨 UI Elements
 
-if (data.ok && data.new_status === 'paid') {
-  // Paiement confirmé !
-  console.log('Paiement réussi');
-}
+### Payment Button (when status = 'priced' or 'payment_pending')
+
+```
+┌────────────────────────────────────────────────┐
+│  [💳] Payer ce devis (PayPal ou carte)        │
+└────────────────────────────────────────────────┘
+
+Le paiement est sécurisé et traité via PayPal
+(vous pouvez payer par carte ou avec votre compte PayPal).
 ```
 
-## 📋 Prérequis
+### Confirmation Banner (when payment_status = 'paid')
 
-### Variables d'environnement Supabase
+```
+┌────────────────────────────────────────────────┐
+│  ✓ Paiement confirmé                           │
+│                                                 │
+│  Votre demande est maintenant en cours de      │
+│  traitement par USS.                           │
+│                                                 │
+│  Payé le 15 janvier 2025 à 14:30              │
+└────────────────────────────────────────────────┘
+```
 
+## 🔍 Testing
+
+### Test Payment Flow (Sandbox)
+
+1. **Create test quote**:
+   ```sql
+   INSERT INTO freight_quotes (
+     client, origin_port, destination_port,
+     cargo_type, quote_amount, quote_currency,
+     status, payment_status
+   ) VALUES (
+     'client_id', 'port_id_1', 'port_id_2',
+     'Container 20DC', 1500.00, 'EUR',
+     'priced', 'unpaid'
+   );
+   ```
+
+2. **Open quote in app** → Payment button should appear
+
+3. **Click payment button** → Opens PayPal sandbox
+
+4. **Use PayPal sandbox account**:
+   - Email: sb-buyer@personal.example.com
+   - Password: (from PayPal sandbox)
+
+5. **Complete payment** → Redirected to success page
+
+6. **Verify**:
+   - Quote status = 'paid'
+   - Payment status = 'paid'
+   - `paid_at` timestamp set
+   - Emails sent
+
+### Check System Status
+
+1. **Open admin config screen**
+2. **Look for PayPal status**:
+   - ✅ Green = "Online payment is enabled (sandbox mode)"
+   - ⚠️ Yellow = "Online payment temporarily unavailable"
+   - ❌ Red = "Online payment is optional and disabled"
+
+## 🐛 Troubleshooting
+
+### Payment Button Not Showing
+
+**Checklist:**
+- [ ] Quote has `quote_amount` > 0
+- [ ] Quote status is 'priced' or 'payment_pending'
+- [ ] Payment status is not 'paid'
+- [ ] User owns the quote
+
+**Fix:**
+```sql
+-- Set quote as ready for payment
+UPDATE freight_quotes
+SET 
+  quote_amount = 1500.00,
+  status = 'priced',
+  payment_status = 'unpaid'
+WHERE id = 'quote_id';
+```
+
+### PayPal Order Creation Fails
+
+**Check:**
+1. Edge Function logs: `supabase functions logs create-paypal-order`
+2. PayPal credentials configured
+3. Network connectivity
+
+**Common Errors:**
+- "PayPal credentials not configured" → Set environment variables
+- "Failed to get PayPal access token" → Check credentials
+- "Quote not found" → Verify quote ID
+
+### Capture Fails
+
+**Check:**
+1. Edge Function logs: `supabase functions logs capture-paypal-order`
+2. PayPal order was approved
+3. Order not already captured
+
+**Fix:**
+```sql
+-- Check quote status
+SELECT id, status, payment_status, paypal_order_id, paid_at
+FROM freight_quotes
+WHERE id = 'quote_id';
+
+-- Reset if needed (only in development!)
+UPDATE freight_quotes
+SET payment_status = 'unpaid', status = 'priced'
+WHERE id = 'quote_id';
+```
+
+### Emails Not Sent
+
+**Check:**
+1. SMTP credentials configured
+2. Edge Function logs: `supabase functions logs send-email`
+3. Email addresses valid
+
+**Test SMTP:**
 ```bash
-# Mode PayPal (sandbox ou live)
-PAYPAL_ENV=sandbox
-
-# Sandbox credentials
-PAYPAL_SANDBOX_CLIENT_ID=your_sandbox_client_id
-PAYPAL_SANDBOX_SECRET=your_sandbox_secret
-
-# Live credentials
-PAYPAL_LIVE_CLIENT_ID=your_live_client_id
-PAYPAL_LIVE_SECRET=your_live_secret
-
-# SMTP (pour les emails)
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USERNAME=your_username
-SMTP_PASSWORD=your_password
-SMTP_FROM_EMAIL=noreply@universal-shippingservices.com
+# Check health-check for SMTP status
+curl https://your-project.supabase.co/functions/v1/health-check
 ```
 
-### Structure du devis
+## 📱 Mobile vs Web Differences
 
-Avant de créer un ordre PayPal, le devis doit avoir :
+### Web
+- Redirects to PayPal in same window
+- Returns to success URL after payment
 
-```typescript
-{
-  id: 'uuid',
-  status: 'priced', // ou 'payment_pending'
-  quote_amount: 1250.00, // > 0
-  quote_currency: 'EUR', // non vide
-  client_email: 'client@example.com',
-  client_name: 'John Doe',
-  // ... autres champs
-}
-```
+### Mobile (iOS/Android)
+- Opens PayPal in in-app browser
+- User closes browser to return to app
+- App refreshes quote data automatically
 
-## 🔄 Flux de paiement complet
+## 🔐 Security Notes
 
-```
-1. Admin définit le montant du devis
-   └─> status = 'priced'
-   └─> quote_amount = 1250.00
-   └─> quote_currency = 'EUR'
+### ✅ Safe to Expose:
+- PayPal Client ID (public)
+- Quote amounts
+- Quote IDs (with ownership verification)
 
-2. Client clique sur "Payer"
-   └─> Appel à create-paypal-order
-   └─> status = 'payment_pending'
-   └─> paypal_order_id enregistré
+### ❌ Never Expose:
+- PayPal Secret
+- SMTP credentials
+- Admin tokens
 
-3. Client redirigé vers PayPal
-   └─> Paiement sur PayPal
+### 🛡️ Security Measures:
+- All sensitive operations in Edge Functions
+- User authentication verified
+- Quote ownership verified
+- No secrets in client code
 
-4. Client revient sur success_url
-   └─> Appel à capture-paypal-order
-   └─> status = 'paid'
-   └─> paid_at = now()
-   └─> Emails envoyés
-```
+## 📧 Email Templates
 
-## ⚠️ Erreurs courantes
+### Client Confirmation Email
 
-### "Quote is not ready for payment"
+**Subject:** Paiement confirmé - Devis #XXXXXXXX
 
-**Cause** : Le statut du devis n'est pas `priced` ou `payment_pending`
+**Content:**
+- Payment confirmation
+- Quote details (origin, destination, cargo, amount)
+- Next steps
+- Contact information
 
-**Solution** : Vérifier que l'admin a bien défini le montant et mis le statut à `priced`
+### Admin Notification Email
 
-```sql
-UPDATE freight_quotes 
-SET status = 'priced', 
-    quote_amount = 1250.00, 
-    quote_currency = 'EUR'
-WHERE id = 'uuid-du-devis';
-```
+**Subject:** Nouveau paiement PayPal - Devis #XXXXXXXX
 
-### "Quote does not have a valid amount"
+**Content:**
+- Payment notification
+- Full quote details
+- Client information
+- PayPal order ID
+- Action required reminder
 
-**Cause** : `quote_amount` est NULL ou <= 0
+## 🚦 Status Indicators
 
-**Solution** : Définir un montant valide
+### Quote Status Colors
 
-```sql
-UPDATE freight_quotes 
-SET quote_amount = 1250.00
-WHERE id = 'uuid-du-devis';
-```
+| Status | Color | Meaning |
+|--------|-------|---------|
+| received | 🟡 Orange | New quote request |
+| in_progress | 🔵 Blue | Admin working on it |
+| priced | 🔵 Blue | Ready for payment |
+| payment_pending | 🔵 Blue | Payment in progress |
+| paid | 🟢 Green | Payment confirmed |
+| cancelled | 🔴 Red | Cancelled |
 
-### "Quote does not have a valid currency"
+### Payment Status Colors
 
-**Cause** : `quote_currency` est NULL ou vide
+| Status | Color | Meaning |
+|--------|-------|---------|
+| pending | 🟡 Orange | Awaiting action |
+| unpaid | 🟡 Orange | Not paid yet |
+| processing | 🔵 Blue | Payment in progress |
+| paid | 🟢 Green | Payment confirmed |
+| failed | 🔴 Red | Payment failed |
 
-**Solution** : Définir une devise
+## 🎯 Key Files
 
-```sql
-UPDATE freight_quotes 
-SET quote_currency = 'EUR'
-WHERE id = 'uuid-du-devis';
-```
+### Client-Side
+- `app/(tabs)/quote-details.tsx` - Payment button & flow
+- `app/(tabs)/payment-success.tsx` - Capture & confirmation
+- `app/(tabs)/payment-cancel.tsx` - Cancellation handling
+- `app/(tabs)/admin-config.tsx` - System status
 
-### "PayPal credentials not configured"
+### Server-Side
+- `supabase/functions/create-paypal-order/index.ts` - Create order
+- `supabase/functions/capture-paypal-order/index.ts` - Capture payment
+- `supabase/functions/health-check/index.ts` - System status
+- `supabase/functions/send-email/index.ts` - Email notifications
 
-**Cause** : Variables d'environnement PayPal manquantes
+### Database
+- `freight_quotes` table - Quote & payment data
 
-**Solution** : Configurer les variables dans Supabase Dashboard
+## 📞 Support
 
-## 🧪 Tests rapides
+### For Users
+- Contact: contact@universal-shippingservices.com
+- Support screen in app
 
-### Test Sandbox
+### For Developers
+- Check Edge Function logs
+- Review PayPal dashboard
+- Check Supabase logs
 
-```bash
-# 1. Configurer l'environnement
-PAYPAL_ENV=sandbox
+---
 
-# 2. Créer un devis de test
-curl -X POST https://[PROJECT_URL]/rest/v1/freight_quotes \
-  -H "apikey: [ANON_KEY]" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "status": "priced",
-    "quote_amount": 100.00,
-    "quote_currency": "EUR",
-    "client_email": "test@example.com",
-    "client_name": "Test User"
-  }'
-
-# 3. Créer un ordre PayPal
-curl -X POST https://[PROJECT_URL]/functions/v1/create-paypal-order \
-  -H "Authorization: Bearer [TOKEN]" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "quote_id": "[QUOTE_ID]",
-    "success_url": "https://example.com/success",
-    "cancel_url": "https://example.com/cancel"
-  }'
-
-# 4. Payer avec un compte sandbox PayPal
-
-# 5. Capturer le paiement
-curl -X POST https://[PROJECT_URL]/functions/v1/capture-paypal-order \
-  -H "Authorization: Bearer [SERVICE_KEY]" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "quote_id": "[QUOTE_ID]"
-  }'
-```
-
-## 📊 Requêtes SQL utiles
-
-### Vérifier les devis prêts à payer
-
-```sql
-SELECT 
-  id,
-  client_name,
-  quote_amount,
-  quote_currency,
-  status,
-  created_at
-FROM freight_quotes
-WHERE status = 'priced'
-  AND quote_amount > 0
-  AND quote_currency IS NOT NULL
-ORDER BY created_at DESC;
-```
-
-### Vérifier les paiements en attente
-
-```sql
-SELECT 
-  id,
-  client_name,
-  quote_amount,
-  paypal_order_id,
-  status,
-  created_at
-FROM freight_quotes
-WHERE status = 'payment_pending'
-ORDER BY created_at DESC;
-```
-
-### Vérifier les paiements réussis
-
-```sql
-SELECT 
-  id,
-  client_name,
-  quote_amount,
-  quote_currency,
-  paypal_order_id,
-  paid_at
-FROM freight_quotes
-WHERE status = 'paid'
-ORDER BY paid_at DESC
-LIMIT 10;
-```
-
-### Statistiques de paiement
-
-```sql
-SELECT 
-  status,
-  COUNT(*) as count,
-  SUM(quote_amount) as total_amount,
-  quote_currency
-FROM freight_quotes
-WHERE quote_amount IS NOT NULL
-GROUP BY status, quote_currency
-ORDER BY status;
-```
-
-## 🔐 Sécurité
-
-### ✅ Bonnes pratiques
-
-- Toujours utiliser `SUPABASE_SERVICE_ROLE_KEY` pour `capture-paypal-order`
-- Ne jamais exposer les secrets PayPal côté client
-- Valider le statut du devis avant de créer un ordre
-- Vérifier la propriété du devis avant capture
-
-### ❌ À éviter
-
-- Ne pas appeler `capture-paypal-order` côté client
-- Ne pas stocker les secrets PayPal dans le code
-- Ne pas permettre la capture sans validation du statut
-- Ne pas ignorer les erreurs de validation
-
-## 📧 Emails
-
-### Format des emails
-
-Les emails sont envoyés automatiquement après capture :
-
-1. **Email client** : Confirmation de paiement
-2. **Email admin** : Notification de nouveau paiement
-
-### Désactiver les emails (dev)
-
-Pour désactiver temporairement les emails en développement, commenter l'appel à `sendEmailNotification` dans `capture-paypal-order/index.ts`.
-
-## 🔗 Liens utiles
-
-- [PayPal Sandbox Dashboard](https://developer.paypal.com/dashboard/)
-- [PayPal Test Accounts](https://developer.paypal.com/tools/sandbox/accounts/)
-- [Supabase Dashboard](https://supabase.com/dashboard)
-- [Edge Functions Logs](https://supabase.com/dashboard/project/_/functions)
-
-## 💡 Tips
-
-1. **Toujours tester en sandbox** avant de passer en live
-2. **Surveiller les logs** des Edge Functions pour déboguer
-3. **Vérifier les emails** dans les logs SMTP
-4. **Utiliser des montants de test** (ex: 1.00 EUR) en sandbox
-5. **Documenter les transactions** pour audit
+**Last Updated:** January 2025  
+**Quick Reference Version:** 1.0

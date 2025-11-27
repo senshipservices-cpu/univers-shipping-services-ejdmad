@@ -17,42 +17,75 @@ export default function PaymentSuccessScreen() {
   const { t } = useLanguage();
   const params = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
+  const [capturing, setCapturing] = useState(false);
   const [context, setContext] = useState<PaymentContext>('unknown');
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [captureSuccess, setCaptureSuccess] = useState(false);
 
   useEffect(() => {
-    // Get session_id from URL params
-    const session = params.session_id as string;
-    setSessionId(session);
-
-    // Determine context from URL params or session metadata
-    const checkPaymentContext = async () => {
+    const handlePaymentSuccess = async () => {
       try {
-        if (session) {
-          // Call Edge Function to get session details
-          const { data, error } = await supabase.functions.invoke('get-checkout-session', {
-            body: { sessionId: session },
-          });
+        setLoading(true);
+        setCapturing(true);
 
-          if (error) {
-            console.error('Error fetching session:', error);
-          } else if (data?.metadata?.context) {
-            setContext(data.metadata.context as PaymentContext);
-          }
+        // Get context from URL params
+        const urlContext = params.context as string;
+        const quoteId = params.quote_id as string;
+        const token = params.token as string;
+        const PayerID = params.PayerID as string;
+
+        console.log('Payment success params:', { urlContext, quoteId, token, PayerID });
+
+        if (urlContext) {
+          setContext(urlContext as PaymentContext);
         }
 
-        // Fallback: check URL params
-        if (params.context) {
-          setContext(params.context as PaymentContext);
+        // If freight_quote context and we have a quote_id, capture the PayPal order
+        if (urlContext === 'freight_quote' && quoteId) {
+          console.log('Capturing PayPal order for quote:', quoteId);
+
+          // Get auth session
+          const { data: { session } } = await supabase.auth.getSession();
+
+          // Call capture-paypal-order Edge Function
+          const response = await fetch(
+            `${supabase.supabaseUrl}/functions/v1/capture-paypal-order`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+              },
+              body: JSON.stringify({
+                quote_id: quoteId,
+                token: token,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!response.ok || !data.ok) {
+            console.error('Capture failed:', data);
+            setError(data.error || 'Échec de la capture du paiement');
+          } else {
+            console.log('Capture successful:', data);
+            setCaptureSuccess(true);
+          }
+        } else if (urlContext === 'pricing_plan') {
+          // For pricing plans, the webhook should handle activation
+          setCaptureSuccess(true);
         }
       } catch (error) {
-        console.error('Error checking payment context:', error);
+        console.error('Error handling payment success:', error);
+        setError('Une erreur est survenue lors de la confirmation du paiement');
       } finally {
         setLoading(false);
+        setCapturing(false);
       }
     };
 
-    checkPaymentContext();
+    handlePaymentSuccess();
   }, [params]);
 
   const handleGoToDashboard = () => {
@@ -93,16 +126,76 @@ export default function PaymentSuccessScreen() {
     }
   };
 
-  if (loading) {
+  if (loading || capturing) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <PageHeader title="Paiement" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-            Vérification du paiement...
+            {capturing ? 'Confirmation du paiement...' : 'Vérification du paiement...'}
           </Text>
         </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <PageHeader title="Erreur de paiement" />
+        
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.errorIcon, { backgroundColor: colors.error + '20' }]}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="error"
+              size={80}
+              color={colors.error}
+            />
+          </View>
+
+          <Text style={[styles.title, { color: theme.colors.text }]}>
+            Erreur de confirmation
+          </Text>
+
+          <Text style={[styles.message, { color: colors.textSecondary }]}>
+            {error}
+          </Text>
+
+          <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+            <IconSymbol
+              ios_icon_name="info.circle.fill"
+              android_material_icon_name="info"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={[styles.infoText, { color: theme.colors.text }]}>
+              Si le problème persiste, veuillez contacter notre support avec votre référence de paiement.
+            </Text>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={handleGoToDashboard}
+            >
+              <IconSymbol
+                ios_icon_name="house.fill"
+                android_material_icon_name="dashboard"
+                size={20}
+                color="#ffffff"
+              />
+              <Text style={styles.primaryButtonText}>
+                Aller à mon espace client
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -308,6 +401,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   successIcon: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  errorIcon: {
     width: 140,
     height: 140,
     borderRadius: 70,

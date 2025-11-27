@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Redirect } from 'expo-router';
 import { useTheme } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/app/integrations/supabase/client';
 import { colors } from '@/styles/commonStyles';
 import { formatPrice } from '@/utils/stripe';
+import * as WebBrowser from 'expo-web-browser';
 
 interface Port {
   id: string;
@@ -42,7 +44,8 @@ interface FreightQuote {
   can_pay_online: boolean | null;
   created_at: string;
   updated_at: string;
-  stripe_payment_intent_id: string | null;
+  paypal_order_id: string | null;
+  paid_at: string | null;
 }
 
 export default function QuoteDetailsScreen() {
@@ -52,7 +55,7 @@ export default function QuoteDetailsScreen() {
   const { user, client: authClient, isEmailVerified } = useAuth();
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<FreightQuote | null>(null);
-  const [processingPayment, setProcessingPayment] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   // Load quote details
   const loadQuoteDetails = useCallback(async () => {
@@ -117,12 +120,32 @@ export default function QuoteDetailsScreen() {
     }
   }, [user, id, loadQuoteDetails]);
 
+  // Refresh quote data when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = router.addListener('focus', () => {
+      if (user && id) {
+        loadQuoteDetails();
+      }
+    });
+
+    return unsubscribe;
+  }, [user, id, loadQuoteDetails, router]);
+
   const handlePayQuote = useCallback(async () => {
-    if (!quote || !user) return;
+    if (!quote || !user || isPaying) return;
 
     // Verify payment conditions
     if (quote.payment_status === 'paid') {
       Alert.alert('Déjà payé', 'Ce devis a déjà été payé');
+      return;
+    }
+
+    // Check if status is priced or payment_pending
+    if (quote.status !== 'priced' && quote.status !== 'payment_pending') {
+      Alert.alert(
+        'Paiement non disponible',
+        'Ce devis n\'est pas encore prêt pour le paiement. Veuillez attendre que notre équipe le valide.'
+      );
       return;
     }
 
@@ -132,7 +155,7 @@ export default function QuoteDetailsScreen() {
     }
 
     try {
-      setProcessingPayment(true);
+      setIsPaying(true);
 
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -141,9 +164,19 @@ export default function QuoteDetailsScreen() {
         return;
       }
 
-      // Call Edge Function to create Stripe checkout session
+      console.log('Creating PayPal order for quote:', quote.id);
+
+      // Determine success and cancel URLs
+      const baseUrl = Platform.OS === 'web' 
+        ? window.location.origin 
+        : 'https://natively.dev';
+
+      const successUrl = `${baseUrl}/payment-success?context=freight_quote&quote_id=${quote.id}`;
+      const cancelUrl = `${baseUrl}/payment-cancel?context=freight_quote`;
+
+      // Call Edge Function to create PayPal order
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/create-checkout-session`,
+        `${supabase.supabaseUrl}/functions/v1/create-paypal-order`,
         {
           method: 'POST',
           headers: {
@@ -153,51 +186,48 @@ export default function QuoteDetailsScreen() {
           body: JSON.stringify({
             quote_id: quote.id,
             context: 'freight_quote',
+            success_url: successUrl,
+            cancel_url: cancelUrl,
           }),
         }
       );
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la création de la session de paiement');
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || 'Erreur lors de la préparation du paiement');
       }
 
-      console.log('Checkout session created:', data.sessionId);
+      console.log('PayPal order created:', data.orderId);
+      console.log('Approval URL:', data.url);
 
-      // Redirect to Stripe checkout
-      if (data.url) {
-        if (Platform.OS === 'web') {
-          window.location.href = data.url;
-        } else {
-          // For mobile, you would typically use a WebView or deep linking
-          Alert.alert(
-            'Paiement',
-            'Vous allez être redirigé vers la page de paiement Stripe',
-            [
-              {
-                text: 'Continuer',
-                onPress: () => {
-                  // Open URL in browser
-                  // You might want to use Linking.openURL(data.url) here
-                  console.log('Redirect to:', data.url);
-                },
-              },
-              {
-                text: 'Annuler',
-                style: 'cancel',
-              },
-            ]
-          );
+      // Open PayPal approval URL
+      if (Platform.OS === 'web') {
+        // On web, redirect to PayPal
+        window.location.href = data.url;
+      } else {
+        // On mobile, open in-app browser
+        const result = await WebBrowser.openBrowserAsync(data.url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          controlsColor: colors.primary,
+        });
+
+        console.log('WebBrowser result:', result);
+
+        // Refresh quote data after browser closes
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          console.log('User closed PayPal browser');
+          // Refresh quote to check if payment was completed
+          await loadQuoteDetails();
         }
       }
     } catch (error: any) {
-      console.error('Error creating payment session:', error);
+      console.error('Error creating PayPal order:', error);
       Alert.alert('Erreur', error.message || 'Impossible de créer la session de paiement');
     } finally {
-      setProcessingPayment(false);
+      setIsPaying(false);
     }
-  }, [quote, user]);
+  }, [quote, user, isPaying, loadQuoteDetails]);
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
@@ -207,12 +237,16 @@ export default function QuoteDetailsScreen() {
       case 'in_progress':
       case 'sent_to_client':
       case 'processing':
+      case 'priced':
+      case 'payment_pending':
         return colors.primary;
       case 'received':
       case 'unpaid':
+      case 'pending':
         return '#f59e0b';
       case 'refused':
       case 'failed':
+      case 'cancelled':
         return '#ef4444';
       default:
         return colors.textSecondary;
@@ -231,6 +265,9 @@ export default function QuoteDetailsScreen() {
       paid: 'Payé',
       failed: 'Échec',
       pending: 'En attente',
+      priced: 'Chiffré',
+      payment_pending: 'Paiement en attente',
+      cancelled: 'Annulé',
     };
     return statusMap[status] || status;
   }, []);
@@ -309,7 +346,12 @@ export default function QuoteDetailsScreen() {
     );
   }
 
-  const canPayOnline = quote.payment_status === 'unpaid' && quote.quote_amount && quote.quote_amount > 0;
+  // Check if can pay online
+  const canPayOnline = 
+    (quote.status === 'priced' || quote.status === 'payment_pending') &&
+    quote.payment_status !== 'paid' &&
+    quote.quote_amount && 
+    quote.quote_amount > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -383,6 +425,29 @@ export default function QuoteDetailsScreen() {
                   {formatPrice(quote.quote_amount, quote.quote_currency || 'EUR')}
                 </Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Payment Confirmation Banner */}
+        {quote.payment_status === 'paid' && (
+          <View style={[styles.paidBanner, { backgroundColor: '#10b981' + '20', borderColor: '#10b981' }]}>
+            <IconSymbol
+              ios_icon_name="checkmark.circle.fill"
+              android_material_icon_name="check_circle"
+              size={32}
+              color="#10b981"
+            />
+            <View style={styles.paidBannerContent}>
+              <Text style={[styles.paidBannerTitle, { color: '#10b981' }]}>Paiement confirmé</Text>
+              <Text style={[styles.paidBannerText, { color: '#10b981' }]}>
+                Votre demande est maintenant en cours de traitement par USS.
+              </Text>
+              {quote.paid_at && (
+                <Text style={[styles.paidBannerDate, { color: '#10b981' }]}>
+                  Payé le {formatDate(quote.paid_at)}
+                </Text>
+              )}
             </View>
           </View>
         )}
@@ -499,43 +564,37 @@ export default function QuoteDetailsScreen() {
 
         {/* Payment Button */}
         {canPayOnline && (
-          <TouchableOpacity
-            style={[
-              styles.payButton,
-              { backgroundColor: colors.primary },
-              processingPayment && styles.payButtonDisabled,
-            ]}
-            onPress={handlePayQuote}
-            disabled={processingPayment}
-          >
-            {processingPayment ? (
-              <>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.payButtonText}>Traitement...</Text>
-              </>
-            ) : (
-              <>
-                <IconSymbol
-                  ios_icon_name="creditcard.fill"
-                  android_material_icon_name="payment"
-                  size={24}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.payButtonText}>Payer ce devis</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
+          <View style={styles.paymentSection}>
+            <TouchableOpacity
+              style={[
+                styles.payButton,
+                { backgroundColor: colors.primary },
+                isPaying && styles.payButtonDisabled,
+              ]}
+              onPress={handlePayQuote}
+              disabled={isPaying}
+            >
+              {isPaying ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.payButtonText}>Préparation...</Text>
+                </>
+              ) : (
+                <>
+                  <IconSymbol
+                    ios_icon_name="creditcard.fill"
+                    android_material_icon_name="payment"
+                    size={24}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.payButtonText}>Payer ce devis (PayPal ou carte)</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
-        {quote.payment_status === 'paid' && (
-          <View style={[styles.paidBanner, { backgroundColor: '#10b981' + '20', borderColor: '#10b981' }]}>
-            <IconSymbol
-              ios_icon_name="checkmark.circle.fill"
-              android_material_icon_name="check_circle"
-              size={24}
-              color="#10b981"
-            />
-            <Text style={[styles.paidBannerText, { color: '#10b981' }]}>Ce devis a été payé avec succès</Text>
+            <Text style={[styles.paymentInfo, { color: colors.textSecondary }]}>
+              Le paiement est sécurisé et traité via PayPal (vous pouvez payer par carte ou avec votre compte PayPal).
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -657,6 +716,30 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
   },
+  paidBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    gap: 16,
+  },
+  paidBannerContent: {
+    flex: 1,
+    gap: 4,
+  },
+  paidBannerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  paidBannerText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  paidBannerDate: {
+    fontSize: 12,
+    marginTop: 4,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -708,6 +791,10 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  paymentSection: {
+    gap: 12,
+    marginTop: 8,
+  },
   payButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -715,28 +802,19 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 16,
     gap: 12,
-    marginTop: 8,
   },
   payButtonDisabled: {
     opacity: 0.6,
   },
   payButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  paidBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    gap: 12,
-    marginTop: 8,
-  },
-  paidBannerText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  paymentInfo: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
