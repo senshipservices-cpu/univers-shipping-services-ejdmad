@@ -193,35 +193,56 @@ async function checkGoogleMaps(): Promise<HealthCheckResult> {
 
 /**
  * Check PayPal credentials by obtaining an access token
+ * Now supports separate sandbox and live credentials
  */
 async function checkPayPal(): Promise<HealthCheckResult> {
   try {
-    const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
-    const clientSecret = Deno.env.get("PAYPAL_SECRET");
     const paypalEnv = Deno.env.get("PAYPAL_ENV") || "sandbox";
+
+    // Validate environment value
+    if (paypalEnv !== "sandbox" && paypalEnv !== "live") {
+      return {
+        service: "PayPal",
+        ok: false,
+        message: `Online payment is optional and disabled (invalid PAYPAL_ENV: ${paypalEnv}).`,
+        details: { error: "PAYPAL_ENV must be 'sandbox' or 'live'" },
+        isCritical: false,
+      };
+    }
+
+    // Get credentials based on environment
+    let clientId: string | undefined;
+    let clientSecret: string | undefined;
+
+    if (paypalEnv === "sandbox") {
+      clientId = Deno.env.get("PAYPAL_SANDBOX_CLIENT_ID");
+      clientSecret = Deno.env.get("PAYPAL_SANDBOX_SECRET");
+    } else {
+      clientId = Deno.env.get("PAYPAL_LIVE_CLIENT_ID");
+      clientSecret = Deno.env.get("PAYPAL_LIVE_SECRET");
+    }
 
     if (!clientId || !clientSecret) {
       return {
         service: "PayPal",
         ok: false,
-        message: "Online payment is optional and disabled.",
+        message: `Online payment is optional and disabled (${paypalEnv} credentials not configured).`,
+        details: { 
+          environment: paypalEnv,
+          missingCredentials: !clientId ? "client_id" : "secret"
+        },
         isCritical: false,
       };
     }
 
-    if (paypalEnv !== "sandbox" && paypalEnv !== "live") {
-      return {
-        service: "PayPal",
-        ok: false,
-        message: `Online payment is optional and disabled (invalid environment: ${paypalEnv}).`,
-        isCritical: false,
-      };
-    }
-
+    // Determine API URL based on environment
     const apiUrl = paypalEnv === "sandbox"
       ? "https://api-m.sandbox.paypal.com"
       : "https://api-m.paypal.com";
 
+    console.log(`Testing PayPal ${paypalEnv} credentials...`);
+
+    // Test credentials by obtaining an access token
     const auth = btoa(`${clientId}:${clientSecret}`);
     const tokenUrl = `${apiUrl}/v1/oauth2/token`;
 
@@ -236,11 +257,16 @@ async function checkPayPal(): Promise<HealthCheckResult> {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error(`PayPal ${paypalEnv} authentication failed:`, errorData);
       return {
         service: "PayPal",
         ok: false,
-        message: "Online payment is optional and disabled (authentication failed).",
-        details: { status: response.status, error: errorData },
+        message: `Online payment is optional and disabled (${paypalEnv} authentication failed).`,
+        details: { 
+          environment: paypalEnv,
+          status: response.status, 
+          error: errorData 
+        },
         isCritical: false,
       };
     }
@@ -251,16 +277,23 @@ async function checkPayPal(): Promise<HealthCheckResult> {
       return {
         service: "PayPal",
         ok: false,
-        message: "Online payment is optional and disabled (no access token received).",
+        message: `Online payment is optional and disabled (${paypalEnv} - no access token received).`,
+        details: { environment: paypalEnv },
         isCritical: false,
       };
     }
+
+    console.log(`PayPal ${paypalEnv} credentials validated successfully`);
 
     return {
       service: "PayPal",
       ok: true,
       message: `Online payment is enabled (${paypalEnv} mode)`,
-      details: { environment: paypalEnv },
+      details: { 
+        environment: paypalEnv,
+        apiUrl: apiUrl,
+        tokenType: data.token_type
+      },
       isCritical: false,
     };
   } catch (error) {

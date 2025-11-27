@@ -55,6 +55,10 @@ function initializeCache() {
       'EXPO_PUBLIC_PAYPAL_CLIENT_ID',
       'PAYPAL_CLIENT_SECRET',
       'PAYPAL_WEBHOOK_ID',
+      'PAYPAL_SANDBOX_CLIENT_ID',
+      'PAYPAL_SANDBOX_SECRET',
+      'PAYPAL_LIVE_CLIENT_ID',
+      'PAYPAL_LIVE_SECRET',
       'PAYPAL_ENV',
       'PAYMENT_PROVIDER',
       'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY',
@@ -136,10 +140,12 @@ export const env = {
   },
   
   // PayPal Configuration
+  // Client-side only needs the public client ID (exposed via EXPO_PUBLIC_PAYPAL_CLIENT_ID)
   get PAYPAL_CLIENT_ID() { 
     return getEnvVar('EXPO_PUBLIC_PAYPAL_CLIENT_ID', '');
   },
   
+  // Legacy PayPal secret (server-side only, deprecated in favor of environment-specific secrets)
   get PAYPAL_CLIENT_SECRET() { 
     return getEnvVar('PAYPAL_CLIENT_SECRET', '');
   },
@@ -148,8 +154,27 @@ export const env = {
     return getEnvVar('PAYPAL_WEBHOOK_ID', '');
   },
   
+  // PayPal Environment Configuration
   get PAYPAL_ENV() { 
     return getEnvVar('PAYPAL_ENV', isDevelopment ? 'sandbox' : 'live');
+  },
+  
+  // PayPal Sandbox Credentials (server-side only)
+  get PAYPAL_SANDBOX_CLIENT_ID() {
+    return getEnvVar('PAYPAL_SANDBOX_CLIENT_ID', '');
+  },
+  
+  get PAYPAL_SANDBOX_SECRET() {
+    return getEnvVar('PAYPAL_SANDBOX_SECRET', '');
+  },
+  
+  // PayPal Live Credentials (server-side only)
+  get PAYPAL_LIVE_CLIENT_ID() {
+    return getEnvVar('PAYPAL_LIVE_CLIENT_ID', '');
+  },
+  
+  get PAYPAL_LIVE_SECRET() {
+    return getEnvVar('PAYPAL_LIVE_SECRET', '');
   },
   
   // Payment Provider Configuration
@@ -359,8 +384,27 @@ export const validateConfig = (): { valid: boolean; errors: string[]; warnings: 
       errors.push('EXPO_PUBLIC_PAYPAL_CLIENT_ID is not set but PayPal is the active payment provider');
     }
     
-    if (!env.PAYPAL_CLIENT_SECRET && isProduction) {
-      errors.push('PAYPAL_CLIENT_SECRET is not set - required for backend operations');
+    // Validate PayPal environment
+    const paypalEnv = env.PAYPAL_ENV;
+    if (paypalEnv !== 'sandbox' && paypalEnv !== 'live') {
+      errors.push(`PAYPAL_ENV must be 'sandbox' or 'live', got: ${paypalEnv}`);
+    }
+    
+    // Check environment-specific credentials (server-side)
+    if (paypalEnv === 'sandbox') {
+      if (!env.PAYPAL_SANDBOX_CLIENT_ID && isProduction) {
+        warnings.push('PAYPAL_SANDBOX_CLIENT_ID is not set - required for sandbox mode');
+      }
+      if (!env.PAYPAL_SANDBOX_SECRET && isProduction) {
+        warnings.push('PAYPAL_SANDBOX_SECRET is not set - required for backend operations');
+      }
+    } else if (paypalEnv === 'live') {
+      if (!env.PAYPAL_LIVE_CLIENT_ID && isProduction) {
+        errors.push('PAYPAL_LIVE_CLIENT_ID is not set - required for live mode');
+      }
+      if (!env.PAYPAL_LIVE_SECRET && isProduction) {
+        errors.push('PAYPAL_LIVE_SECRET is not set - required for backend operations');
+      }
     }
     
     if (!env.PAYPAL_WEBHOOK_ID && isProduction) {

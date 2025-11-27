@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "UNIVERSAL SHIPPING SERVICES",
@@ -47,7 +48,6 @@
       "supabaseAnonKey": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
       "stripePublishableKey": "${EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}",
       "paypalClientId": "${EXPO_PUBLIC_PAYPAL_CLIENT_ID}",
-      "paypalEnv": "${PAYPAL_ENV}",
       "paymentProvider": "${PAYMENT_PROVIDER}",
       "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
     }

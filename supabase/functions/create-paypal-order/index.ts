@@ -7,21 +7,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// PayPal API configuration
-const PAYPAL_CLIENT_ID = Deno.env.get('PAYPAL_CLIENT_ID') || '';
-const PAYPAL_CLIENT_SECRET = Deno.env.get('PAYPAL_CLIENT_SECRET') || '';
-const PAYPAL_ENV = Deno.env.get('PAYPAL_ENV') || 'sandbox';
-const PAYPAL_API_URL = PAYPAL_ENV === 'sandbox' 
-  ? 'https://api-m.sandbox.paypal.com'
-  : 'https://api-m.paypal.com';
+/**
+ * Get PayPal configuration based on PAYPAL_ENV
+ * Supports both sandbox and live environments
+ */
+function getPayPalConfig(): {
+  clientId: string;
+  clientSecret: string;
+  apiUrl: string;
+  environment: string;
+} {
+  const paypalEnv = Deno.env.get('PAYPAL_ENV') || 'sandbox';
+
+  let clientId: string;
+  let clientSecret: string;
+  let apiUrl: string;
+
+  if (paypalEnv === 'live') {
+    clientId = Deno.env.get('PAYPAL_LIVE_CLIENT_ID') || '';
+    clientSecret = Deno.env.get('PAYPAL_LIVE_SECRET') || '';
+    apiUrl = 'https://api-m.paypal.com';
+  } else {
+    // Default to sandbox
+    clientId = Deno.env.get('PAYPAL_SANDBOX_CLIENT_ID') || '';
+    clientSecret = Deno.env.get('PAYPAL_SANDBOX_SECRET') || '';
+    apiUrl = 'https://api-m.sandbox.paypal.com';
+  }
+
+  console.log(`Using PayPal ${paypalEnv} environment`);
+  console.log(`API URL: ${apiUrl}`);
+
+  if (!clientId || !clientSecret) {
+    throw new Error(`PayPal ${paypalEnv} credentials not configured`);
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    apiUrl,
+    environment: paypalEnv,
+  };
+}
 
 /**
  * Get PayPal access token
  */
 async function getPayPalAccessToken(): Promise<string> {
-  const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
+  const config = getPayPalConfig();
+  const auth = btoa(`${config.clientId}:${config.clientSecret}`);
   
-  const response = await fetch(`${PAYPAL_API_URL}/v1/oauth2/token`, {
+  const response = await fetch(`${config.apiUrl}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
       'Authorization': `Basic ${auth}`,
@@ -33,7 +68,7 @@ async function getPayPalAccessToken(): Promise<string> {
   if (!response.ok) {
     const error = await response.text();
     console.error('PayPal auth error:', error);
-    throw new Error('Failed to get PayPal access token');
+    throw new Error(`Failed to get PayPal access token (${config.environment} mode)`);
   }
   
   const data = await response.json();
@@ -44,7 +79,9 @@ async function getPayPalAccessToken(): Promise<string> {
  * Create PayPal order
  */
 async function createPayPalOrder(accessToken: string, orderData: any): Promise<any> {
-  const response = await fetch(`${PAYPAL_API_URL}/v2/checkout/orders`, {
+  const config = getPayPalConfig();
+  
+  const response = await fetch(`${config.apiUrl}/v2/checkout/orders`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -56,7 +93,7 @@ async function createPayPalOrder(accessToken: string, orderData: any): Promise<a
   if (!response.ok) {
     const error = await response.text();
     console.error('PayPal order creation error:', error);
-    throw new Error('Failed to create PayPal order');
+    throw new Error(`Failed to create PayPal order (${config.environment} mode)`);
   }
   
   return await response.json();
@@ -98,7 +135,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { plan_code, quote_id, context } = body;
 
-    console.log('Creating PayPal order - context:', context, 'user:', user.id);
+    const config = getPayPalConfig();
+    console.log(`Creating PayPal order in ${config.environment} mode - context:`, context, 'user:', user.id);
 
     // Get client record
     const { data: client } = await supabaseClient
@@ -113,6 +151,7 @@ Deno.serve(async (req) => {
     let metadata: any = {
       user_id: user.id,
       context,
+      paypal_environment: config.environment,
     };
 
     // Handle freight quote payment
@@ -343,7 +382,7 @@ Deno.serve(async (req) => {
     // Create PayPal order
     const order = await createPayPalOrder(accessToken, orderData);
 
-    console.log('PayPal order created:', order.id);
+    console.log(`PayPal order created in ${config.environment} mode:`, order.id);
 
     // Store order ID in the appropriate record
     if (context === 'freight_quote' && quote_id) {
@@ -365,6 +404,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         orderId: order.id,
         url: approvalUrl,
+        environment: config.environment,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
