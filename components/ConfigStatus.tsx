@@ -28,7 +28,9 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
   const checkConfig = async () => {
     setLoading(true);
     try {
+      console.log('[ConfigStatus] Starting health check...');
       const configStatus = await getConfigStatus();
+      console.log('[ConfigStatus] Health check complete:', configStatus);
       setStatus(configStatus);
     } catch (error) {
       appConfig.logger.error('Failed to check config status:', error);
@@ -38,9 +40,8 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
   };
 
   const getStatusColor = (status: 'success' | 'warning' | 'error', isCritical?: boolean): string => {
-    // For non-critical services, never show red
     if (!isCritical && status === 'error') {
-      return '#f59e0b'; // Yellow/orange for optional service issues
+      return '#f59e0b';
     }
     
     switch (status) {
@@ -54,7 +55,6 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
   };
 
   const getStatusIcon = (status: 'success' | 'warning' | 'error', isCritical?: boolean): { ios: string; android: string } => {
-    // For non-critical services, use warning icon instead of error
     if (!isCritical && status === 'error') {
       return { ios: 'exclamationmark.triangle.fill', android: 'warning' };
     }
@@ -105,12 +105,12 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
     if (result.isCritical) {
       return result.status === 'success' ? colors.success : colors.error;
     } else {
-      return result.status === 'success' ? colors.success : '#9ca3af'; // Gray for optional
+      return result.status === 'success' ? colors.success : '#9ca3af';
     }
   };
 
   if (!appConfig.isDevelopment) {
-    return null; // Only show in development mode
+    return null;
   }
 
   return (
@@ -139,7 +139,6 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
         )}
       </View>
 
-      {/* Environment Badge */}
       <View style={styles.envInfo}>
         <Text style={[styles.envLabel, { color: colors.textSecondary }]}>
           Environment:
@@ -154,7 +153,6 @@ export const ConfigStatus: React.FC<ConfigStatusProps> = ({ onClose }) => {
         </View>
       </View>
 
-      {/* Security Section */}
       <View style={[styles.securitySection, { backgroundColor: theme.colors.background }]}>
         <View style={styles.securityHeader}>
           <IconSymbol

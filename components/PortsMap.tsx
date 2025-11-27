@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 import { IconSymbol } from './IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useTheme } from '@react-navigation/native';
 import { useLanguage } from '@/contexts/LanguageContext';
-import appConfig from '@/config/appConfig';
 
 interface Port {
   id: string;
@@ -36,25 +36,26 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
   const [nearbyPorts, setNearbyPorts] = useState<(Port & { distance: number })[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // Check if Google Maps API key is configured
-  const hasGoogleMapsKey = !!appConfig.env.GOOGLE_MAPS_API_KEY;
+  const googleMapsApiKey = Constants.expoConfig?.extra?.googleMapsApiKey;
 
   useEffect(() => {
-    console.log('PortsMap received ports:', ports.length);
-    console.log('Google Maps API Key configured:', hasGoogleMapsKey);
-    if (ports.length > 0) {
-      console.log('First port:', ports[0]);
+    console.log('[PortsMap] Received ports:', ports.length);
+    console.log('[PortsMap] Google Maps API Key configured:', !!googleMapsApiKey);
+    if (googleMapsApiKey) {
+      console.log('[PortsMap] API Key prefix:', googleMapsApiKey.substring(0, 10) + '...');
     }
-  }, [ports, hasGoogleMapsKey]);
+    if (ports.length > 0) {
+      console.log('[PortsMap] First port:', ports[0]);
+    }
+  }, [ports, googleMapsApiKey]);
 
-  // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = (
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number
   ): number => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
@@ -67,7 +68,6 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
     return R * c;
   };
 
-  // Get nearby ports within 500km
   const getNearbyPorts = (userLat: number, userLon: number) => {
     const portsWithDistance = ports
       .map((port) => ({
@@ -80,16 +80,15 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
     return portsWithDistance;
   };
 
-  // Request location permission and get user location
   const locateUser = async () => {
     try {
       setLoadingLocation(true);
-      console.log('Requesting location permission...');
+      console.log('[PortsMap] Requesting location permission...');
       
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
-        console.log('Location permission denied');
+        console.log('[PortsMap] Location permission denied');
         Alert.alert(
           language === 'en' ? 'Permission Denied' : 'Permission refusée',
           language === 'en'
@@ -100,12 +99,12 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         return;
       }
 
-      console.log('Getting current position...');
+      console.log('[PortsMap] Getting current position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
       const { latitude, longitude } = location.coords;
-      console.log('User location:', latitude, longitude);
+      console.log('[PortsMap] User location:', latitude, longitude);
 
       setUserLocation({ latitude, longitude });
       setRegion({
@@ -115,10 +114,9 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         longitudeDelta: 5,
       });
 
-      // Calculate nearby ports
       const nearby = getNearbyPorts(latitude, longitude);
       setNearbyPorts(nearby);
-      console.log('Nearby ports found:', nearby.length);
+      console.log('[PortsMap] Nearby ports found:', nearby.length);
 
       if (nearby.length === 0) {
         Alert.alert(
@@ -136,7 +134,7 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         );
       }
     } catch (error) {
-      console.error('Error getting location:', error);
+      console.error('[PortsMap] Error getting location:', error);
       Alert.alert(
         language === 'en' ? 'Error' : 'Erreur',
         language === 'en'
@@ -164,7 +162,7 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
     );
   }
 
-  if (!hasGoogleMapsKey) {
+  if (!googleMapsApiKey) {
     return (
       <View style={[styles.container, styles.emptyContainer, { backgroundColor: colors.highlight }]}>
         <IconSymbol
@@ -177,6 +175,11 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
           {language === 'en' 
             ? 'Map display requires Google Maps API key configuration' 
             : 'L\'affichage de la carte nécessite la configuration de la clé API Google Maps'}
+        </Text>
+        <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+          {language === 'en'
+            ? 'Please set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables'
+            : 'Veuillez définir EXPO_PUBLIC_GOOGLE_MAPS_API_KEY dans vos variables d\'environnement'}
         </Text>
       </View>
     );
@@ -192,7 +195,6 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         showsUserLocation={true}
         showsMyLocationButton={false}
       >
-        {/* Port markers */}
         {ports.map((port, index) => (
           <Marker
             key={index}
@@ -208,7 +210,6 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
           />
         ))}
 
-        {/* User location marker */}
         {userLocation && (
           <Marker
             coordinate={userLocation}
@@ -222,7 +223,6 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         )}
       </MapView>
 
-      {/* Locate button */}
       <TouchableOpacity
         style={[styles.locateButton, { backgroundColor: colors.primary }]}
         onPress={locateUser}
@@ -240,7 +240,6 @@ export function PortsMap({ ports, onPortPress }: PortsMapProps) {
         )}
       </TouchableOpacity>
 
-      {/* Nearby ports list */}
       {nearbyPorts.length > 0 && (
         <View style={[styles.nearbyContainer, { backgroundColor: theme.colors.card }]}>
           <View style={styles.nearbyHeader}>
@@ -323,6 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
   map: {
     flex: 1,

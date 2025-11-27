@@ -26,7 +26,6 @@ async function checkSupabase(): Promise<HealthCheckResult> {
       };
     }
 
-    // Test connection by making a simple request
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
       headers: {
         apikey: supabaseAnonKey,
@@ -61,7 +60,7 @@ async function checkSupabase(): Promise<HealthCheckResult> {
 }
 
 /**
- * Check Google Maps API key validity
+ * Check Google Maps API key validity with comprehensive testing
  */
 async function checkGoogleMaps(): Promise<HealthCheckResult> {
   try {
@@ -71,41 +70,113 @@ async function checkGoogleMaps(): Promise<HealthCheckResult> {
       return {
         service: "Google Maps",
         ok: false,
-        message: "Map display may be limited.",
+        message: "Map display may be limited (NO_KEY).",
+        details: { error: "GOOGLE_MAPS_API_KEY environment variable not set" },
         isCritical: false,
       };
     }
 
+    console.log("Testing Google Maps API key...");
+
     // Test the API key with a simple Geocoding API request
-    const testUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=Paris&key=${apiKey}`;
+    const testUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=Paris,France&key=${apiKey}`;
     
     const response = await fetch(testUrl);
     const data = await response.json();
 
+    console.log("Google Maps API response status:", response.status);
+    console.log("Google Maps API response data:", JSON.stringify(data, null, 2));
+
+    // Check HTTP status
     if (response.status !== 200) {
       return {
         service: "Google Maps",
         ok: false,
-        message: `Map display may be limited (API error: ${response.status}).`,
-        details: { status: response.status, error: data.error_message },
+        message: `Map display may be limited (HTTP ${response.status}).`,
+        details: { 
+          status: response.status, 
+          error: data.error_message || "HTTP error",
+          apiStatus: data.status 
+        },
         isCritical: false,
       };
     }
 
-    if (data.status === "REQUEST_DENIED" || data.status === "INVALID_REQUEST") {
+    // Check API response status
+    if (data.status === "REQUEST_DENIED") {
+      let errorDetail = "API key is invalid or restricted";
+      if (data.error_message) {
+        errorDetail = data.error_message;
+      }
+      
       return {
         service: "Google Maps",
         ok: false,
-        message: `Map display may be limited (${data.status}).`,
-        details: { status: data.status, error: data.error_message },
+        message: `Map display may be limited (REQUEST_DENIED).`,
+        details: { 
+          status: data.status, 
+          error: errorDetail,
+          reason: "Check API key restrictions: HTTP referrers, IP addresses, or API enablement"
+        },
         isCritical: false,
       };
     }
 
+    if (data.status === "INVALID_REQUEST") {
+      return {
+        service: "Google Maps",
+        ok: false,
+        message: `Map display may be limited (INVALID_REQUEST).`,
+        details: { 
+          status: data.status, 
+          error: data.error_message || "Invalid request format"
+        },
+        isCritical: false,
+      };
+    }
+
+    if (data.status === "OVER_QUERY_LIMIT") {
+      return {
+        service: "Google Maps",
+        ok: false,
+        message: `Map display may be limited (OVER_QUERY_LIMIT).`,
+        details: { 
+          status: data.status, 
+          error: "API quota exceeded"
+        },
+        isCritical: false,
+      };
+    }
+
+    if (data.status === "ZERO_RESULTS") {
+      // This is actually OK - the API is working, just no results for this query
+      console.log("Google Maps API returned ZERO_RESULTS (API is working)");
+    }
+
+    // Check if we got valid results
+    if (data.status === "OK" || data.status === "ZERO_RESULTS") {
+      console.log("Google Maps API key is valid and working");
+      return {
+        service: "Google Maps",
+        ok: true,
+        message: "Map features are enabled",
+        details: { 
+          status: data.status,
+          resultsCount: data.results?.length || 0
+        },
+        isCritical: false,
+      };
+    }
+
+    // Unknown status
     return {
       service: "Google Maps",
-      ok: true,
-      message: "Map features are enabled",
+      ok: false,
+      message: `Map display may be limited (${data.status}).`,
+      details: { 
+        status: data.status, 
+        error: data.error_message || "Unknown error"
+      },
       isCritical: false,
     };
   } catch (error) {
@@ -113,7 +184,7 @@ async function checkGoogleMaps(): Promise<HealthCheckResult> {
     return {
       service: "Google Maps",
       ok: false,
-      message: "Map display may be limited.",
+      message: "Map display may be limited (CONNECTION_ERROR).",
       details: { error: error.message },
       isCritical: false,
     };
@@ -138,7 +209,6 @@ async function checkPayPal(): Promise<HealthCheckResult> {
       };
     }
 
-    // Validate environment setting
     if (paypalEnv !== "sandbox" && paypalEnv !== "live") {
       return {
         service: "PayPal",
@@ -148,12 +218,10 @@ async function checkPayPal(): Promise<HealthCheckResult> {
       };
     }
 
-    // Determine PayPal API URL based on environment
     const apiUrl = paypalEnv === "sandbox"
       ? "https://api-m.sandbox.paypal.com"
       : "https://api-m.paypal.com";
 
-    // Attempt to obtain an access token
     const auth = btoa(`${clientId}:${clientSecret}`);
     const tokenUrl = `${apiUrl}/v1/oauth2/token`;
 
@@ -243,7 +311,6 @@ async function checkSMTP(): Promise<HealthCheckResult> {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -258,7 +325,6 @@ Deno.serve(async (req) => {
   try {
     console.log("Starting health check...");
 
-    // Run all checks in parallel
     const [supabaseResult, googleMapsResult, paypalResult, smtpResult] = await Promise.all([
       checkSupabase(),
       checkGoogleMaps(),
@@ -268,8 +334,6 @@ Deno.serve(async (req) => {
 
     const results = [supabaseResult, googleMapsResult, paypalResult, smtpResult];
 
-    // Determine overall status
-    // Only critical services (Supabase) can cause CRITICAL status
     const hasCriticalErrors = results.some((r) => !r.ok && r.isCritical);
     const hasWarnings = results.some((r) => !r.ok && !r.isCritical);
 
