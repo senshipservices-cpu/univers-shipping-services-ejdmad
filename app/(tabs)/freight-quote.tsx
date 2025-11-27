@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Modal, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Modal, ActivityIndicator, Keyboard } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -123,6 +123,21 @@ export default function FreightQuoteScreen() {
     logQuoteClickEvent();
   }, [user, client, serviceId, serviceName]);
 
+  const resetForm = useCallback(() => {
+    // Determine if user is logged in
+    const isLoggedIn = !!(user && client);
+    
+    setFormData({
+      clientName: isLoggedIn ? (client.contact_name || client.company_name || "") : "",
+      clientEmail: isLoggedIn ? (user.email || "") : "",
+      originPort: null,
+      destinationPort: null,
+      cargoType: "",
+      cargoVolume: "",
+      details: "",
+    });
+  }, [user, client]);
+
   const handleSubmit = useCallback(async () => {
     console.log('=== FREIGHT QUOTE SUBMIT BUTTON CLICKED ===');
     console.log('Form data:', formData);
@@ -202,6 +217,10 @@ export default function FreightQuoteScreen() {
     }
 
     console.log('All validations passed, starting submission');
+    
+    // Dismiss keyboard for better UX
+    Keyboard.dismiss();
+    
     setIsSubmitting(true);
 
     try {
@@ -249,12 +268,7 @@ export default function FreightQuoteScreen() {
 
       if (error) {
         console.error('Error submitting quote:', error);
-        Alert.alert(
-          t.common.error || "Erreur",
-          "Une erreur est survenue lors de l'envoi de votre demande. Merci de réessayer."
-        );
-        setIsSubmitting(false);
-        return;
+        throw error;
       }
 
       console.log('Quote submitted successfully');
@@ -301,14 +315,15 @@ export default function FreightQuoteScreen() {
 
       // Success handling based on authentication status
       if (isLoggedIn) {
-        // User is logged in - show success message and redirect to client dashboard
+        // User is logged in - show success alert and redirect to client dashboard
         Alert.alert(
-          "Demande envoyée !",
-          "Votre demande de devis a bien été envoyée. Vous pouvez suivre son statut dans votre tableau de bord.",
+          "Demande envoyée",
+          "Votre demande de devis a bien été prise en compte. Un agent USS vous contactera rapidement.",
           [
             {
               text: "OK",
               onPress: () => {
+                resetForm();
                 setIsSubmitting(false);
                 router.replace('/(tabs)/client-dashboard');
               },
@@ -317,18 +332,39 @@ export default function FreightQuoteScreen() {
         );
       } else {
         // User is not logged in - show success message on the same page
-        setIsSubmitting(false);
-        setShowSuccessMessage(true);
+        Alert.alert(
+          "Demande envoyée",
+          "Votre demande de devis a bien été prise en compte. Un agent USS vous contactera rapidement.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                resetForm();
+                setIsSubmitting(false);
+                setShowSuccessMessage(true);
+              },
+            },
+          ]
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception submitting quote:', error);
+      
+      // Show error alert - do NOT reset form so user doesn't lose their data
       Alert.alert(
-        t.common.error || "Erreur",
-        "Une erreur est survenue lors de l'envoi de votre demande. Merci de réessayer."
+        "Erreur",
+        "Une erreur s'est produite lors de l'envoi de votre demande. Veuillez réessayer.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setIsSubmitting(false);
+            },
+          },
+        ]
       );
-      setIsSubmitting(false);
     }
-  }, [formData, isSubmitting, user, client, serviceId, serviceName, router, t]);
+  }, [formData, isSubmitting, user, client, serviceId, serviceName, router, t, resetForm]);
 
   const filteredPorts = ports.filter((port) =>
     `${port.name} ${port.city} ${port.country}`
@@ -661,7 +697,7 @@ export default function FreightQuoteScreen() {
             {isSubmitting ? (
               <React.Fragment>
                 <ActivityIndicator size="small" color="#ffffff" />
-                <Text style={styles.submitButtonText}>Envoi en cours...</Text>
+                <Text style={styles.submitButtonText}>Envoi en cours…</Text>
               </React.Fragment>
             ) : (
               <React.Fragment>
