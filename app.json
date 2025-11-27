@@ -1,7 +1,7 @@
 
 {
   "expo": {
-    "name": "UNIVERSAL SHIPPING SERVICES",
+    "name": "Universal Shipping Services",
     "slug": "universal-shipping-services",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -87,9 +87,8 @@
       "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}",
       "googleWebClientId": "${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}",
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "6c1dee3e-c361-4789-a8f8-e00d4d7fff6b"
       }
-    },
-    "owner": "your-expo-username"
+    }
   }
 }
