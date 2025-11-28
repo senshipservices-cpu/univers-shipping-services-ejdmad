@@ -1,3 +1,4 @@
+
 // This file is a fallback for using MaterialIcons on Android and web.
 
 import React from "react";
@@ -29,11 +30,20 @@ export function IconSymbol({
   style?: StyleProp<ViewStyle>;
   weight?: SymbolWeight;
 }) {
+  // Validate that the icon name exists in MaterialIcons
+  const iconName = MaterialIcons.glyphMap[android_material_icon_name] !== undefined 
+    ? android_material_icon_name 
+    : 'help_outline'; // Fallback to help icon if invalid
+
+  if (iconName === 'help_outline' && android_material_icon_name !== 'help_outline') {
+    console.warn(`[IconSymbol] Invalid Material Icon name: "${android_material_icon_name}". Using fallback icon.`);
+  }
+
   return (
     <MaterialIcons
       color={color}
       size={size}
-      name={android_material_icon_name}
+      name={iconName}
       style={style as StyleProp<TextStyle>}
     />
   );
