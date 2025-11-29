@@ -1,43 +1,18 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "appVersionSource": "remote"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "autoIncrement": true,
-      "env": {
-        "APP_ENV": "development"
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "autoIncrement": true,
-      "env": {
-        "APP_ENV": "staging"
-      }
-    },
     "production": {
-      "autoIncrement": true,
-     
+      "channel": "production",
       "env": {
         "APP_ENV": "production"
       },
-      "ios": {
-        "resourceClass": "m1-medium",
-        "buildConfiguration": "Release"
-      },
       "android": {
         "buildType": "app-bundle"
-      }
-    }
-  },
-  
       },
-      "android": {
-        "serviceAccountKeyPath": "./path-to-google-play-service-account.json",
-        "track": "internal"
+      "ios": {
+        "resourceClass": "m-medium"
       }
     }
   }
